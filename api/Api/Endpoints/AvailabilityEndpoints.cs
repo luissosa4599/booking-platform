@@ -23,11 +23,16 @@ public static class AvailabilityEndpoints
             // has no type to scope by, so omitting it means "all types".
             // Grouping into "ahora" / "más tarde" is a client concern — this
             // returns a flat list ordered by start time, per the handoff.
+            //
+            // Filtering on EndsAt (not StartsAt) >= from is deliberate: a slot
+            // that started before `from` but hasn't ended yet is still
+            // "ahora mismo" and must be included — filtering on StartsAt would
+            // silently drop every currently-in-progress slot.
             var slots = await db.AvailabilitySlots
                 .AsNoTracking()
                 .Where(s =>
                     (resourceTypeId == null || s.Resource.ResourceTypeId == resourceTypeId) &&
-                    s.StartsAt >= from &&
+                    s.EndsAt >= from &&
                     s.StartsAt <= to)
                 .OrderBy(s => s.StartsAt)
                 .Select(s => new AvailabilitySlotResponse(

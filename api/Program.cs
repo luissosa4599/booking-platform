@@ -3,10 +3,22 @@ using BookingEngine.Api.Api.Endpoints;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Api.Infrastructure;
 using BookingEngine.Api.Infrastructure.Seed;
+using DotNetEnv;
 using FluentValidation;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+
+// ASP.NET Core doesn't read .env files on its own — without this, running
+// `dotnet run` picks up nothing from api/.env and ConnectionStrings__Default
+// stays empty (Npgsql then throws "ConnectionString property has not been
+// initialized"). Only loads when the file exists, so it's a no-op in CI/
+// production, where real environment variables are set directly and no
+// .env file is deployed (it's gitignored).
+if (File.Exists(".env"))
+{
+    Env.Load();
+}
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -82,9 +94,9 @@ try
 
     if (app.Environment.IsDevelopment())
     {
-        app.MapPost("/dev/seed", async (BookingEngineDbContext db) =>
+        app.MapPost("/dev/seed", async (BookingEngineDbContext db, bool reset = false) =>
         {
-            var result = await DevSeeder.SeedAsync(db);
+            var result = await DevSeeder.SeedAsync(db, reset);
             return Results.Ok(result);
         })
         .WithName("DevSeed");

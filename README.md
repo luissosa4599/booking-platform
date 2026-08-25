@@ -24,7 +24,10 @@ cp app/.env.example app/.env
 ```
 
 - `api/.env` — `ConnectionStrings__Default` (Postgres/Neon) y `FRONTEND_WEB_URL` (origen CORS de
-  producción, vacío en local).
+  producción, vacío en local). Se carga solo al arrancar (`DotNetEnv` en `Program.cs`, solo si el
+  archivo existe — no afecta CI/producción). Ojo: Neon te da la connection string en formato URI
+  (`postgresql://...`), pero Npgsql necesita `Host=...;Database=...;Username=...;Password=...` —
+  ver el comentario en `api/.env.example`.
 - `app/.env` — `EXPO_PUBLIC_API_URL`, solo necesaria para builds de producción; en desarrollo la URL
   del API se resuelve sola por plataforma (ver más abajo).
 

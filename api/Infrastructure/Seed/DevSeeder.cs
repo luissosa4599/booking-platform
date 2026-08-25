@@ -12,9 +12,24 @@ public record SeedResult(bool AlreadySeeded, int ResourceTypes, int Locations, i
 /// </summary>
 public static class DevSeeder
 {
-    public static async Task<SeedResult> SeedAsync(BookingEngineDbContext db, CancellationToken cancellationToken = default)
+    public static async Task<SeedResult> SeedAsync(
+        BookingEngineDbContext db,
+        bool reset = false,
+        CancellationToken cancellationToken = default)
     {
-        if (await db.ResourceTypes.AnyAsync(cancellationToken))
+        if (reset)
+        {
+            // Dependency order matters: Booking/WaitlistEntry reference
+            // AvailabilitySlot with DeleteBehavior.Restrict, so they have to
+            // go first or the slot deletes below would be blocked.
+            await db.Bookings.ExecuteDeleteAsync(cancellationToken);
+            await db.WaitlistEntries.ExecuteDeleteAsync(cancellationToken);
+            await db.AvailabilitySlots.ExecuteDeleteAsync(cancellationToken);
+            await db.Resources.ExecuteDeleteAsync(cancellationToken);
+            await db.Locations.ExecuteDeleteAsync(cancellationToken);
+            await db.ResourceTypes.ExecuteDeleteAsync(cancellationToken);
+        }
+        else if (await db.ResourceTypes.AnyAsync(cancellationToken))
         {
             return new SeedResult(AlreadySeeded: true, 0, 0, 0, 0);
         }
@@ -115,7 +130,7 @@ public static class DevSeeder
             },
         };
 
-        var slots = GenerateSlots(resources);
+        var slots = GenerateSlots(resources, location.TimeZone);
 
         db.ResourceTypes.AddRange(studyRoomType, soloSpaceType);
         db.Locations.Add(location);
@@ -127,13 +142,19 @@ public static class DevSeeder
         return new SeedResult(AlreadySeeded: false, 2, 1, resources.Count, slots.Count);
     }
 
-    private static List<AvailabilitySlot> GenerateSlots(IReadOnlyList<Resource> resources)
+    private static List<AvailabilitySlot> GenerateSlots(IReadOnlyList<Resource> resources, string timeZoneId)
     {
         var slotDuration = TimeSpan.FromMinutes(90);
         var dailyStartHour = 8;
-        var slotsPerDay = 8; // 08:00 -> 20:00 in 90-minute blocks
+        var slotsPerDay = 8; // 08:00 -> 20:00 LOCAL time, in 90-minute blocks
         var now = DateTimeOffset.UtcNow;
         var random = new Random(42); // fixed seed — reproducible demo data across seed runs
+
+        // Business hours are local to the location, not raw UTC clock hours —
+        // seeding "08:00-20:00 UTC" directly meant the library effectively
+        // opened 2am-2pm in Mexico City, closed by early afternoon local time.
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        var todayLocal = TimeZoneInfo.ConvertTimeFromUtc(now.UtcDateTime, timeZone).Date;
 
         var slots = new List<AvailabilitySlot>();
 
@@ -143,9 +164,10 @@ public static class DevSeeder
 
             for (var dayOffset = 0; dayOffset < 3; dayOffset++)
             {
-                var dayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero)
-                    .AddDays(dayOffset)
-                    .AddHours(dailyStartHour);
+                var dayStartLocal = todayLocal.AddDays(dayOffset).AddHours(dailyStartHour);
+                var dayStart = new DateTimeOffset(
+                    TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(dayStartLocal, DateTimeKind.Unspecified), timeZone),
+                    TimeSpan.Zero);
 
                 for (var block = 0; block < slotsPerDay; block++)
                 {
