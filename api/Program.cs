@@ -12,12 +12,34 @@ try
 
     builder.Services.AddOpenApi();
 
+    const string AllowWebPolicy = "AllowWeb";
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(AllowWebPolicy, policy =>
+        {
+            var allowedOrigins = new[]
+            {
+                "http://localhost:8081",
+                builder.Configuration["FRONTEND_WEB_URL"],
+            }
+                .Where(origin => !string.IsNullOrWhiteSpace(origin))
+                .Select(origin => origin!)
+                .ToArray();
+
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+    });
+
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
     }
+
+    app.UseCors(AllowWebPolicy);
 
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
         .WithName("HealthCheck");
