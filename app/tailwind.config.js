@@ -1,9 +1,20 @@
 /**
  * Tokens sourced from docs/design-handoff.md ("Design Tokens" section).
- * Colors reference CSS variables defined in src/global.css (`:root` /
- * `.dark:root`) so the same class names (`bg-card`, `text-label-1`, ...)
- * resolve to the right theme automatically — screens never condition on
- * color scheme. See that file for the light/dark value tables.
+ * All colors below are plain CSS-variable references
+ * (`rgb(var(--color-x) / <alpha-value>)`), but the variables themselves
+ * come from two different places depending on the token:
+ *
+ * - tint / tint-press / tint-soft / tint-wash — the 4 "themeable" tokens.
+ *   Their CSS variables are supplied at runtime by ThemeProvider
+ *   (src/lib/theme/ThemeProvider.tsx) via NativeWind's vars(), not by any
+ *   stylesheet. This is prep for per-client theming — only one theme
+ *   (`appleTheme`) is ever mounted today.
+ * - everything else (labels, canvas/card/fill/hairline/chevron/
+ *   disabled-label, state-*) — fixed, defined in src/global.css's `:root`
+ *   / `.dark:root` and must never move into ThemeProvider.
+ *
+ * Class names (`bg-card`, `text-tint`, ...) don't change based on where a
+ * given token's variable comes from — screens never condition on it either.
  */
 
 /** @type {import('tailwindcss').Config} */
@@ -14,11 +25,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Themeable — variables come from ThemeProvider, not global.css.
         tint: "rgb(var(--color-tint) / <alpha-value>)",
         "tint-press": "rgb(var(--color-tint-press) / <alpha-value>)",
         "tint-soft": "rgb(var(--color-tint-soft) / <alpha-value>)",
         "tint-wash": "rgb(var(--color-tint-wash) / <alpha-value>)",
 
+        // Static — variables come from global.css, never themeable.
         "label-1": "rgb(var(--color-label-1) / <alpha-value>)",
         "label-2": "rgb(var(--color-label-2) / <alpha-value>)",
         "label-3": "rgb(var(--color-label-3) / <alpha-value>)",

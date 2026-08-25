@@ -9,13 +9,14 @@
  * modifiers (e.g. `bg-tint/50`). Dark overrides only exist for the tokens
  * the handoff's "tema oscuro" table actually redefines — everything else
  * falls through to the light value in both themes, same as the design spec.
+ *
+ * NOTE: tint / tint-press / tint-soft / tint-wash are NOT defined here.
+ * Those 4 are the "themeable" tokens — prep for per-client theming — and
+ * are supplied at runtime by ThemeProvider (src/lib/theme/ThemeProvider.tsx)
+ * via NativeWind's vars(), not by this static stylesheet. Every other color
+ * below is fixed and must never move into ThemeProvider.
  */
 :root {
-  --color-tint: 194 87 31; /* #C2571F */
-  --color-tint-press: 160 69 26; /* #A0451A */
-  --color-tint-soft: 232 168 131; /* #E8A883 */
-  --color-tint-wash: 251 239 232; /* #FBEFE8 */
-
   --color-label-1: 11 11 12; /* #0B0B0C */
   --color-label-2: 60 60 67; /* #3C3C43 */
   --color-label-3: 108 108 112; /* #6C6C70 */
@@ -40,7 +41,6 @@
   --color-fill: 44 44 46; /* #2C2C2E */
   --color-hairline: 56 56 58; /* #38383A */
   --color-label-1: 255 255 255; /* #FFFFFF */
-  --color-tint: 232 168 131; /* #E8A883 */
   --color-chevron: 72 72 74; /* #48484A */
 
   --color-state-free: 48 181 101; /* #30B565 */
