@@ -94,9 +94,9 @@ try
 
     if (app.Environment.IsDevelopment())
     {
-        app.MapPost("/dev/seed", async (BookingEngineDbContext db, bool reset = false) =>
+        app.MapPost("/dev/seed", async (BookingEngineDbContext db, ILogger<Program> logger) =>
         {
-            var result = await DevSeeder.SeedAsync(db, reset);
+            var result = await DevSeeder.SeedAsync(db, logger);
             return Results.Ok(result);
         })
         .WithName("DevSeed");

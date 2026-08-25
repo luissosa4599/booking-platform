@@ -78,10 +78,18 @@ export default function ExploreScreen() {
     (slot) => slot.capacityRemaining > 0 && !dismissedSlotIds.has(slot.id),
   );
 
+  // "Ahora mismo" includes slots already in progress AND slots starting
+  // shortly — a slot starting in 20 minutes is still something you can walk
+  // into and use right now, not "later today". Without this grace window,
+  // freshly-seeded near-term slots (which always start in the future, never
+  // in the past) would never appear here.
   const nowMs = now.getTime();
-  const nowGroup = availableSlots.filter((slot) => new Date(slot.startsAt).getTime() <= nowMs);
+  const nowGroupCutoffMs = nowMs + 60 * 60 * 1000;
+  const nowGroup = availableSlots.filter(
+    (slot) => new Date(slot.startsAt).getTime() <= nowGroupCutoffMs,
+  );
   const laterGroup = availableSlots
-    .filter((slot) => new Date(slot.startsAt).getTime() > nowMs)
+    .filter((slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs)
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
   const conflictSlot = createBooking.conflict
