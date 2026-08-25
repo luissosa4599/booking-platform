@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  body { margin:0; background:#F0F0F2; font-family:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; letter-spacing:-.01em; }
+  a { color:#C2571F; text-decoration:none; }
+  a:hover { color:#A0451A; }
+  @keyframes skel { 0%{opacity:.45} 50%{opacity:.9} 100%{opacity:.45} }
+  @keyframes tick { 0%{transform:scale(.6);opacity:0} 55%{transform:scale(1.06);opacity:1} 100%{transform:scale(1);opacity:1} }
+  @keyframes halo { 0%{transform:scale(.9);opacity:.5} 100%{transform:scale(1.6);opacity:0} }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:64px;padding:64px 72px 120px;max-width:2700px;">
+
+  <div style="display:flex;flex-direction:column;gap:18px;max-width:820px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;font-weight:600;letter-spacing:.04em;color:#FFFFFF;background:#1C1C1E;padding:6px 11px;border-radius:999px;">2a</span>
+      <span style="font-size:13px;font-weight:500;color:#8A8A8E;">v2 · un tap, pantallas limpias</span>
+    </div>
+    <h1 style="margin:0;font-size:52px;line-height:1.05;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Cupo</h1>
+    <p style="margin:0;font-size:19px;line-height:1.5;color:#3C3C43;text-wrap:pretty;">Espacios de la Biblioteca Central: reservas de 90 minutos, sin pagos, sin formularios. Un recurso sigue siendo genérico en el modelo de datos — pero el producto tiene una voz sola y un solo verbo: <strong style="font-weight:600;">apartar</strong>.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;">
+      <span style="font-size:15px;line-height:1.6;color:#3C3C43;">→ Una acción primaria por pantalla. Nada compite.</span>
+      <span style="font-size:15px;line-height:1.6;color:#3C3C43;">→ Reservar es un tap desde la lista; el detalle es opcional, no un peaje.</span>
+      <span style="font-size:15px;line-height:1.6;color:#3C3C43;">→ Sin sombras, sin badges de colores por todos lados, sin barras de progreso. Jerarquía por tamaño, peso y aire.</span>
+    </div>
+  </div>
+
+  <!-- SISTEMA -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.02em;">Sistema</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:26px;width:600px;display:flex;flex-direction:column;gap:22px;">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">Color</span>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:13px;color:#6C6C70;">Un solo acento. Aparece una vez por pantalla, casi siempre en el botón.</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:52px;border-radius:12px;background:#FBEFE8;"></div><span style="font-size:11px;color:#8A8A8E;">tint.wash · FBEFE8</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:52px;border-radius:12px;background:#E8A883;"></div><span style="font-size:11px;color:#8A8A8E;">tint.soft · E8A883</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:52px;border-radius:12px;background:#C2571F;"></div><span style="font-size:11px;color:#8A8A8E;">tint · C2571F</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:52px;border-radius:12px;background:#A0451A;"></div><span style="font-size:11px;color:#8A8A8E;">tint.press · A0451A</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:13px;color:#6C6C70;">Neutros: casi todo el producto es esto.</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#FFFFFF;border:1px solid #E5E5EA;"></div><span style="font-size:11px;color:#8A8A8E;">card</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#F7F7F8;border:1px solid #E5E5EA;"></div><span style="font-size:11px;color:#8A8A8E;">canvas</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#EFEFF2;"></div><span style="font-size:11px;color:#8A8A8E;">fill</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#E5E5EA;"></div><span style="font-size:11px;color:#8A8A8E;">hairline</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#8A8A8E;"></div><span style="font-size:11px;color:#8A8A8E;">label.3</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#6C6C70;"></div><span style="font-size:11px;color:#8A8A8E;">label.2</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#0B0B0C;"></div><span style="font-size:11px;color:#8A8A8E;">label.1</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:13px;color:#6C6C70;">Estado: solo texto y puntos, nunca fondos grandes.</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#2C9160;"></div><span style="font-size:11px;color:#8A8A8E;">libre</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#C08A18;"></div><span style="font-size:11px;color:#8A8A8E;">último lugar</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#C0392B;"></div><span style="font-size:11px;color:#8A8A8E;">error</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#3A76C4;"></div><span style="font-size:11px;color:#8A8A8E;">en espera</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:13px;color:#6C6C70;">Dark: mismos nombres, un mapeo.</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#000000;"></div><span style="font-size:11px;color:#8A8A8E;">canvas</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#1C1C1E;"></div><span style="font-size:11px;color:#8A8A8E;">card</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#2C2C2E;"></div><span style="font-size:11px;color:#8A8A8E;">fill</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#38383A;"></div><span style="font-size:11px;color:#8A8A8E;">hairline</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:36px;border-radius:12px;background:#E8A883;"></div><span style="font-size:11px;color:#8A8A8E;">tint</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:26px;width:470px;display:flex;flex-direction:column;gap:20px;">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">Tipografía</span>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #EFEFF2;padding-bottom:12px;"><span style="font-size:34px;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Explorar</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">34/40 · 700</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #EFEFF2;padding-bottom:12px;"><span style="font-size:22px;font-weight:600;color:#0B0B0C;letter-spacing:-.02em;">Sala Boreal 204</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">22/28 · 600</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #EFEFF2;padding-bottom:12px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Fila de lista, botón</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">17/22 · 600</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #EFEFF2;padding-bottom:12px;"><span style="font-size:17px;color:#3C3C43;">Cuerpo de texto</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">17/22 · 400</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #EFEFF2;padding-bottom:12px;"><span style="font-size:15px;color:#6C6C70;">Subtítulo, secundario</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">15/20 · 400</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;"><span style="font-size:13px;color:#8A8A8E;">Nota al pie, metadato</span><span style="font-size:11px;color:#8A8A8E;text-align:right;">13/18 · 400</span></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.5;color:#3C3C43;">Una sola familia: la del sistema (SF en iOS, Roboto en Android, system-ui en web). Cero fuentes que descargar, cero flash de texto.</span>
+          <span style="font-size:13px;line-height:1.5;color:#3C3C43;">Sin serif, sin monoespaciado: los códigos de reserva usan <span style="font-variant-numeric:tabular-nums;font-weight:600;">tabular-nums</span>.</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:26px;width:400px;display:flex;flex-direction:column;gap:20px;">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">Medidas</span>
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:4px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">4 · hairline</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:8px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">8 · texto ↔ texto</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:12px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">12 · fila de lista (vertical)</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:16px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">16 · margen de pantalla</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:24px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">24 · entre grupos</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:40px;height:18px;background:#C2571F;border-radius:2px;"></div><span style="font-size:13px;color:#6C6C70;">40 · respiro de título</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:56px;height:44px;background:#EFEFF2;border-radius:10px;"></div><span style="font-size:11px;color:#8A8A8E;">10 control</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:56px;height:44px;background:#EFEFF2;border-radius:14px;"></div><span style="font-size:11px;color:#8A8A8E;">14 botón</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:56px;height:44px;background:#EFEFF2;border-radius:22px;"></div><span style="font-size:11px;color:#8A8A8E;">22 grupo</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:56px;height:44px;background:#EFEFF2;border-radius:999px;"></div><span style="font-size:11px;color:#8A8A8E;">full</span></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.5;color:#3C3C43;">Elevación: solo la hoja modal. Las tarjetas se separan por color de fondo, no por sombra.</span>
+          <span style="font-size:13px;line-height:1.5;color:#3C3C43;">Fila de lista mínima: 56 px. Botón: 50 px.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLAS -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.02em;">Pantallas · 390 × 844</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;">
+
+      <!-- 01 LOGIN -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">01 · SignInScreen</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Entrar</span></div>
+        <div data-screen-label="01 Entrar" style="width:390px;height:844px;background:#FFFFFF;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#0B0B0C;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #0B0B0C;"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:40px;padding:0 24px;">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div style="width:60px;height:60px;border-radius:16px;background:#C2571F;display:flex;align-items:center;justify-content:center;"><div style="width:22px;height:22px;border-radius:7px;background:#FFFFFF;"></div></div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <h3 style="margin:0;font-size:34px;line-height:1.1;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Aparta tu lugar<br>en la biblioteca.</h3>
+                <p style="margin:0;font-size:17px;line-height:1.45;color:#6C6C70;">Salas, cabinas y escritorios. Un tap y es tuyo por 90 minutos.</p>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="height:52px;border-radius:14px;background:#EFEFF2;display:flex;align-items:center;padding:0 16px;"><span style="font-size:17px;color:#0B0B0C;">luis.sosa@campus.mx</span></div>
+              <div style="height:52px;border-radius:14px;background:#C2571F;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Continuar</span></div>
+              <span style="font-size:13px;color:#8A8A8E;text-align:center;">Te enviamos un enlace. Sin contraseñas.</span>
+            </div>
+          </div>
+          <div style="padding:0 24px 34px;display:flex;flex-direction:column;gap:10px;">
+            <div style="height:52px;border-radius:14px;background:#0B0B0C;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Continuar con Apple</span></div>
+            <div style="height:44px;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:500;color:#C2571F;">Continuar con Google</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 02 EXPLORAR -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">02 · ExploreScreen</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Explorar · un tap reserva</span></div>
+        <div data-screen-label="02 Explorar" style="width:390px;height:844px;background:#F7F7F8;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#0B0B0C;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #0B0B0C;"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:20px;padding:12px 16px 0;overflow:hidden;">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+                <h3 style="margin:0;font-size:34px;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Ahora</h3>
+                <span style="font-size:15px;color:#8A8A8E;">Jue 20 · 13:45</span>
+              </div>
+              <div style="height:38px;border-radius:10px;background:#EFEFF2;display:flex;align-items:center;gap:8px;padding:0 12px;"><div style="width:13px;height:13px;border-radius:999px;border:2px solid #8A8A8E;"></div><span style="font-size:17px;color:#8A8A8E;">Buscar</span></div>
+              <div style="display:flex;gap:8px;">
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#0B0B0C;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#FFFFFF;">Cualquiera</span></div>
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#3C3C43;">Salas</span></div>
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#3C3C43;">Cabinas</span></div>
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;white-space:nowrap;"><span style="font-size:15px;font-weight:500;color:#3C3C43;">Escritorios</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">LIBRE AHORA MISMO</span>
+              <div style="background:#FFFFFF;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:17px;font-weight:600;color:#0B0B0C;">Sala Boreal 204</span>
+                    <span style="font-size:15px;color:#6C6C70;">Piso 2 · 8 personas · hasta 15:30</span>
+                  </div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#C2571F;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#FFFFFF;">Apartar</span></div>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:17px;font-weight:600;color:#0B0B0C;">Cabina de audio 3</span>
+                    <span style="font-size:15px;color:#6C6C70;">Piso 1 · 1 persona · hasta 15:15</span>
+                  </div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#FBEFE8;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#C2571F;">Apartar</span></div>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:17px;font-weight:600;color:#0B0B0C;">Escritorio flex 12B</span>
+                    <span style="font-size:15px;color:#C08A18;">Último lugar · hasta 14:45</span>
+                  </div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#FBEFE8;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#C2571F;">Apartar</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">MÁS TARDE HOY</span>
+              <div style="background:#FFFFFF;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Sala Austral 118</span><span style="font-size:15px;color:#6C6C70;">Piso 1 · 6 personas</span></div>
+                  <span style="font-size:17px;color:#6C6C70;font-variant-numeric:tabular-nums;">15:30</span>
+                  <span style="font-size:19px;color:#C7C7CC;">›</span>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Sala Boreal 204</span><span style="font-size:15px;color:#6C6C70;">Piso 2 · 8 personas</span></div>
+                  <span style="font-size:17px;color:#6C6C70;font-variant-numeric:tabular-nums;">17:00</span>
+                  <span style="font-size:19px;color:#C7C7CC;">›</span>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;animation:skel 1.4s ease-in-out infinite;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:8px;"><div style="height:13px;width:52%;border-radius:6px;background:#EFEFF2;"></div><div style="height:11px;width:34%;border-radius:6px;background:#EFEFF2;"></div></div>
+                  <div style="height:13px;width:40px;border-radius:6px;background:#EFEFF2;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:82px;background:rgba(255,255,255,.92);border-top:1px solid #E5E5EA;display:flex;align-items:flex-start;padding:12px 30px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:7px;background:#C2571F;"></div><span style="font-size:11px;font-weight:600;color:#C2571F;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;border:2px solid #8A8A8E;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;background:#D6D6DB;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Tú</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03 DETALLE -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">03 · ResourceScreen</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Detalle y horario</span></div>
+        <div data-screen-label="03 Detalle" style="width:390px;height:844px;background:#FFFFFF;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:196px;background:#EFEFF2;display:flex;flex-direction:column;justify-content:space-between;padding:16px;">
+            <div style="width:36px;height:36px;border-radius:999px;background:rgba(255,255,255,.86);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;color:#0B0B0C;">←</span></div>
+            <span style="font-size:12px;color:#8A8A8E;">foto del recurso</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:24px;padding:24px 16px 0;overflow:hidden;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <h3 style="margin:0;font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.025em;">Sala Boreal 204</h3>
+              <span style="font-size:17px;color:#6C6C70;">Piso 2 · hasta 8 personas · pizarrón y pantalla</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+              <span style="font-size:17px;color:#0B0B0C;">Personas</span>
+              <div style="display:flex;align-items:center;gap:2px;background:#EFEFF2;border-radius:10px;padding:2px;">
+                <div style="width:44px;height:34px;border-radius:8px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:19px;color:#3C3C43;">−</span></div>
+                <span style="width:36px;text-align:center;font-size:17px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">3</span>
+                <div style="width:44px;height:34px;border-radius:8px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:19px;color:#3C3C43;">+</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;height:52px;border-radius:14px;background:#EFEFF2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;"><span style="font-size:13px;color:#8A8A8E;">Hoy</span><span style="font-size:17px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">20</span></div>
+                <div style="flex:1;height:52px;border-radius:14px;background:#EFEFF2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;"><span style="font-size:13px;color:#8A8A8E;">vie</span><span style="font-size:17px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">21</span></div>
+                <div style="flex:1;height:52px;border-radius:14px;background:#EFEFF2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;"><span style="font-size:13px;color:#8A8A8E;">sáb</span><span style="font-size:17px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">22</span></div>
+                <div style="flex:1;height:52px;border-radius:14px;background:#EFEFF2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:.4;"><span style="font-size:13px;color:#8A8A8E;">dom</span><span style="font-size:17px;font-weight:600;color:#8A8A8E;font-variant-numeric:tabular-nums;">23</span></div>
+              </div>
+              <div style="background:#F7F7F8;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;opacity:.45;"><span style="font-size:17px;color:#8A8A8E;font-variant-numeric:tabular-nums;">08:00 – 09:30</span><span style="font-size:15px;color:#8A8A8E;">Ocupada</span></div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#0B0B0C;font-variant-numeric:tabular-nums;">09:30 – 11:00</span><span style="font-size:15px;color:#6C6C70;">6 lugares</span></div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:#FBEFE8;"><span style="font-size:17px;font-weight:600;color:#A0451A;font-variant-numeric:tabular-nums;">14:00 – 15:30</span><span style="font-size:17px;font-weight:600;color:#C2571F;">✓</span></div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#0B0B0C;font-variant-numeric:tabular-nums;">15:30 – 17:00</span><span style="font-size:15px;color:#6C6C70;">8 lugares</span></div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#0B0B0C;font-variant-numeric:tabular-nums;">17:00 – 18:30</span><span style="font-size:15px;color:#C08A18;">1 lugar</span></div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#0B0B0C;font-variant-numeric:tabular-nums;">18:30 – 20:00</span><span style="font-size:15px;color:#3A76C4;">Anotarme</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:12px 16px 34px;background:rgba(255,255,255,.94);border-top:1px solid #EFEFF2;">
+            <div style="height:52px;border-radius:14px;background:#C2571F;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Apartar 14:00</span><span style="font-size:12px;color:#F6D9C7;">3 personas · 90 min</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04 CONFIRMACION -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">04 · ConfirmedScreen</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Confirmación</span></div>
+        <div data-screen-label="04 Confirmación" style="width:390px;height:844px;background:#FFFFFF;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#0B0B0C;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #0B0B0C;"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;padding:0 24px;">
+            <div style="position:relative;width:104px;height:104px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;inset:0;border-radius:999px;background:#FBEFE8;animation:halo 2s ease-out infinite;"></div>
+              <div style="width:84px;height:84px;border-radius:999px;background:#C2571F;display:flex;align-items:center;justify-content:center;animation:tick 340ms cubic-bezier(.22,.9,.28,1.1) both;"><span style="font-size:40px;font-weight:600;color:#FFFFFF;line-height:1;">✓</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+              <h3 style="margin:0;font-size:30px;font-weight:700;color:#0B0B0C;letter-spacing:-.025em;text-align:center;">Es tuya</h3>
+              <p style="margin:0;font-size:17px;line-height:1.45;color:#6C6C70;text-align:center;">Te avisamos 30 minutos antes.</p>
+            </div>
+            <div style="width:100%;background:#F7F7F8;border-radius:22px;overflow:hidden;">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:3px;">
+                <span style="font-size:22px;font-weight:600;color:#0B0B0C;letter-spacing:-.02em;">Sala Boreal 204</span>
+                <span style="font-size:17px;color:#6C6C70;">Biblioteca Central · Piso 2</span>
+              </div>
+              <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+              <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#6C6C70;">Cuándo</span><span style="font-size:17px;color:#0B0B0C;font-variant-numeric:tabular-nums;">Hoy 14:00 – 15:30</span></div>
+              <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+              <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#6C6C70;">Personas</span><span style="font-size:17px;color:#0B0B0C;">3</span></div>
+              <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+              <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:17px;color:#6C6C70;">Código</span><span style="font-size:17px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">BRL-8241</span></div>
+            </div>
+            <span style="font-size:15px;color:#8A8A8E;">Octava semana seguida. Bien.</span>
+          </div>
+          <div style="padding:0 24px 34px;display:flex;flex-direction:column;gap:8px;">
+            <div style="height:52px;border-radius:14px;background:#C2571F;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Añadir al calendario</span></div>
+            <div style="height:48px;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:500;color:#C2571F;">Listo</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 05 RESERVAS -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">05 · BookingsScreen</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Mis reservas</span></div>
+        <div data-screen-label="05 Reservas" style="width:390px;height:844px;background:#F7F7F8;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#0B0B0C;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #0B0B0C;"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:22px;padding:12px 16px 0;overflow:hidden;">
+            <h3 style="margin:0;font-size:34px;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Reservas</h3>
+            <div style="height:34px;border-radius:9px;background:#EFEFF2;padding:2px;display:flex;gap:2px;">
+              <div style="flex:1;border-radius:7px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Próximas</span></div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:500;color:#6C6C70;">Anteriores</span></div>
+            </div>
+
+            <div style="background:#FFFFFF;border-radius:22px;padding:18px 16px;display:flex;flex-direction:column;gap:16px;">
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                <span style="font-size:15px;font-weight:600;color:#C2571F;">En 2 h 15 min</span>
+                <span style="font-size:22px;font-weight:600;color:#0B0B0C;letter-spacing:-.02em;">Sala Boreal 204</span>
+                <span style="font-size:17px;color:#6C6C70;font-variant-numeric:tabular-nums;">Hoy 14:00 – 15:30 · 3 personas</span>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;height:44px;border-radius:12px;background:#0B0B0C;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#FFFFFF;">Ver pase</span></div>
+                <div style="flex:1;height:44px;border-radius:12px;background:#EFEFF2;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#3C3C43;">Cancelar</span></div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF;border-radius:22px;overflow:hidden;">
+              <div style="padding:16px;display:flex;align-items:center;gap:12px;">
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                  <span style="font-size:17px;font-weight:600;color:#0B0B0C;">Cabina de audio 3</span>
+                  <span style="font-size:15px;color:#6C6C70;font-variant-numeric:tabular-nums;">Lun 24 · 17:00 – 18:30</span>
+                  <span style="font-size:15px;color:#3A76C4;">En espera · eres el 2.º</span>
+                </div>
+                <span style="font-size:19px;color:#C7C7CC;">›</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">ESTE MES</span>
+              <div style="background:#FFFFFF;border-radius:22px;overflow:hidden;">
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:17px;color:#0B0B0C;">Sala Boreal 204</span><span style="font-size:15px;color:#8A8A8E;">14 ago · completada</span></div>
+                  <span style="font-size:15px;font-weight:500;color:#C2571F;">Repetir</span>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:17px;color:#0B0B0C;">Escritorio flex 12B</span><span style="font-size:15px;color:#8A8A8E;">9 ago · cancelada</span></div>
+                  <span style="font-size:15px;font-weight:500;color:#C2571F;">Repetir</span>
+                </div>
+                <div style="height:1px;background:#EFEFF2;margin-left:16px;"></div>
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:17px;color:#0B0B0C;">Sala Austral 118</span><span style="font-size:15px;color:#8A8A8E;">5 ago · completada</span></div>
+                  <span style="font-size:15px;font-weight:500;color:#C2571F;">Repetir</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:82px;background:rgba(255,255,255,.92);border-top:1px solid #E5E5EA;display:flex;align-items:flex-start;padding:12px 30px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:7px;background:#D6D6DB;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;border:2px solid #C2571F;"></div><span style="font-size:11px;font-weight:600;color:#C2571F;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;background:#D6D6DB;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Tú</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 06 VACIO -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">06 · EmptyState</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Nada libre</span></div>
+        <div data-screen-label="06 Vacío" style="width:390px;height:844px;background:#F7F7F8;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.10);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#0B0B0C;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#0B0B0C;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #0B0B0C;"></div></div></div>
+          <div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:14px;">
+            <h3 style="margin:0;font-size:34px;font-weight:700;color:#0B0B0C;letter-spacing:-.03em;">Ahora</h3>
+            <div style="display:flex;gap:8px;">
+              <div style="height:34px;padding:0 12px;border-radius:999px;background:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="font-size:15px;font-weight:500;color:#FFFFFF;">Salas · 8 personas</span><span style="font-size:15px;color:#8A8A8E;">×</span></div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 40px;">
+            <div style="width:64px;height:64px;border-radius:18px;background:#EFEFF2;display:flex;align-items:center;justify-content:center;margin-bottom:6px;"><div style="width:26px;height:26px;border-radius:8px;border:2px solid #C7C7CC;"></div></div>
+            <span style="font-size:22px;font-weight:600;color:#0B0B0C;letter-spacing:-.02em;text-align:center;">Semana de parciales</span>
+            <p style="margin:0;font-size:17px;line-height:1.45;color:#6C6C70;text-align:center;">Las seis salas grandes están llenas hasta las 21:00. Mañana a las 9:30 hay tres libres.</p>
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px;padding-top:14px;">
+              <div style="height:52px;border-radius:14px;background:#C2571F;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Ver mañana 9:30</span></div>
+              <div style="height:48px;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:500;color:#C2571F;">Quitar el filtro de 8 personas</span></div>
+            </div>
+          </div>
+          <div style="height:82px;background:rgba(255,255,255,.92);border-top:1px solid #E5E5EA;display:flex;align-items:flex-start;padding:12px 30px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:7px;background:#C2571F;"></div><span style="font-size:11px;font-weight:600;color:#C2571F;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;border:2px solid #8A8A8E;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;background:#D6D6DB;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Tú</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 07 ERROR -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">07 · ConflictSheet</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Se llenó primero</span></div>
+        <div data-screen-label="07 Error" style="width:390px;height:844px;background:#FFFFFF;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 20px 50px rgba(11,11,12,.10);position:relative;">
+          <div style="position:absolute;inset:0;background:rgba(11,11,12,.38);"></div>
+          <div style="position:absolute;top:0;left:0;right:0;padding:70px 16px 0;display:flex;flex-direction:column;gap:16px;opacity:.4;">
+            <span style="font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.025em;">Sala Boreal 204</span>
+            <div style="background:#F7F7F8;border-radius:22px;height:180px;"></div>
+          </div>
+          <div style="position:relative;background:#FFFFFF;border-radius:30px 30px 0 0;padding:10px 20px 34px;display:flex;flex-direction:column;gap:22px;">
+            <div style="width:40px;height:5px;border-radius:999px;background:#D6D6DB;align-self:center;"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px;">
+              <span style="font-size:24px;font-weight:700;color:#0B0B0C;letter-spacing:-.02em;line-height:1.2;">Alguien se adelantó</span>
+              <p style="margin:0;font-size:17px;line-height:1.45;color:#6C6C70;">Las 14:00 se llenaron mientras confirmabas. No guardamos nada.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">CERCA DE LO QUE QUERÍAS</span>
+              <div style="background:#F7F7F8;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Misma sala, 15:30</span><span style="font-size:15px;color:#6C6C70;">8 lugares libres</span></div>
+                  <span style="font-size:15px;font-weight:600;color:#C2571F;">Apartar</span>
+                </div>
+                <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Sala Austral 118, 14:00</span><span style="font-size:15px;color:#6C6C70;">Mismo piso, 40 m</span></div>
+                  <span style="font-size:15px;font-weight:600;color:#C2571F;">Apartar</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="height:52px;border-radius:14px;background:#EFEFF2;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#3C3C43;">Anotarme para las 14:00</span></div>
+              <div style="height:48px;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:500;color:#C2571F;">Volver</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 08 DARK -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A8A8E;">Extra · mismos tokens</span><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Explorar en oscuro</span></div>
+        <div data-screen-label="08 Dark" style="width:390px;height:844px;background:#000000;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(11,11,12,.22);">
+          <div style="height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;font-variant-numeric:tabular-nums;">9:41</span><div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#FFFFFF;"></div><div style="width:21px;height:10px;border-radius:3px;border:1px solid #FFFFFF;"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:20px;padding:12px 16px 0;overflow:hidden;">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+                <h3 style="margin:0;font-size:34px;font-weight:700;color:#FFFFFF;letter-spacing:-.03em;">Ahora</h3>
+                <span style="font-size:15px;color:#8A8A8E;">Jue 20 · 13:45</span>
+              </div>
+              <div style="height:38px;border-radius:10px;background:#1C1C1E;display:flex;align-items:center;gap:8px;padding:0 12px;"><div style="width:13px;height:13px;border-radius:999px;border:2px solid #8A8A8E;"></div><span style="font-size:17px;color:#8A8A8E;">Buscar</span></div>
+              <div style="display:flex;gap:8px;">
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#000000;">Cualquiera</span></div>
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#1C1C1E;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#E5E5EA;">Salas</span></div>
+                <div style="height:34px;padding:0 14px;border-radius:999px;background:#1C1C1E;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#E5E5EA;">Cabinas</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">LIBRE AHORA MISMO</span>
+              <div style="background:#1C1C1E;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Sala Boreal 204</span><span style="font-size:15px;color:#8A8A8E;">Piso 2 · 8 personas · hasta 15:30</span></div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#E8A883;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#40200B;">Apartar</span></div>
+                </div>
+                <div style="height:1px;background:#2C2C2E;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Cabina de audio 3</span><span style="font-size:15px;color:#8A8A8E;">Piso 1 · 1 persona · hasta 15:15</span></div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#2C2C2E;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#E8A883;">Apartar</span></div>
+                </div>
+                <div style="height:1px;background:#2C2C2E;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Escritorio flex 12B</span><span style="font-size:15px;color:#D9A93F;">Último lugar · hasta 14:45</span></div>
+                  <div style="height:38px;padding:0 16px;border-radius:999px;background:#2C2C2E;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#E8A883;">Apartar</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:13px;font-weight:600;color:#8A8A8E;padding-left:4px;">MÁS TARDE HOY</span>
+              <div style="background:#1C1C1E;border-radius:22px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Sala Austral 118</span><span style="font-size:15px;color:#8A8A8E;">Piso 1 · 6 personas</span></div>
+                  <span style="font-size:17px;color:#8A8A8E;font-variant-numeric:tabular-nums;">15:30</span><span style="font-size:19px;color:#48484A;">›</span>
+                </div>
+                <div style="height:1px;background:#2C2C2E;margin-left:16px;"></div>
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;animation:skel 1.4s ease-in-out infinite;">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:8px;"><div style="height:13px;width:52%;border-radius:6px;background:#2C2C2E;"></div><div style="height:11px;width:34%;border-radius:6px;background:#2C2C2E;"></div></div>
+                  <div style="height:13px;width:40px;border-radius:6px;background:#2C2C2E;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:82px;background:rgba(28,28,30,.94);border-top:1px solid #2C2C2E;display:flex;align-items:flex-start;padding:12px 30px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:7px;background:#E8A883;"></div><span style="font-size:11px;font-weight:600;color:#E8A883;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;border:2px solid #8A8A8E;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:22px;height:22px;border-radius:999px;background:#3A3A3C;"></div><span style="font-size:11px;font-weight:500;color:#8A8A8E;">Tú</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPONENTES -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:760px;">
+      <h2 style="margin:0;font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.02em;">Componentes</h2>
+      <p style="margin:0;font-size:17px;line-height:1.5;color:#6C6C70;">Nueve piezas cubren las siete pantallas. Toda fila de lista es el mismo <span style="font-weight:600;">Row</span>; todo grupo es el mismo <span style="font-weight:600;">Group</span>.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:24px;width:420px;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;font-weight:600;color:#C2571F;">Group + Row</span><span style="font-size:15px;color:#6C6C70;">La base de todo el producto</span></div>
+        <div style="background:#F7F7F8;border-radius:22px;overflow:hidden;">
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><span style="flex:1;font-size:17px;color:#0B0B0C;">Título · trailing texto</span><span style="font-size:17px;color:#6C6C70;">15:30</span></div>
+          <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><span style="flex:1;font-size:17px;color:#0B0B0C;">Título · chevron</span><span style="font-size:19px;color:#C7C7CC;">›</span></div>
+          <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><span style="flex:1;font-size:17px;color:#0B0B0C;">Título · acción</span><div style="height:34px;padding:0 14px;border-radius:999px;background:#FBEFE8;display:flex;align-items:center;"><span style="font-size:15px;font-weight:600;color:#C2571F;">Apartar</span></div></div>
+          <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;background:#FBEFE8;"><span style="flex:1;font-size:17px;font-weight:600;color:#A0451A;">Seleccionada</span><span style="font-size:17px;font-weight:600;color:#C2571F;">✓</span></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Group: header?, footer?, radius 22, separador con inset izquierdo de 16.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Row: title, subtitle?, trailing: 'text' | 'chevron' | 'action' | 'check', selected, disabled, onPress.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Press-in: el fondo de la fila va a #EFEFF2 en 80 ms; sin scale (es una fila, no un botón).</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:24px;width:420px;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;font-weight:600;color:#C2571F;">Button</span><span style="font-size:15px;color:#6C6C70;">Una por pantalla en filled</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="height:52px;border-radius:14px;background:#C2571F;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">filled</span></div>
+          <div style="height:52px;border-radius:14px;background:#0B0B0C;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">dark</span></div>
+          <div style="height:52px;border-radius:14px;background:#EFEFF2;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#3C3C43;">gray</span></div>
+          <div style="height:48px;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:500;color:#C2571F;">plain</span></div>
+          <div style="height:52px;border-radius:14px;background:#EFEFF2;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:600;color:#B9B9BE;">disabled</span></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">variant: filled | dark | gray | plain · size: pill(38) | lg(52) · loading · subtitle?</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Press: opacidad .75 + scale .98 en 90 ms, spring de vuelta. Haptics.selection.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Loading no cambia de ancho: el label baja a opacidad 0 y entra un spinner de 18 px en su lugar.</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:24px;width:420px;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;font-weight:600;color:#C2571F;">FilterPills · Segmented · Stepper</span><span style="font-size:15px;color:#6C6C70;">Controles</span></div>
+        <div style="display:flex;gap:8px;">
+          <div style="height:34px;padding:0 14px;border-radius:999px;background:#0B0B0C;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#FFFFFF;">Activo</span></div>
+          <div style="height:34px;padding:0 14px;border-radius:999px;background:#EFEFF2;display:flex;align-items:center;"><span style="font-size:15px;font-weight:500;color:#3C3C43;">Inactivo</span></div>
+          <div style="height:34px;padding:0 12px;border-radius:999px;background:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="font-size:15px;font-weight:500;color:#FFFFFF;">Con quitar</span><span style="font-size:15px;color:#8A8A8E;">×</span></div>
+        </div>
+        <div style="height:34px;border-radius:9px;background:#EFEFF2;padding:2px;display:flex;gap:2px;">
+          <div style="flex:1;border-radius:7px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#0B0B0C;">Próximas</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:500;color:#6C6C70;">Anteriores</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;background:#EFEFF2;border-radius:10px;padding:2px;align-self:flex-start;">
+          <div style="width:44px;height:34px;border-radius:8px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:19px;color:#3C3C43;">−</span></div>
+          <span style="width:36px;text-align:center;font-size:17px;font-weight:600;color:#0B0B0C;">3</span>
+          <div style="width:44px;height:34px;border-radius:8px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:19px;color:#3C3C43;">+</span></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Segmented: el pastilla blanca se desliza 220 ms ease-out; el texto no se mueve.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Stepper: máx = seatsLeft; al topar, el botón + hace un shake de 4 px y ya.</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:24px;width:420px;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:13px;font-weight:600;color:#C2571F;">Skeleton · Placeholder · Sheet</span><span style="font-size:15px;color:#6C6C70;">Carga, vacío, modal</span></div>
+        <div style="background:#F7F7F8;border-radius:22px;overflow:hidden;">
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;animation:skel 1.4s ease-in-out infinite;"><div style="flex:1;display:flex;flex-direction:column;gap:8px;"><div style="height:13px;width:52%;border-radius:6px;background:#E5E5EA;"></div><div style="height:11px;width:34%;border-radius:6px;background:#E5E5EA;"></div></div><div style="height:13px;width:40px;border-radius:6px;background:#E5E5EA;"></div></div>
+          <div style="height:1px;background:#E5E5EA;margin-left:16px;"></div>
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;animation:skel 1.4s ease-in-out infinite;"><div style="flex:1;display:flex;flex-direction:column;gap:8px;"><div style="height:13px;width:44%;border-radius:6px;background:#E5E5EA;"></div><div style="height:11px;width:28%;border-radius:6px;background:#E5E5EA;"></div></div><div style="height:13px;width:40px;border-radius:6px;background:#E5E5EA;"></div></div>
+        </div>
+        <div style="background:#F7F7F8;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">El skeleton es una fila real dentro del grupo real: la lista nunca cambia de forma al cargar.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Aparece solo si la respuesta tarda más de 150 ms. Sale con crossfade de 200 ms.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Placeholder (vacío): glifo 64, título 22/600, cuerpo 17, una acción filled y una plain. Nada más.</span>
+          <span style="font-size:13px;line-height:1.6;color:#3C3C43;">Sheet: detents [medium], grabber, fondo rgba(11,11,12,.38), radius 30 arriba.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTAS -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-size:28px;font-weight:700;color:#0B0B0C;letter-spacing:-.02em;">Movimiento e implementación</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+
+      <div style="background:#0B0B0C;border-radius:20px;padding:26px;width:520px;display:flex;flex-direction:column;gap:18px;">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#E8A883;">Movimiento</span>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Apartar en un tap</span><span style="font-size:15px;line-height:1.5;color:#8A8A8E;">La pastilla "Apartar" se convierte en un ✓ en el mismo lugar (240 ms, crossfade + scale .9→1) y la fila se desliza al grupo "Próximas". Nunca hay pantalla intermedia; si falla, la fila vuelve con la hoja de conflicto.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Checkmark de confirmación</span><span style="font-size:15px;line-height:1.5;color:#8A8A8E;">scale .6 → 1.06 → 1 en 340 ms, curva (.22,.9,.28,1.1). Un halo que se expande a 1.6 y desvanece en 2 s. Haptics.notificationAsync(Success) en el frame 1. Nada más se mueve.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Push a detalle</span><span style="font-size:17px;line-height:1.5;color:#8A8A8E;">Push nativo del sistema, sin personalizar. La foto entra como shared element (280 ms) sólo cuando existe.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Cancelar</span><span style="font-size:15px;line-height:1.5;color:#8A8A8E;">Sheet de confirmación → la tarjeta colapsa en 260 ms (Layout.springify) → toast con Deshacer 5 s. Optimista; si el POST falla, la tarjeta vuelve con un shake de 6 px.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#FFFFFF;">Regla</span><span style="font-size:15px;line-height:1.5;color:#8A8A8E;">Todo entre 80 y 340 ms. Nada rebota dos veces. Con reduce-motion, los scale y el halo se apagan; los crossfades se quedan.</span></div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:20px;padding:26px;width:520px;display:flex;flex-direction:column;gap:18px;">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#C2571F;">Expo · NativeWind · .NET</span>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Tokens</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">tailwind.config.js: colors.tint / label / fill / canvas / card / hairline / state, spacing 1–10, radius, fontSize. Un solo mapeo para dark con darkMode:'class'.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Solo primitivas de RN</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">flex column/row y gap. Los grupos son un View con overflow:hidden y separadores como Views de 1 px — no hay grid, sticky ni pseudo-elementos. Las pastillas de filtro son un ScrollView horizontal.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Web sin rediseñar</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">max-w-[420px] mx-auto y el mismo árbol. En ≥1024 px los grupos se reparten en dos columnas con flexWrap + basis-1/2. Nada más cambia.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Velocidad percibida</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">Disponibilidad en caché 60 s; el detalle se pinta con los datos de la fila y revalida en fondo. FlatList con getItemLayout (fila = 72 px) y sin sombras: cero coste de composición al hacer scroll.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Concurrencia</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">POST /bookings con Idempotency-Key y el rowversion del slot. El 409 del backend ya trae las dos mejores alternativas: la hoja de error no calcula nada.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:17px;font-weight:600;color:#0B0B0C;">Dominio genérico</span><span style="font-size:15px;line-height:1.5;color:#3C3C43;">La UI nunca escribe "sala": lee resourceType.labels (singular, plural, unidad de cupo, duración del bloque). Cambiar a consultorios o renta de equipo es data, no código.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:2700,&quot;height&quot;:1600}}"></script>
+</body>
+</html>

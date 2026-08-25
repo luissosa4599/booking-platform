@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EFE8DF; font-family:'Plus Jakarta Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#A9542F; text-decoration:none; }
+  a:hover { color:#C56A45; }
+  @keyframes skel { 0%{opacity:.5} 50%{opacity:1} 100%{opacity:.5} }
+  @keyframes ringPulse { 0%{transform:scale(.85);opacity:.55} 100%{transform:scale(1.35);opacity:0} }
+  @keyframes checkPop { 0%{transform:scale(.4);opacity:0} 60%{transform:scale(1.08);opacity:1} 100%{transform:scale(1);opacity:1} }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:56px;padding:64px 72px 120px;max-width:2600px;">
+
+  <div style="display:flex;flex-direction:column;gap:20px;max-width:900px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#FBF7F3;background:#A9542F;padding:6px 10px;border-radius:999px;">1a</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B615C;">Expo + NativeWind · mobile-first</span>
+    </div>
+    <h1 style="margin:0;font-family:'Instrument Serif',serif;font-size:64px;line-height:1.02;color:#1A1614;font-weight:400;letter-spacing:-.01em;">Reserva — motor genérico de recursos</h1>
+    <p style="margin:0;font-size:19px;line-height:1.55;color:#3D3532;text-wrap:pretty;">Un <em>recurso</em> es cualquier entidad con disponibilidad limitada en el tiempo: una sala, un escritorio, un equipo, una cita. El mockup usa espacios de estudio de un campus; el modelo de datos detrás es agnóstico al dominio.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">Resource</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">ResourceType</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">Location</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">AvailabilitySlot</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">Booking</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3F6B5E;background:#DFEAE5;padding:7px 12px;border-radius:8px;">WaitlistEntry</span>
+    </div>
+  </div>
+
+  <!-- ============ DESIGN SYSTEM ============ -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#1A1614;">Sistema base</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:20px;width:660px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A79E98;">color tokens</span>
+          <span style="font-size:20px;font-weight:600;color:#1A1614;">Paleta semántica</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">brand — terracota, acción y foco</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:56px;border-radius:12px;background:#F7E6DC;border:1px solid #E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">100 · F7E6DC</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:56px;border-radius:12px;background:#E9AE8C;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">300 · E9AE8C</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:56px;border-radius:12px;background:#C56A45;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">500 · C56A45</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:56px;border-radius:12px;background:#A9542F;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">600 · A9542F</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:56px;border-radius:12px;background:#7C3B20;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">700 · 7C3B20</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">accent — salvia, disponibilidad y datos</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#DFEAE5;border:1px solid #E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">100 · DFEAE5</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#8FB3A6;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">300 · 8FB3A6</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#3F6B5E;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">500 · 3F6B5E</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#2C4F45;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">600 · 2C4F45</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#1E3A32;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">700 · 1E3A32</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">surface / ink — fondos y texto (cálidos, chroma ≤ .02)</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">raised</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#FBF7F3;border:1px solid #E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">base</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#F2EBE3;border:1px solid #E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">sunken</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#E7DED4;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">border</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#6B615C;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">ink.500</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#1A1614;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">ink.900</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">estado — nunca se usan como color de marca</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#2F7A5B;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">success</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#B07A1E;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">warning</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#B3452F;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">danger</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#3B6491;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">info</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">dark — mismos nombres, otro valor (una sola capa de mapeo)</span>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#14110F;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">base</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#1F1A17;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">raised</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#332B26;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">border</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#E9AE8C;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">brand.400</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:44px;border-radius:12px;background:#F4EDE6;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">ink.100</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:20px;width:520px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A79E98;">typography</span>
+          <span style="font-size:20px;font-weight:600;color:#1A1614;">Dos familias, seis tamaños</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #F2EBE3;padding-bottom:12px;">
+            <span style="font-family:'Instrument Serif',serif;font-size:32px;color:#1A1614;">Sala Boreal 204</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">display · 32/36 · serif</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #F2EBE3;padding-bottom:12px;">
+            <span style="font-size:24px;font-weight:600;color:#1A1614;">Título de pantalla</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">title · 24/30 · 600</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #F2EBE3;padding-bottom:12px;">
+            <span style="font-size:18px;font-weight:600;color:#1A1614;">Encabezado de sección</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">heading · 18/24 · 600</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #F2EBE3;padding-bottom:12px;">
+            <span style="font-size:16px;color:#3D3532;">Cuerpo de texto, descripciones</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">body · 16/24 · 400</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #F2EBE3;padding-bottom:12px;">
+            <span style="font-size:14px;font-weight:500;color:#3D3532;">Etiquetas y botones</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">label · 14/20 · 500</span>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+            <span style="font-size:12px;color:#6B615C;">Metadatos, capacidad, horas</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:right;">caption · 12/16 · 400</span>
+          </div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">display → Instrument Serif (solo H1 y montos/horas grandes)</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">ui → Plus Jakarta Sans (400/500/600)</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">expo-font: carga ambas en el splash, nunca fallback flash</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:20px;width:420px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A79E98;">space · radius · elevation</span>
+          <span style="font-size:20px;font-weight:600;color:#1A1614;">Escala de 4</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:4px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.1 = 4 · hairlines</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:8px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.2 = 8 · icono↔texto</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:12px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.3 = 12 · interno de card</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:16px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.4 = 16 · padding de pantalla</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:24px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.6 = 24 · entre bloques</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:32px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.8 = 32 · entre secciones</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:48px;height:20px;background:#C56A45;border-radius:2px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B615C;">space.12 = 48 · respiro hero</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:52px;height:44px;background:#F2EBE3;border:1px solid #E7DED4;border-radius:8px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">sm 8</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:52px;height:44px;background:#F2EBE3;border:1px solid #E7DED4;border-radius:12px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">md 12</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:52px;height:44px;background:#F2EBE3;border:1px solid #E7DED4;border-radius:16px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">lg 16</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:52px;height:44px;background:#F2EBE3;border:1px solid #E7DED4;border-radius:24px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">xl 24</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;"><div style="width:52px;height:44px;background:#F2EBE3;border:1px solid #E7DED4;border-radius:999px;"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;">full</span></div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">shadow.card = 0 2 8 rgba(26,22,20,.06)</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">shadow.sheet = 0 -8 32 rgba(26,22,20,.14)</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3532;">hit target mínimo = 44 × 44</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PANTALLAS ============ -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#1A1614;">Las 7 pantallas · 390 × 844</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;">
+
+      <!-- 1. LOGIN -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">01 · AuthScreen</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Login / Onboarding</span></div>
+        <div data-screen-label="01 Login" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+            <span style="font-size:13px;font-weight:600;color:#1A1614;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#1A1614;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #1A1614;"></div></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:16px 24px 32px;">
+            <div style="display:flex;flex-direction:column;gap:32px;">
+              <div style="width:56px;height:56px;border-radius:18px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><div style="width:20px;height:20px;border-radius:6px;background:#FBF7F3;"></div></div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <h3 style="margin:0;font-family:'Instrument Serif',serif;font-size:40px;line-height:1.05;font-weight:400;color:#1A1614;">Aparta tu lugar<br>en dos toques.</h3>
+                <p style="margin:0;font-size:16px;line-height:1.5;color:#6B615C;">Salas, escritorios y equipo del campus. Ves lo que está libre ahora, no lo que estaba libre ayer.</p>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <span style="font-size:12px;font-weight:500;color:#6B615C;">Correo institucional</span>
+                  <div style="height:52px;border-radius:12px;background:#FFFFFF;border:1.5px solid #C56A45;display:flex;align-items:center;padding:0 16px;justify-content:space-between;">
+                    <span style="font-size:16px;color:#1A1614;">luis.sosa@campus.mx</span>
+                    <div style="width:18px;height:18px;border-radius:999px;background:#DFEAE5;display:flex;align-items:center;justify-content:center;"><span style="font-size:11px;color:#2F7A5B;font-weight:700;">✓</span></div>
+                  </div>
+                </div>
+                <div style="height:52px;border-radius:12px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#FFFFFF;">Enviar enlace de acceso</span></div>
+                <span style="font-size:12px;color:#A79E98;text-align:center;">Sin contraseñas. El enlace expira en 10 minutos.</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;height:1px;background:#E7DED4;"></div><span style="font-size:12px;color:#A79E98;">o continúa con</span><div style="flex:1;height:1px;background:#E7DED4;"></div></div>
+              <div style="display:flex;gap:12px;">
+                <div style="flex:1;height:48px;border-radius:12px;border:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:500;color:#3D3532;">Google</span></div>
+                <div style="flex:1;height:48px;border-radius:12px;border:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:500;color:#3D3532;">Apple</span></div>
+              </div>
+              <span style="font-size:11px;line-height:1.5;color:#A79E98;text-align:center;">Al continuar aceptas el reglamento de uso de espacios.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. EXPLORAR -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">02 · ExploreScreen</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Home / Explorar</span></div>
+        <div data-screen-label="02 Explorar" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#FBF7F3;">
+            <span style="font-size:13px;font-weight:600;color:#1A1614;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#1A1614;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #1A1614;"></div></div>
+          </div>
+          <div style="padding:8px 16px 12px;display:flex;flex-direction:column;gap:12px;background:#FBF7F3;border-bottom:1px solid #F2EBE3;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:12px;color:#6B615C;">Jueves 20 de agosto</span>
+                <span style="font-size:24px;font-weight:600;color:#1A1614;">Hola, Luis</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:#F7E6DC;border:1px solid #E9AE8C;border-radius:999px;padding:7px 12px;">
+                <div style="width:6px;height:6px;border-radius:999px;background:#A9542F;"></div>
+                <span style="font-size:12px;font-weight:600;color:#7C3B20;">7 semanas</span>
+              </div>
+            </div>
+            <div style="height:44px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;align-items:center;gap:10px;padding:0 14px;">
+              <div style="width:14px;height:14px;border-radius:999px;border:2px solid #A79E98;"></div>
+              <span style="font-size:15px;color:#A79E98;">Buscar sala, edificio o equipo</span>
+            </div>
+            <div style="display:flex;gap:8px;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;background:#1A1614;"><span style="font-size:13px;font-weight:500;color:#FBF7F3;">Hoy</span><span style="font-size:11px;color:#A79E98;">·</span><span style="font-size:11px;color:#E9AE8C;">14–18h</span></div>
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #E7DED4;"><span style="font-size:13px;font-weight:500;color:#3D3532;">Salas</span></div>
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #E7DED4;"><span style="font-size:13px;font-weight:500;color:#3D3532;">4+ personas</span></div>
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #E7DED4;"><span style="font-size:13px;font-weight:500;color:#3D3532;white-space:nowrap;">Edificio Norte</span></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6B615C;">14 recursos libres</span>
+              <span style="font-size:12px;font-weight:600;color:#A9542F;">Más pronto ↑</span>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;box-shadow:0 2px 8px rgba(26,22,20,.06);">
+              <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                  <span style="font-size:16px;font-weight:600;color:#1A1614;line-height:1.25;">Sala Boreal 204</span>
+                  <span style="font-size:11px;font-weight:600;color:#2F7A5B;background:#DFEAE5;padding:4px 8px;border-radius:999px;white-space:nowrap;">Libre ahora</span>
+                </div>
+                <span style="font-size:12px;color:#6B615C;">Biblioteca Central · Piso 2 · Grupal</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:5px;border-radius:999px;background:#F2EBE3;overflow:hidden;"><div style="width:50%;height:5px;background:#3F6B5E;border-radius:999px;"></div></div>
+                  <span style="font-size:11px;color:#6B615C;">4/8 lugares</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <span style="font-size:12px;font-weight:600;color:#7C3B20;background:#F7E6DC;padding:4px 8px;border-radius:8px;">14:00</span>
+                  <span style="font-size:12px;font-weight:600;color:#7C3B20;background:#F7E6DC;padding:4px 8px;border-radius:8px;">15:30</span>
+                  <span style="font-size:12px;color:#6B615C;background:#F2EBE3;padding:4px 8px;border-radius:8px;">+5</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;box-shadow:0 2px 8px rgba(26,22,20,.06);">
+              <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                  <span style="font-size:16px;font-weight:600;color:#1A1614;line-height:1.25;">Cabina de audio 3</span>
+                  <span style="font-size:11px;font-weight:600;color:#B07A1E;background:#F6EBD5;padding:4px 8px;border-radius:999px;white-space:nowrap;">Casi llena</span>
+                </div>
+                <span style="font-size:12px;color:#6B615C;">Edificio Norte · Piso 1 · Individual</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:5px;border-radius:999px;background:#F2EBE3;overflow:hidden;"><div style="width:88%;height:5px;background:#B07A1E;border-radius:999px;"></div></div>
+                  <span style="font-size:11px;color:#6B615C;">1/8 lugares</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <span style="font-size:12px;font-weight:600;color:#7C3B20;background:#F7E6DC;padding:4px 8px;border-radius:8px;">17:00</span>
+                  <span style="font-size:12px;color:#6B615C;background:#F2EBE3;padding:4px 8px;border-radius:8px;">+1</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;box-shadow:0 2px 8px rgba(26,22,20,.06);">
+              <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                  <span style="font-size:16px;font-weight:600;color:#1A1614;line-height:1.25;">Escritorio flex 12B</span>
+                  <span style="font-size:11px;font-weight:600;color:#6B615C;background:#F2EBE3;padding:4px 8px;border-radius:999px;white-space:nowrap;">Lista de espera</span>
+                </div>
+                <span style="font-size:12px;color:#6B615C;">Coworking Sur · Piso 3 · Individual</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:5px;border-radius:999px;background:#F2EBE3;overflow:hidden;"><div style="width:100%;height:5px;background:#A79E98;border-radius:999px;"></div></div>
+                  <span style="font-size:11px;color:#6B615C;">0/1 lugares</span>
+                </div>
+                <div style="display:flex;gap:6px;"><span style="font-size:12px;color:#6B615C;background:#F2EBE3;padding:4px 8px;border-radius:8px;">3 en espera</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;opacity:.9;">
+              <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;animation:skel 1.4s ease-in-out infinite;">
+                <div style="width:76px;height:76px;border-radius:12px;background:#F2EBE3;flex-shrink:0;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px;">
+                  <div style="height:14px;width:60%;border-radius:6px;background:#F2EBE3;"></div>
+                  <div style="height:10px;width:80%;border-radius:6px;background:#F2EBE3;"></div>
+                  <div style="height:10px;width:40%;border-radius:6px;background:#F2EBE3;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:76px;border-top:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:flex-start;padding:10px 24px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:6px;background:#C56A45;"></div><span style="font-size:11px;font-weight:600;color:#A9542F;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;border:2px solid #A79E98;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;background:#E7DED4;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Perfil</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. DETALLE -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">03 · ResourceDetailScreen</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Detalle + selección de horario</span></div>
+        <div data-screen-label="03 Detalle" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:200px;background:repeating-linear-gradient(135deg,#F2EBE3 0 8px,#E7DED4 8px 16px);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="width:40px;height:40px;border-radius:999px;background:#FBF7F3;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,22,20,.12);"><span style="font-size:17px;color:#1A1614;">←</span></div>
+              <div style="width:40px;height:40px;border-radius:999px;background:#FBF7F3;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,22,20,.12);"><span style="font-size:15px;color:#1A1614;">♡</span></div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6B615C;background:rgba(251,247,243,.85);padding:4px 8px;border-radius:6px;align-self:flex-start;">foto del recurso</span>
+          </div>
+          <div style="flex:1;padding:20px 16px 0;display:flex;flex-direction:column;gap:16px;overflow:hidden;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;gap:6px;">
+                <span style="font-size:11px;font-weight:600;color:#2C4F45;background:#DFEAE5;padding:4px 8px;border-radius:999px;">Sala grupal</span>
+                <span style="font-size:11px;font-weight:600;color:#3D3532;background:#F2EBE3;padding:4px 8px;border-radius:999px;">Pizarrón</span>
+                <span style="font-size:11px;font-weight:600;color:#3D3532;background:#F2EBE3;padding:4px 8px;border-radius:999px;">Pantalla 55″</span>
+              </div>
+              <h3 style="margin:0;font-family:'Instrument Serif',serif;font-size:32px;line-height:1.1;font-weight:400;color:#1A1614;">Sala Boreal 204</h3>
+              <span style="font-size:14px;color:#6B615C;">Biblioteca Central · Piso 2 · hasta 8 personas</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:18px;font-weight:600;color:#1A1614;">Elige tu horario</span>
+                <span style="font-size:12px;color:#6B615C;">bloques de 90 min</span>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div style="width:52px;height:64px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:11px;color:#6B615C;">mié</span><span style="font-size:17px;font-weight:600;color:#1A1614;">19</span></div>
+                <div style="width:52px;height:64px;border-radius:12px;background:#1A1614;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:11px;color:#E9AE8C;">jue</span><span style="font-size:17px;font-weight:600;color:#FBF7F3;">20</span></div>
+                <div style="width:52px;height:64px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:11px;color:#6B615C;">vie</span><span style="font-size:17px;font-weight:600;color:#1A1614;">21</span></div>
+                <div style="width:52px;height:64px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:11px;color:#6B615C;">sáb</span><span style="font-size:17px;font-weight:600;color:#1A1614;">22</span></div>
+                <div style="width:52px;height:64px;border-radius:12px;background:#F2EBE3;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;opacity:.5;"><span style="font-size:11px;color:#6B615C;">dom</span><span style="font-size:17px;font-weight:600;color:#6B615C;">23</span></div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <div style="width:108px;height:52px;border-radius:12px;background:#F2EBE3;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#A79E98;text-decoration:line-through;">08:00</span><span style="font-size:10px;color:#A79E98;">ocupado</span></div>
+                <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#1A1614;">09:30</span><span style="font-size:10px;color:#2F7A5B;">6 lugares</span></div>
+                <div style="width:108px;height:52px;border-radius:12px;background:#C56A45;border:1.5px solid #A9542F;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(169,84,47,.28);"><span style="font-size:15px;font-weight:700;color:#FFFFFF;">14:00</span><span style="font-size:10px;color:#F7E6DC;">4 lugares</span></div>
+                <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#1A1614;">15:30</span><span style="font-size:10px;color:#2F7A5B;">8 lugares</span></div>
+                <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#1A1614;">17:00</span><span style="font-size:10px;color:#B07A1E;">1 lugar</span></div>
+                <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px dashed #E9AE8C;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#7C3B20;">18:30</span><span style="font-size:10px;color:#A9542F;">anotarme</span></div>
+              </div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+              <span style="font-size:14px;font-weight:600;color:#1A1614;">¿Cuántos van?</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="width:44px;height:44px;border-radius:12px;border:1px solid #E7DED4;background:#FBF7F3;display:flex;align-items:center;justify-content:center;"><span style="font-size:20px;color:#3D3532;">−</span></div>
+                  <span style="font-size:20px;font-weight:600;color:#1A1614;min-width:24px;text-align:center;">3</span>
+                  <div style="width:44px;height:44px;border-radius:12px;border:1px solid #E7DED4;background:#FBF7F3;display:flex;align-items:center;justify-content:center;"><span style="font-size:20px;color:#3D3532;">+</span></div>
+                </div>
+                <span style="font-size:12px;color:#6B615C;text-align:right;">quedan 4<br>de 8 lugares</span>
+              </div>
+            </div>
+          </div>
+          <div style="border-top:1px solid #E7DED4;background:#FFFFFF;padding:14px 16px 28px;display:flex;align-items:center;gap:12px;box-shadow:0 -8px 32px rgba(26,22,20,.08);">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-size:12px;color:#6B615C;">Jue 20 · 14:00–15:30</span>
+              <span style="font-size:15px;font-weight:600;color:#1A1614;">3 personas</span>
+            </div>
+            <div style="flex:1;height:52px;border-radius:14px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#FFFFFF;">Reservar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. CONFIRMACION -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">04 · BookingSuccessScreen</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Confirmación</span></div>
+        <div data-screen-label="04 Confirmación" style="width:390px;height:844px;background:#1E3A32;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+            <span style="font-size:13px;font-weight:600;color:#F4EDE6;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#F4EDE6;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #F4EDE6;"></div></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:0 24px;">
+            <div style="position:relative;width:132px;height:132px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;inset:0;border-radius:999px;border:2px solid #8FB3A6;animation:ringPulse 1.8s ease-out infinite;"></div>
+              <div style="position:absolute;inset:14px;border-radius:999px;background:rgba(143,179,166,.18);"></div>
+              <div style="width:88px;height:88px;border-radius:999px;background:#DFEAE5;display:flex;align-items:center;justify-content:center;animation:checkPop 320ms cubic-bezier(.2,.9,.3,1.2) both;"><span style="font-size:40px;font-weight:700;color:#1E3A32;line-height:1;">✓</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+              <h3 style="margin:0;font-family:'Instrument Serif',serif;font-size:36px;line-height:1.1;font-weight:400;color:#FBF7F3;text-align:center;">Tu lugar<br>está guardado</h3>
+              <p style="margin:0;font-size:15px;line-height:1.5;color:#8FB3A6;text-align:center;">Te avisamos 30 min antes. Llega dentro de los primeros 10 min o el lugar se libera.</p>
+            </div>
+            <div style="width:100%;background:#FBF7F3;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div style="width:52px;height:52px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:16px;font-weight:600;color:#1A1614;">Sala Boreal 204</span>
+                  <span style="font-size:12px;color:#6B615C;">Biblioteca Central · Piso 2</span>
+                </div>
+              </div>
+              <div style="height:1px;background:#E7DED4;"></div>
+              <div style="display:flex;justify-content:space-between;">
+                <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:11px;color:#6B615C;">Cuándo</span><span style="font-size:14px;font-weight:600;color:#1A1614;">Jue 20 · 14:00</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:11px;color:#6B615C;">Personas</span><span style="font-size:14px;font-weight:600;color:#1A1614;">3</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:11px;color:#6B615C;">Código</span><span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:#1A1614;">BRL-8241</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(231,222,212,.14);border-radius:999px;padding:8px 14px;">
+              <div style="width:6px;height:6px;border-radius:999px;background:#E9AE8C;"></div>
+              <span style="font-size:12px;color:#DFEAE5;">8 semanas seguidas reservando · nuevo récord</span>
+            </div>
+          </div>
+          <div style="padding:0 24px 32px;display:flex;flex-direction:column;gap:10px;">
+            <div style="height:52px;border-radius:14px;background:#E9AE8C;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#3B2115;">Agregar al calendario</span></div>
+            <div style="height:52px;border-radius:14px;border:1px solid rgba(244,237,230,.28);display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F4EDE6;">Ver mis reservas</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. MIS RESERVAS -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">05 · MyBookingsScreen</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Mis reservas / Historial</span></div>
+        <div data-screen-label="05 Mis reservas" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+            <span style="font-size:13px;font-weight:600;color:#1A1614;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#1A1614;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #1A1614;"></div></div>
+          </div>
+          <div style="padding:8px 16px 12px;display:flex;flex-direction:column;gap:12px;">
+            <span style="font-size:24px;font-weight:600;color:#1A1614;">Mis reservas</span>
+            <div style="height:40px;border-radius:12px;background:#F2EBE3;padding:4px;display:flex;gap:4px;">
+              <div style="flex:1;border-radius:9px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(26,22,20,.10);"><span style="font-size:14px;font-weight:600;color:#1A1614;">Activas · 2</span></div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:500;color:#6B615C;">Pasadas</span></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:4px 16px 0;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="background:#FFFFFF;border:1px solid #E9AE8C;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(26,22,20,.06);">
+              <div style="background:#F7E6DC;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+                <div style="width:6px;height:6px;border-radius:999px;background:#A9542F;"></div>
+                <span style="font-size:12px;font-weight:600;color:#7C3B20;">Empieza en 2 h 15 min</span>
+              </div>
+              <div style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;gap:12px;align-items:flex-start;">
+                  <div style="width:56px;height:56px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);"></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:16px;font-weight:600;color:#1A1614;">Sala Boreal 204</span>
+                    <span style="font-size:12px;color:#6B615C;">Jue 20 ago · 14:00–15:30 · 3 personas</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">BRL-8241</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <div style="flex:1;height:44px;border-radius:12px;background:#1A1614;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#FBF7F3;">Ver pase</span></div>
+                  <div style="flex:1;height:44px;border-radius:12px;border:1px solid #E7DED4;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#B3452F;">Cancelar</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 8px rgba(26,22,20,.06);">
+              <div style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="width:56px;height:56px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="font-size:16px;font-weight:600;color:#1A1614;">Cabina de audio 3</span>
+                    <span style="font-size:11px;font-weight:600;color:#3B6491;background:#E1E9F2;padding:4px 8px;border-radius:999px;">En espera</span>
+                  </div>
+                  <span style="font-size:12px;color:#6B615C;">Lun 24 ago · 17:00–18:30 · 1 persona</span>
+                  <span style="font-size:12px;color:#3B6491;">Eres el 2.º de la lista</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;height:44px;border-radius:12px;border:1px solid #E7DED4;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#3D3532;">Cambiar horario</span></div>
+                <div style="flex:1;height:44px;border-radius:12px;border:1px solid #E7DED4;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#B3452F;">Salir de la lista</span></div>
+              </div>
+            </div>
+
+            <span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6B615C;margin-top:4px;">Este mes</span>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:#F2EBE3;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#3D3532;">14</span><span style="font-size:9px;color:#6B615C;">AGO</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:14px;font-weight:600;color:#3D3532;">Sala Boreal 204</span>
+                  <span style="font-size:11px;color:#A79E98;">Completada · 90 min</span>
+                </div>
+                <span style="font-size:13px;font-weight:600;color:#A9542F;">Repetir</span>
+              </div>
+              <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:#F2EBE3;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#3D3532;">09</span><span style="font-size:9px;color:#6B615C;">AGO</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:14px;font-weight:600;color:#3D3532;">Escritorio flex 12B</span>
+                  <span style="font-size:11px;color:#A79E98;">Cancelada por ti</span>
+                </div>
+                <span style="font-size:13px;font-weight:600;color:#A9542F;">Repetir</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:76px;border-top:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:flex-start;padding:10px 24px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:6px;background:#E7DED4;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;border:2px solid #C56A45;"></div><span style="font-size:11px;font-weight:600;color:#A9542F;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;background:#E7DED4;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Perfil</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. VACIO -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">06 · EmptyState (variante en Explorar)</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Estado vacío</span></div>
+        <div data-screen-label="06 Vacío" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.14);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+            <span style="font-size:13px;font-weight:600;color:#1A1614;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#1A1614;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #1A1614;"></div></div>
+          </div>
+          <div style="padding:8px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #F2EBE3;">
+            <span style="font-size:24px;font-weight:600;color:#1A1614;">Explorar</span>
+            <div style="height:44px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;align-items:center;gap:10px;padding:0 14px;">
+              <div style="width:14px;height:14px;border-radius:999px;border:2px solid #A79E98;"></div>
+              <span style="font-size:15px;color:#1A1614;">cabina insonorizada</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:999px;background:#1A1614;"><span style="font-size:13px;font-weight:500;color:#FBF7F3;">Hoy · 8+ personas</span><span style="font-size:14px;color:#E9AE8C;">×</span></div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:0 32px;">
+            <div style="width:120px;height:120px;border-radius:999px;background:#F2EBE3;display:flex;align-items:center;justify-content:center;position:relative;">
+              <div style="width:76px;height:76px;border-radius:20px;border:2px dashed #E9AE8C;background:#FBF7F3;"></div>
+              <div style="position:absolute;bottom:14px;right:14px;width:28px;height:28px;border-radius:999px;background:#F7E6DC;border:2px solid #FBF7F3;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+              <h3 style="margin:0;font-family:'Instrument Serif',serif;font-size:28px;line-height:1.15;font-weight:400;color:#1A1614;text-align:center;">Hoy todo está tomado</h3>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#6B615C;text-align:center;">Semana de parciales: las 6 salas grandes están llenas hasta las 21:00. Mañana a las 9:30 hay tres libres.</p>
+            </div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+              <div style="height:52px;border-radius:14px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#FFFFFF;">Ver mañana temprano</span></div>
+              <div style="height:52px;border-radius:14px;border:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#3D3532;">Quitar filtro de 8+ personas</span></div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:14px;font-weight:600;color:#A9542F;">Avísame si se libera algo</span></div>
+            </div>
+          </div>
+          <div style="height:76px;border-top:1px solid #E7DED4;background:#FFFFFF;display:flex;align-items:flex-start;padding:10px 24px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:6px;background:#C56A45;"></div><span style="font-size:11px;font-weight:600;color:#A9542F;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;border:2px solid #A79E98;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;background:#E7DED4;"></div><span style="font-size:11px;font-weight:500;color:#6B615C;">Perfil</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. ERROR -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">07 · BookingConflictSheet</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Estado de error (conflicto 409)</span></div>
+        <div data-screen-label="07 Error" style="width:390px;height:844px;background:#FBF7F3;border:1px solid #E7DED4;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 24px 60px rgba(26,22,20,.14);position:relative;">
+          <div style="position:absolute;inset:0;background:rgba(26,22,20,.45);"></div>
+          <div style="position:absolute;top:0;left:0;right:0;padding:52px 16px 0;display:flex;flex-direction:column;gap:12px;opacity:.5;">
+            <h3 style="margin:0;font-family:'Instrument Serif',serif;font-size:30px;font-weight:400;color:#1A1614;">Sala Boreal 204</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;"></div>
+              <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;"></div>
+              <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;"></div>
+            </div>
+          </div>
+          <div style="position:relative;background:#FBF7F3;border-radius:28px 28px 0 0;padding:12px 20px 28px;display:flex;flex-direction:column;gap:20px;box-shadow:0 -8px 32px rgba(26,22,20,.24);">
+            <div style="width:44px;height:4px;border-radius:999px;background:#E7DED4;align-self:center;"></div>
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <div style="width:48px;height:48px;border-radius:14px;background:#F9E3DE;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:22px;font-weight:700;color:#B3452F;">!</span></div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <span style="font-size:20px;font-weight:600;color:#1A1614;line-height:1.25;">Alguien se adelantó por 4 segundos</span>
+                <p style="margin:0;font-size:15px;line-height:1.5;color:#3D3532;">El bloque de <strong style="font-weight:600;">14:00 en Sala Boreal 204</strong> se llenó mientras confirmabas. No se hizo ningún cargo ni se guardó nada.</p>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6B615C;">Alternativas igual de buenas</span>
+              <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:#DFEAE5;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#2C4F45;">15:30</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:15px;font-weight:600;color:#1A1614;">Misma sala, 90 min después</span>
+                  <span style="font-size:12px;color:#6B615C;">8 lugares libres</span>
+                </div>
+                <span style="font-size:14px;font-weight:600;color:#A9542F;">Elegir</span>
+              </div>
+              <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:#DFEAE5;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#2C4F45;">14:00</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:15px;font-weight:600;color:#1A1614;">Sala Austral 118</span>
+                  <span style="font-size:12px;color:#6B615C;">Mismo piso · 6 lugares · 40 m de aquí</span>
+                </div>
+                <span style="font-size:14px;font-weight:600;color:#A9542F;">Elegir</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="height:52px;border-radius:14px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#FFFFFF;">Anotarme en 14:00 por si se libera</span></div>
+              <div style="height:48px;display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#6B615C;">Volver a los horarios</span></div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#A79E98;text-align:center;">ref. BRL-8241-409 · toca para copiar si necesitas soporte</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. DARK -->
+      <div style="display:flex;flex-direction:column;gap:12px;width:390px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A79E98;">Extra · mismos tokens, tema dark</span><span style="font-size:15px;font-weight:600;color:#1A1614;">Explorar · dark mode</span></div>
+        <div data-screen-label="08 Dark" style="width:390px;height:844px;background:#14110F;border:1px solid #332B26;border-radius:40px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(26,22,20,.24);">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+            <span style="font-size:13px;font-weight:600;color:#F4EDE6;">9:41</span>
+            <div style="display:flex;gap:5px;align-items:center;"><div style="width:16px;height:9px;border-radius:2px;background:#F4EDE6;"></div><div style="width:20px;height:10px;border-radius:3px;border:1px solid #F4EDE6;"></div></div>
+          </div>
+          <div style="padding:8px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #332B26;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:12px;color:#A79E98;">Jueves 20 de agosto</span>
+                <span style="font-size:24px;font-weight:600;color:#F4EDE6;">Hola, Luis</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:rgba(233,174,140,.14);border:1px solid #5A3A28;border-radius:999px;padding:7px 12px;"><div style="width:6px;height:6px;border-radius:999px;background:#E9AE8C;"></div><span style="font-size:12px;font-weight:600;color:#E9AE8C;">7 semanas</span></div>
+            </div>
+            <div style="height:44px;border-radius:12px;background:#1F1A17;border:1px solid #332B26;display:flex;align-items:center;gap:10px;padding:0 14px;">
+              <div style="width:14px;height:14px;border-radius:999px;border:2px solid #6B615C;"></div>
+              <span style="font-size:15px;color:#6B615C;">Buscar sala, edificio o equipo</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#E9AE8C;"><span style="font-size:13px;font-weight:600;color:#3B2115;">Hoy · 14–18h</span></div>
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#1F1A17;border:1px solid #332B26;"><span style="font-size:13px;font-weight:500;color:#D6CCC3;">Salas</span></div>
+              <div style="display:flex;align-items:center;height:34px;padding:0 12px;border-radius:999px;background:#1F1A17;border:1px solid #332B26;"><span style="font-size:13px;font-weight:500;color:#D6CCC3;">4+</span></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="background:#1F1A17;border:1px solid #332B26;border-radius:16px;padding:12px;display:flex;gap:12px;">
+              <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#2A231F 0 6px,#332B26 6px 12px);flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                  <span style="font-size:16px;font-weight:600;color:#F4EDE6;">Sala Boreal 204</span>
+                  <span style="font-size:11px;font-weight:600;color:#8FB3A6;background:rgba(143,179,166,.14);padding:4px 8px;border-radius:999px;white-space:nowrap;">Libre ahora</span>
+                </div>
+                <span style="font-size:12px;color:#A79E98;">Biblioteca Central · Piso 2 · Grupal</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:5px;border-radius:999px;background:#332B26;overflow:hidden;"><div style="width:50%;height:5px;background:#8FB3A6;border-radius:999px;"></div></div>
+                  <span style="font-size:11px;color:#A79E98;">4/8</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <span style="font-size:12px;font-weight:600;color:#E9AE8C;background:rgba(233,174,140,.12);padding:4px 8px;border-radius:8px;">14:00</span>
+                  <span style="font-size:12px;font-weight:600;color:#E9AE8C;background:rgba(233,174,140,.12);padding:4px 8px;border-radius:8px;">15:30</span>
+                </div>
+              </div>
+            </div>
+            <div style="background:#1F1A17;border:1px solid #332B26;border-radius:16px;padding:12px;display:flex;gap:12px;">
+              <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#2A231F 0 6px,#332B26 6px 12px);flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                  <span style="font-size:16px;font-weight:600;color:#F4EDE6;">Cabina de audio 3</span>
+                  <span style="font-size:11px;font-weight:600;color:#D9A93F;background:rgba(217,169,63,.14);padding:4px 8px;border-radius:999px;white-space:nowrap;">Casi llena</span>
+                </div>
+                <span style="font-size:12px;color:#A79E98;">Edificio Norte · Piso 1 · Individual</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:5px;border-radius:999px;background:#332B26;overflow:hidden;"><div style="width:88%;height:5px;background:#D9A93F;border-radius:999px;"></div></div>
+                  <span style="font-size:11px;color:#A79E98;">1/8</span>
+                </div>
+                <div style="display:flex;gap:6px;"><span style="font-size:12px;font-weight:600;color:#E9AE8C;background:rgba(233,174,140,.12);padding:4px 8px;border-radius:8px;">17:00</span></div>
+              </div>
+            </div>
+            <div style="background:#1F1A17;border:1px solid #332B26;border-radius:16px;padding:12px;display:flex;gap:12px;animation:skel 1.4s ease-in-out infinite;">
+              <div style="width:76px;height:76px;border-radius:12px;background:#2A231F;flex-shrink:0;"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px;">
+                <div style="height:14px;width:60%;border-radius:6px;background:#2A231F;"></div>
+                <div style="height:10px;width:80%;border-radius:6px;background:#2A231F;"></div>
+                <div style="height:10px;width:40%;border-radius:6px;background:#2A231F;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="height:76px;border-top:1px solid #332B26;background:#1F1A17;display:flex;align-items:flex-start;padding:10px 24px 0;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:6px;background:#E9AE8C;"></div><span style="font-size:11px;font-weight:600;color:#E9AE8C;">Explorar</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;border:2px solid #6B615C;"></div><span style="font-size:11px;font-weight:500;color:#A79E98;">Reservas</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:999px;background:#332B26;"></div><span style="font-size:11px;font-weight:500;color:#A79E98;">Perfil</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COMPONENTES ============ -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:820px;">
+      <h2 style="margin:0;font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#1A1614;">Componentes reutilizables</h2>
+      <p style="margin:0;font-size:16px;line-height:1.5;color:#3D3532;">Cada bloque es un componente independiente con sus props. Ninguna pantalla debe declarar estilos propios: solo compone estos y usa tokens.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;Button /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Botón</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="height:52px;border-radius:14px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#FFFFFF;">primary</span></div>
+          <div style="height:52px;border-radius:14px;background:#1A1614;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#FBF7F3;">neutral</span></div>
+          <div style="height:52px;border-radius:14px;border:1px solid #E7DED4;background:#FBF7F3;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#3D3532;">secondary</span></div>
+          <div style="height:52px;border-radius:14px;border:1px solid #E7DED4;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B3452F;">destructive</span></div>
+          <div style="height:52px;border-radius:14px;background:#E7DED4;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#A79E98;">disabled</span></div>
+          <div style="height:52px;border-radius:14px;background:#A9542F;display:flex;align-items:center;justify-content:center;gap:10px;"><div style="width:16px;height:16px;border-radius:999px;border:2px solid #F7E6DC;border-top-color:transparent;"></div><span style="font-size:16px;font-weight:600;color:#F7E6DC;">loading</span></div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">variant: primary | neutral | secondary | destructive | ghost</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">size: md(44) | lg(52) · fullWidth · loading · leftIcon</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">press: scale .97 · 90 ms · Haptics.selectionAsync()</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;ResourceCard /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Card de recurso</span></div>
+        <div style="background:#FBF7F3;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;">
+          <div style="width:76px;height:76px;border-radius:12px;background:repeating-linear-gradient(135deg,#F2EBE3 0 6px,#E7DED4 6px 12px);flex-shrink:0;"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;"><span style="font-size:16px;font-weight:600;color:#1A1614;">Sala Austral 118</span><span style="font-size:11px;font-weight:600;color:#2F7A5B;background:#DFEAE5;padding:4px 8px;border-radius:999px;">Libre</span></div>
+            <span style="font-size:12px;color:#6B615C;">Edificio Norte · Piso 1 · Grupal</span>
+            <div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:5px;border-radius:999px;background:#F2EBE3;"><div style="width:65%;height:5px;background:#3F6B5E;border-radius:999px;"></div></div><span style="font-size:11px;color:#6B615C;">6/8</span></div>
+          </div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">resource: { id, name, typeLabel, location, imageUrl }</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">capacity: { taken, total } · nextSlots: Slot[]</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">status: free | almostFull | full | waitlist</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">onPress · onSlotPress(slotId) — atajo sin entrar al detalle</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;SlotChip /&gt; · &lt;DayPill /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Franja horaria</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#1A1614;">09:30</span><span style="font-size:10px;color:#2F7A5B;">6 lugares</span></div>
+          <div style="width:108px;height:52px;border-radius:12px;background:#C56A45;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:700;color:#FFFFFF;">14:00</span><span style="font-size:10px;color:#F7E6DC;">elegido</span></div>
+          <div style="width:108px;height:52px;border-radius:12px;background:#F2EBE3;border:1px solid #E7DED4;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#A79E98;text-decoration:line-through;">08:00</span><span style="font-size:10px;color:#A79E98;">ocupado</span></div>
+          <div style="width:108px;height:52px;border-radius:12px;background:#FFFFFF;border:1px dashed #E9AE8C;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#7C3B20;">18:30</span><span style="font-size:10px;color:#A9542F;">lista</span></div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">slot: { startsAt, endsAt, seatsLeft, state }</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">state: available | selected | taken | waitlist</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">selección: crossfade de borde 120 ms, sin salto de layout</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;Badge /&gt; · &lt;StreakBadge /&gt; · &lt;CapacityBar /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Indicadores</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:11px;font-weight:600;color:#2F7A5B;background:#DFEAE5;padding:5px 10px;border-radius:999px;">Libre ahora</span>
+          <span style="font-size:11px;font-weight:600;color:#B07A1E;background:#F6EBD5;padding:5px 10px;border-radius:999px;">Casi llena</span>
+          <span style="font-size:11px;font-weight:600;color:#B3452F;background:#F9E3DE;padding:5px 10px;border-radius:999px;">Llena</span>
+          <span style="font-size:11px;font-weight:600;color:#3B6491;background:#E1E9F2;padding:5px 10px;border-radius:999px;">En espera</span>
+          <span style="font-size:11px;font-weight:600;color:#3D3532;background:#F2EBE3;padding:5px 10px;border-radius:999px;">Completada</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:6px;background:#F7E6DC;border:1px solid #E9AE8C;border-radius:999px;padding:7px 12px;"><div style="width:6px;height:6px;border-radius:999px;background:#A9542F;"></div><span style="font-size:12px;font-weight:600;color:#7C3B20;">7 semanas</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="height:6px;border-radius:999px;background:#F2EBE3;"><div style="width:45%;height:6px;background:#3F6B5E;border-radius:999px;"></div></div>
+            <span style="font-size:11px;color:#6B615C;">CapacityBar · color por umbral (≤25 % → warning)</span>
+          </div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Badge tone: success | warning | danger | info | neutral</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">StreakBadge weeks · onIncrement → pulso 400 ms del punto</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;EmptyState /&gt; · &lt;ErrorState /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Estados</span></div>
+        <div style="background:#FBF7F3;border:1px dashed #E7DED4;border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <div style="width:64px;height:64px;border-radius:999px;background:#F2EBE3;display:flex;align-items:center;justify-content:center;"><div style="width:34px;height:34px;border-radius:10px;border:2px dashed #E9AE8C;"></div></div>
+          <span style="font-size:16px;font-weight:600;color:#1A1614;text-align:center;">Título con personalidad</span>
+          <span style="font-size:13px;color:#6B615C;text-align:center;line-height:1.5;">Explica la causa concreta y ofrece la siguiente mejor acción.</span>
+          <div style="align-self:stretch;height:44px;border-radius:12px;background:#C56A45;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;">Acción primaria</span></div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">illustration | title | body | primaryAction | secondaryAction</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">reason: noResults | noAvailability | filtered | offline</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">copy: nunca códigos; el código va en caption seleccionable</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;Skeleton /&gt; · &lt;SkeletonCard /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Carga</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="background:#FBF7F3;border:1px solid #E7DED4;border-radius:16px;padding:12px;display:flex;gap:12px;animation:skel 1.4s ease-in-out infinite;">
+            <div style="width:64px;height:64px;border-radius:12px;background:#F2EBE3;"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px;"><div style="height:12px;width:55%;border-radius:6px;background:#F2EBE3;"></div><div style="height:10px;width:75%;border-radius:6px;background:#F2EBE3;"></div><div style="height:10px;width:35%;border-radius:6px;background:#F2EBE3;"></div></div>
+          </div>
+          <div style="display:flex;gap:8px;"><div style="flex:1;height:52px;border-radius:12px;background:#F2EBE3;animation:skel 1.4s ease-in-out infinite;"></div><div style="flex:1;height:52px;border-radius:12px;background:#F2EBE3;animation:skel 1.4s ease-in-out infinite;"></div><div style="flex:1;height:52px;border-radius:12px;background:#F2EBE3;animation:skel 1.4s ease-in-out infinite;"></div></div>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Nunca spinner de pantalla completa. Skeleton = forma real.</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Aparece a los 120 ms; si la data llega antes, no se muestra.</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Salida: crossfade 180 ms, misma altura → cero salto.</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;BookingCard /&gt; · &lt;SegmentedControl /&gt; · &lt;Stepper /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Reserva y controles</span></div>
+        <div style="height:40px;border-radius:12px;background:#F2EBE3;padding:4px;display:flex;gap:4px;">
+          <div style="flex:1;border-radius:9px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:600;color:#1A1614;">Activas</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;font-weight:500;color:#6B615C;">Pasadas</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:12px;border:1px solid #E7DED4;background:#FBF7F3;display:flex;align-items:center;justify-content:center;"><span style="font-size:20px;color:#3D3532;">−</span></div>
+          <span style="font-size:20px;font-weight:600;color:#1A1614;">3</span>
+          <div style="width:44px;height:44px;border-radius:12px;border:1px solid #E7DED4;background:#FBF7F3;display:flex;align-items:center;justify-content:center;"><span style="font-size:20px;color:#3D3532;">+</span></div>
+          <span style="font-size:12px;color:#6B615C;">máx = seatsLeft</span>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">BookingCard state: upcoming | waitlisted | completed | cancelled</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">countdown solo si &lt; 24 h · onCancel abre ConfirmSheet</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">SegmentedControl: indicador se desliza 200 ms ease-out</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#A9542F;">&lt;BottomSheet /&gt; · &lt;TabBar /&gt; · &lt;Toast /&gt;</span><span style="font-size:18px;font-weight:600;color:#1A1614;">Navegación y feedback</span></div>
+        <div style="background:#FBF7F3;border:1px solid #E7DED4;border-radius:16px 16px 0 0;padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;">
+          <div style="width:40px;height:4px;border-radius:999px;background:#E7DED4;align-self:center;"></div>
+          <span style="font-size:15px;font-weight:600;color:#1A1614;">¿Cancelar la reserva?</span>
+          <span style="font-size:13px;color:#6B615C;">Se libera para alguien más de la lista de espera.</span>
+        </div>
+        <div style="border:1px solid #E7DED4;border-radius:12px;background:#1A1614;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:8px;height:8px;border-radius:999px;background:#8FB3A6;"></div>
+          <span style="flex:1;font-size:13px;color:#FBF7F3;">Reserva cancelada</span>
+          <span style="font-size:13px;font-weight:600;color:#E9AE8C;">Deshacer</span>
+        </div>
+        <div style="background:#F2EBE3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Sheet: snapPoints, dismissible, safe-area inferior</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">Toast con undo 5 s → cancelación optimista reversible</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;color:#3D3532;">TabBar: 3 tabs, icono 20, label 11, altura 76 + inset</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ NOTAS ============ -->
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <h2 style="margin:0;font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#1A1614;">Notas de interacción y de implementación</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+
+      <div style="background:#1A1614;border-radius:20px;padding:26px;width:520px;display:flex;flex-direction:column;gap:16px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#E9AE8C;">microanimaciones</span>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Checkmark de éxito</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">scale-in de .4 → 1.08 → 1 en 320 ms, curva (.2,.9,.3,1.2), con un anillo que se expande a 1.35 y desvanece en 1.8 s en loop. Haptics.notificationAsync(Success) al iniciar. Reanimated: withSequence + withSpring.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Card → Detalle</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">shared element de la imagen (sharedTransitionTag = resource.id) 280 ms; el título hace fade+translateY 8 px con 60 ms de delay.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Selección de franja</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">150 ms: fondo y borde interpolados, scale .98 en press-in. El botón inferior actualiza su etiqueta con crossfade 120 ms — nunca desaparece ni cambia de tamaño.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Cancelar (optimista)</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">la card colapsa en 240 ms (LayoutAnimation / Layout.springify) y aparece un toast con Deshacer 5 s. Si el POST falla, la card vuelve con shake de 6 px.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Racha</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">al subir de semana, el punto pulsa 400 ms y el número hace roll-up vertical. Una sola vez por sesión.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#FBF7F3;">Pull-to-refresh</span><span style="font-size:13px;line-height:1.55;color:#A79E98;">no spinner: las cards existentes bajan su opacidad a .6 y el header muestra "Actualizando disponibilidad…" en caption.</span></div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DED4;border-radius:20px;padding:26px;width:520px;display:flex;flex-direction:column;gap:16px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A9542F;">expo · nativewind · .net</span>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Tokens</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">todo vive en tailwind.config.js (colors.brand/accent/ink/surface/state, spacing 1–12, borderRadius, fontSize). Dark mode con darkMode:'class' + vars por tema: <span style="font-family:'IBM Plex Mono',monospace;">bg-surface-base dark:bg-surface-base</span> resuelve solo.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Layout seguro para RN</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">solo flex column/row + gap; nada de CSS grid ni sticky. Las barras superior e inferior son hermanos fijos del contenedor flex, con FlatList al centro. Franjas horarias con flexWrap, no grid.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Web</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">el mismo árbol se centra con max-w-[430px] mx-auto; ≥1024 px las cards pasan a dos columnas por flexWrap y basis-1/2. No hay layout alterno.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Velocidad percibida</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">disponibilidad en caché con TTL de 60 s; al abrir el detalle se pinta con los datos de la card y se revalida en fondo. FlatList con getItemLayout + itemHeight fijo de 100 px.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Concurrencia (el error 07)</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">POST /bookings con Idempotency-Key y rowversion del slot; el backend responde 409 con las 2 mejores alternativas ya calculadas — la UI nunca tiene que adivinarlas.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:15px;font-weight:600;color:#1A1614;">Accesibilidad</span><span style="font-size:13px;line-height:1.55;color:#3D3532;">hit targets ≥44, contraste AA en todos los pares definidos, accessibilityLabel con hora y cupo ("14:00 a 15:30, 4 lugares libres"), respeta reduce-motion desactivando scale y pulsos.</span></div>
+        </div>
+      </div>
+
+      <div style="background:#DFEAE5;border:1px solid #8FB3A6;border-radius:20px;padding:26px;width:420px;display:flex;flex-direction:column;gap:14px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#2C4F45;">dominio genérico</span>
+        <span style="font-size:15px;line-height:1.6;color:#1E3A32;">Ninguna pantalla nombra "sala": la UI lee <span style="font-family:'IBM Plex Mono',monospace;">resourceType.labels</span> (singular/plural, unidad de cupo, duración del bloque). Cambiar el tenant a consultorios médicos o renta de equipo es sólo data: mismo árbol de componentes, mismos tokens.</span>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#2C4F45;">Resource { id, typeId, name, locationId, capacity, attributes[] }</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#2C4F45;">AvailabilitySlot { resourceId, startsAt, endsAt, seatsLeft }</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#2C4F45;">Booking { id, slotId, userId, seats, state, code }</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:2600,&quot;height&quot;:1600}}"></script>
+</body>
+</html>

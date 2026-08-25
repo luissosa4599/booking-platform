@@ -12,7 +12,26 @@ booking-engine/
 └── README.md     → Overview del proyecto completo
 ```
 
-## Cómo correr cada parte localmente
+## Cómo correrlo local
+
+### Variables de entorno
+
+Cada parte trae un `.env.example` — cópialo a `.env` y llena los valores reales antes de correr:
+
+```bash
+cp api/.env.example api/.env
+cp app/.env.example app/.env
+```
+
+- `api/.env` — `ConnectionStrings__Default` (Postgres/Neon) y `FRONTEND_WEB_URL` (origen CORS de
+  producción, vacío en local).
+- `app/.env` — `EXPO_PUBLIC_API_URL`, solo necesaria para builds de producción; en desarrollo la URL
+  del API se resuelve sola por plataforma (ver más abajo).
+
+**Neon**: usa una rama de desarrollo (`dev`) separada de `main` para trabajo local, para no
+arriesgar los datos de la rama principal. Esto se configura manualmente en el dashboard de Neon
+(no hay nada que instalar ni correr aquí) — `api/.env`'s `ConnectionStrings__Default` debe apuntar
+a esa rama `dev`, nunca a `main`.
 
 ### Backend (`/api`)
 
@@ -42,7 +61,17 @@ Desde la terminal de Expo:
 
 En desarrollo, la URL del API se resuelve automáticamente por plataforma (ver
 [`src/lib/config.ts`](app/src/lib/config.ts)) — no requiere configuración. Para builds de
-producción, copia `app/.env.example` a `app/.env` y define `EXPO_PUBLIC_API_URL`.
+producción, define `EXPO_PUBLIC_API_URL` en `app/.env`.
+
+### Tests
+
+```bash
+cd api && dotnet test     # xUnit + WebApplicationFactory
+cd app && npm test        # Jest + jest-expo
+```
+
+CI (`.github/workflows/ci.yml`) corre ambos en paralelo en cada push/PR a `main`: para `/api`
+restore + build + test, para `/app` install + type check (`tsc --noEmit`) + test.
 
 ## Cross-platform notes
 

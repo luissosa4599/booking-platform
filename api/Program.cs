@@ -54,3 +54,7 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Exposed so WebApplicationFactory<Program> in the test project can find it —
+// top-level statements otherwise generate an internal Program class.
+public partial class Program { }

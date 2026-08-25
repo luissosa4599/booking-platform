@@ -11,4 +11,11 @@
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- BookingEngine.Api.Tests nests inside this project's directory; without
+       this, the default **/*.cs glob would compile its files into this
+       project too. -->
+  <ItemGroup>
+    <Compile Remove="BookingEngine.Api.Tests/**/*.cs" />
+  </ItemGroup>
+
 </Project>
