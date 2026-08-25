@@ -19,6 +19,9 @@ obj/
 .env.*
 !.env.example
 
+# --- Local-only notes ---
+docs/session-log.md
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
