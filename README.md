@@ -79,8 +79,9 @@ Puntos de fricción entre mobile (iOS/Android) y web resueltos antes de construi
 para que el resto del código no tenga que volver a decidirlos:
 
 - **`src/lib/config.ts`** — centraliza la URL del API. En desarrollo resuelve por plataforma
-  (`10.0.2.2:5000` en el emulador de Android, porque el emulador no comparte el `localhost` del
-  host; `localhost:5000` en iOS/web). En producción exige `EXPO_PUBLIC_API_URL` y falla rápido si
+  (`10.0.2.2:5190` en el emulador de Android, porque el emulador no comparte el `localhost` del
+  host; `localhost:5190` en iOS/web — puerto de `api/Properties/launchSettings.json`). En
+  producción exige `EXPO_PUBLIC_API_URL` y falla rápido si
   falta, en vez de apuntar silenciosamente a la URL equivocada. Esta lógica vive en tiempo de
   ejecución (no en `app.config.ts`), porque `app.config.ts` corre en Node durante el build y no
   tiene acceso al `Platform.OS` real del dispositivo — solo el código que corre en la app lo sabe.

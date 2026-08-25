@@ -3,6 +3,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  ZoomIn,
 } from "react-native-reanimated";
 
 import { Button, type ButtonPillTone } from "@/components/Button";
@@ -20,6 +21,7 @@ interface RowProps {
   trailingText?: string;
   actionLabel?: string;
   actionTone?: ButtonPillTone;
+  actionLoading?: boolean;
   onActionPress?: () => void;
   selected?: boolean;
   disabled?: boolean;
@@ -41,6 +43,7 @@ export function Row({
   trailingText,
   actionLabel,
   actionTone = "filled",
+  actionLoading = false,
   onActionPress,
   selected = false,
   disabled = false,
@@ -111,6 +114,7 @@ export function Row({
         trailingText={trailingText}
         actionLabel={actionLabel}
         actionTone={actionTone}
+        actionLoading={actionLoading}
         onActionPress={onActionPress}
       />
     </View>
@@ -134,12 +138,14 @@ function RowTrailingContent({
   trailingText,
   actionLabel,
   actionTone,
+  actionLoading,
   onActionPress,
 }: {
   trailing: RowTrailing;
   trailingText?: string;
   actionLabel?: string;
   actionTone: ButtonPillTone;
+  actionLoading?: boolean;
   onActionPress?: () => void;
 }) {
   switch (trailing) {
@@ -155,10 +161,24 @@ function RowTrailingContent({
     case "chevron":
       return <Text className="text-[19px] text-chevron">›</Text>;
     case "check":
-      return <Text className="text-[17px] font-semibold text-tint">✓</Text>;
+      // entering: crossfade + scale-in, ~240ms, per the handoff's "apartar
+      // en un tap" success animation.
+      return (
+        <Animated.Text
+          entering={ZoomIn.duration(240)}
+          className="text-[17px] font-semibold text-tint"
+        >
+          ✓
+        </Animated.Text>
+      );
     case "action":
       return (
-        <Button variant="pill" tone={actionTone} onPress={onActionPress}>
+        <Button
+          variant="pill"
+          tone={actionTone}
+          loading={actionLoading}
+          onPress={onActionPress}
+        >
           {actionLabel}
         </Button>
       );

@@ -6,7 +6,12 @@ import BottomSheet, {
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { SheetProps } from "./Sheet.types";
-import { SHEET_OVERLAY_COLOR_HEX, SHEET_OVERLAY_OPACITY } from "./Sheet.types";
+import {
+  SHEET_CARD_COLOR_HEX,
+  SHEET_GRABBER_COLOR_HEX,
+  SHEET_OVERLAY_COLOR_HEX,
+  SHEET_OVERLAY_OPACITY,
+} from "./Sheet.types";
 
 export function Sheet({ isOpen, onClose, children }: SheetProps) {
   const sheetRef = useRef<BottomSheet>(null);
@@ -42,8 +47,20 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
       enablePanDownToClose
       onClose={onClose}
       backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: SHEET_CARD_COLOR_HEX,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: SHEET_GRABBER_COLOR_HEX,
+        width: 40,
+        height: 5,
+      }}
     >
-      <BottomSheetView className="p-6">{children}</BottomSheetView>
+      <BottomSheetView className="gap-[22px] px-5 pb-[34px] pt-[10px]">
+        {children}
+      </BottomSheetView>
     </BottomSheet>
   );
 }

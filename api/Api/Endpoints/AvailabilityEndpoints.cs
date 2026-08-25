@@ -9,7 +9,7 @@ public static class AvailabilityEndpoints
     public static void MapAvailabilityEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/availability", async (
-            Guid resourceTypeId,
+            Guid? resourceTypeId,
             DateTimeOffset from,
             DateTimeOffset to,
             BookingEngineDbContext db) =>
@@ -19,12 +19,14 @@ public static class AvailabilityEndpoints
                 return Results.BadRequest(new { message = "'to' must not be before 'from'." });
             }
 
+            // resourceTypeId is optional — the UI's default "Cualquiera" filter
+            // has no type to scope by, so omitting it means "all types".
             // Grouping into "ahora" / "más tarde" is a client concern — this
             // returns a flat list ordered by start time, per the handoff.
             var slots = await db.AvailabilitySlots
                 .AsNoTracking()
                 .Where(s =>
-                    s.Resource.ResourceTypeId == resourceTypeId &&
+                    (resourceTypeId == null || s.Resource.ResourceTypeId == resourceTypeId) &&
                     s.StartsAt >= from &&
                     s.StartsAt <= to)
                 .OrderBy(s => s.StartsAt)
