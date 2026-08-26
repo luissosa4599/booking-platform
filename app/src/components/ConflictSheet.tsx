@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -8,8 +9,13 @@ import { demoUserId } from "@/lib/userId";
 interface ConflictSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  slotId: string;
-  slotStartsAt: string;
+  // Nullable, not the conflict data directly: the caller's `conflictSlot`
+  // goes back to `null` the instant `isOpen` flips to `false` (this is now
+  // always-mounted, like Toast, so `Sheet` can animate the close instead of
+  // being torn down mid-transition) — this component retains the last real
+  // values itself so it has something to show while it fades out.
+  slotId: string | null;
+  slotStartsAt: string | null;
   /** Raw backend message — shown as a small selectable footnote, never as the main copy. */
   technicalMessage?: string;
 }
@@ -30,10 +36,24 @@ export function ConflictSheet({
 }: ConflictSheetProps) {
   const joinWaitlist = useJoinWaitlist();
 
-  const startTime = new Date(slotStartsAt).toLocaleTimeString("es-MX", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Retained during render (not an effect, not a ref) so the sheet still has
+  // real content while it plays its close transition, after the caller's own
+  // `slotId`/`slotStartsAt` have already gone back to `null`.
+  const [lastSlotId, setLastSlotId] = useState(slotId);
+  if (slotId && slotId !== lastSlotId) {
+    setLastSlotId(slotId);
+  }
+  const [lastSlotStartsAt, setLastSlotStartsAt] = useState(slotStartsAt);
+  if (slotStartsAt && slotStartsAt !== lastSlotStartsAt) {
+    setLastSlotStartsAt(slotStartsAt);
+  }
+
+  const startTime = lastSlotStartsAt
+    ? new Date(lastSlotStartsAt).toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
   return (
     <Sheet isOpen={isOpen} onClose={onClose}>
@@ -49,9 +69,10 @@ export function ConflictSheet({
           <Button
             variant="gray"
             loading={joinWaitlist.isPending}
-            disabled={joinWaitlist.isSuccess}
+            disabled={joinWaitlist.isSuccess || !lastSlotId}
             onPress={() =>
-              joinWaitlist.mutate({ availabilitySlotId: slotId, userId: demoUserId })
+              lastSlotId &&
+              joinWaitlist.mutate({ availabilitySlotId: lastSlotId, userId: demoUserId })
             }
           >
             {joinWaitlist.isSuccess ? "Te anotamos" : `Anotarme para las ${startTime}`}

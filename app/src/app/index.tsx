@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
@@ -8,6 +14,7 @@ import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
+import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
 import { Toast } from "@/components/Toast";
 import { useAvailability } from "@/lib/api/availability";
@@ -20,7 +27,10 @@ import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function withId(set: Set<string>, id: string) {
@@ -37,10 +47,16 @@ function withoutId(set: Set<string>, id: string) {
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<string | null>(null);
+  const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<
+    string | null
+  >(null);
   const [pendingSlotIds, setPendingSlotIds] = useState<Set<string>>(new Set());
-  const [confirmedSlotIds, setConfirmedSlotIds] = useState<Set<string>>(new Set());
-  const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(new Set());
+  const [confirmedSlotIds, setConfirmedSlotIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(
+    new Set(),
+  );
   // Shared (not local) so a booking made from ResourceScreen can show its
   // success toast here after navigating back — see lib/toastStore.ts.
   const toastMessage = useToastStore((s) => s.message);
@@ -69,12 +85,16 @@ export default function ExploreScreen() {
   }, [createBooking.isConflict]);
 
   const showSkeleton = useDelayedFlag(availabilityQuery.isLoading, 150);
-  const isRefreshing = availabilityQuery.isFetching && !availabilityQuery.isLoading;
+  const isRefreshing =
+    availabilityQuery.isFetching && !availabilityQuery.isLoading;
 
   const filterOptions: FilterPillOption[] = useMemo(
     () => [
       { id: null, label: "Cualquiera" },
-      ...(resourceTypesQuery.data ?? []).map((type) => ({ id: type.id, label: type.name })),
+      ...(resourceTypesQuery.data ?? []).map((type) => ({
+        id: type.id,
+        label: type.name,
+      })),
     ],
     [resourceTypesQuery.data],
   );
@@ -95,11 +115,14 @@ export default function ExploreScreen() {
   );
   const laterGroup = availableSlots
     .filter((slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs)
-    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    .sort(
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+    );
 
   const conflictSlot = createBooking.conflict
-    ? (availabilityQuery.data?.find((s) => s.id === createBooking.conflict!.availabilitySlotId) ??
-      null)
+    ? (availabilityQuery.data?.find(
+        (s) => s.id === createBooking.conflict!.availabilitySlotId,
+      ) ?? null)
     : null;
 
   function handleBook(slot: AvailabilitySlot) {
@@ -121,7 +144,10 @@ export default function ExploreScreen() {
             setConfirmedSlotIds((prev) => withoutId(prev, slot.id));
             useToastStore
               .getState()
-              .show(`${slot.resourceName} · hoy ${formatTime(slot.startsAt)}`, "Ver");
+              .show(
+                `${slot.resourceName} · hoy ${formatTime(slot.startsAt)}`,
+                "Ver",
+              );
           }, 400);
         },
       },
@@ -131,137 +157,156 @@ export default function ExploreScreen() {
   function handleOpenResource(slot: AvailabilitySlot) {
     router.push({
       pathname: "/resource/[id]",
-      params: { id: slot.resourceId, name: slot.resourceName, location: slot.locationName },
+      params: {
+        id: slot.resourceId,
+        name: slot.resourceName,
+        location: slot.locationName,
+      },
     });
   }
 
   const isEmpty =
-    !availabilityQuery.isLoading && nowGroup.length === 0 && laterGroup.length === 0;
+    !availabilityQuery.isLoading &&
+    nowGroup.length === 0 &&
+    laterGroup.length === 0;
 
   return (
-    <View className="flex-1 bg-canvas">
-      <View className="gap-5 px-4 pt-3">
-        <View className="flex-row items-end justify-between">
-          <Text className="text-title-lg text-label-1">Ahora</Text>
-          <Text className="text-subhead text-label-4">
-            {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
-          </Text>
-        </View>
+    <ScreenFade>
+      <View className="flex-1 bg-canvas">
+        <View className="gap-5 px-4 pt-3">
+          <View className="flex-row items-end justify-between">
+            <Text className="text-title-lg text-label-1">Ahora</Text>
+            <Text className="text-subhead text-label-4">
+              {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
+            </Text>
+          </View>
 
-        {/* Static for now — no search endpoint exists yet, see README. */}
-        <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3">
-          <Text className="text-[13px] text-label-4">⌕</Text>
-          <TextInput
-            editable={false}
-            placeholder="Buscar"
-            placeholderTextColor="#8A8A8E"
-            className="flex-1 text-label-4"
+          {/* Static for now — no search endpoint exists yet, see README. */}
+          <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3">
+            <Text className="text-[13px] text-label-4">⌕</Text>
+            <TextInput
+              editable={false}
+              placeholder="Buscar"
+              placeholderTextColor="#8A8A8E"
+              className="flex-1 text-label-4"
+            />
+          </View>
+
+          <FilterPills
+            options={filterOptions}
+            selectedId={selectedResourceTypeId}
+            onSelect={setSelectedResourceTypeId}
           />
         </View>
 
-        <FilterPills
-          options={filterOptions}
-          selectedId={selectedResourceTypeId}
-          onSelect={setSelectedResourceTypeId}
-        />
-      </View>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ gap: 20, padding: 16 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => availabilityQuery.refetch()}
+              tintColor="transparent"
+              colors={["transparent"]}
+            />
+          }
+        >
+          <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
+            {showSkeleton ? (
+              <Group header="LIBRE AHORA MISMO">
+                <Skeleton />
+                <Skeleton />
+              </Group>
+            ) : null}
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ gap: 20, padding: 16 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => availabilityQuery.refetch()}
-            tintColor="transparent"
-            colors={["transparent"]}
-          />
-        }
-      >
-        <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
-          {showSkeleton ? (
-            <Group header="LIBRE AHORA MISMO">
-              <Skeleton />
-              <Skeleton />
-            </Group>
-          ) : null}
+            {!showSkeleton && nowGroup.length > 0 ? (
+              <Group header="LIBRE AHORA MISMO">
+                {nowGroup.map((slot, index) => (
+                  <Animated.View
+                    key={slot.id}
+                    layout={LinearTransition}
+                    exiting={FadeOut}
+                  >
+                    <Row
+                      title={slot.resourceName}
+                      subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
+                      meta={
+                        slot.capacityRemaining === 1
+                          ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
+                          : undefined
+                      }
+                      metaTone={
+                        slot.capacityRemaining === 1 ? "last" : "default"
+                      }
+                      trailing={
+                        confirmedSlotIds.has(slot.id) ? "check" : "action"
+                      }
+                      actionLabel="Apartar"
+                      actionTone={index === 0 ? "filled" : "wash"}
+                      actionLoading={pendingSlotIds.has(slot.id)}
+                      onActionPress={() => handleBook(slot)}
+                      onPress={() => handleOpenResource(slot)}
+                    />
+                  </Animated.View>
+                ))}
+              </Group>
+            ) : null}
 
-          {!showSkeleton && nowGroup.length > 0 ? (
-            <Group header="LIBRE AHORA MISMO">
-              {nowGroup.map((slot, index) => (
-                <Animated.View key={slot.id} layout={LinearTransition} exiting={FadeOut}>
+            {!showSkeleton && laterGroup.length > 0 ? (
+              <Group header="MÁS TARDE HOY">
+                {laterGroup.map((slot) => (
                   <Row
+                    key={slot.id}
                     title={slot.resourceName}
-                    subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
-                    meta={
-                      slot.capacityRemaining === 1
-                        ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
-                        : undefined
-                    }
-                    metaTone={slot.capacityRemaining === 1 ? "last" : "default"}
-                    trailing={confirmedSlotIds.has(slot.id) ? "check" : "action"}
-                    actionLabel="Apartar"
-                    actionTone={index === 0 ? "filled" : "wash"}
-                    actionLoading={pendingSlotIds.has(slot.id)}
-                    onActionPress={() => handleBook(slot)}
+                    subtitle={slot.locationName}
+                    trailing="chevron"
+                    trailingText={formatTime(slot.startsAt)}
                     onPress={() => handleOpenResource(slot)}
                   />
-                </Animated.View>
-              ))}
-            </Group>
-          ) : null}
+                ))}
+              </Group>
+            ) : null}
 
-          {!showSkeleton && laterGroup.length > 0 ? (
-            <Group header="MÁS TARDE HOY">
-              {laterGroup.map((slot) => (
-                <Row
-                  key={slot.id}
-                  title={slot.resourceName}
-                  subtitle={slot.locationName}
-                  trailing="chevron"
-                  trailingText={formatTime(slot.startsAt)}
-                  onPress={() => handleOpenResource(slot)}
-                />
-              ))}
-            </Group>
-          ) : null}
+            {isEmpty ? (
+              <Placeholder
+                reason="noAvailability"
+                icon={<Text className="text-[26px] text-chevron">⌘</Text>}
+                title="Nada libre por ahora"
+                body="No hay espacios disponibles hoy con este filtro. Vuelve a intentar más tarde o quita el filtro."
+                primaryAction={{
+                  label: "Actualizar",
+                  onPress: () => availabilityQuery.refetch(),
+                }}
+                secondaryAction={
+                  selectedResourceTypeId
+                    ? {
+                        label: "Quitar filtro",
+                        onPress: () => setSelectedResourceTypeId(null),
+                      }
+                    : undefined
+                }
+              />
+            ) : null}
+          </View>
+        </ScrollView>
 
-          {isEmpty ? (
-            <Placeholder
-              reason="noAvailability"
-              icon={<Text className="text-[26px] text-chevron">⌘</Text>}
-              title="Nada libre por ahora"
-              body="No hay espacios disponibles hoy con este filtro. Vuelve a intentar más tarde o quita el filtro."
-              primaryAction={{ label: "Actualizar", onPress: () => availabilityQuery.refetch() }}
-              secondaryAction={
-                selectedResourceTypeId
-                  ? { label: "Quitar filtro", onPress: () => setSelectedResourceTypeId(null) }
-                  : undefined
-              }
-            />
-          ) : null}
-        </View>
-      </ScrollView>
-
-      {conflictSlot ? (
         <ConflictSheet
-          isOpen
+          isOpen={!!conflictSlot}
           onClose={() => createBooking.reset()}
-          slotId={conflictSlot.id}
-          slotStartsAt={conflictSlot.startsAt}
+          slotId={conflictSlot?.id ?? null}
+          slotStartsAt={conflictSlot?.startsAt ?? null}
           technicalMessage={createBooking.conflict?.message}
         />
-      ) : null}
 
-      {toastMessage ? (
         <Toast
-          message={toastMessage}
+          isOpen={!!toastMessage}
+          message={toastMessage ?? ""}
           actionLabel="Ver"
           onAction={() => useToastStore.getState().clear()}
           onDismiss={() => useToastStore.getState().clear()}
         />
-      ) : null}
-    </View>
+      </View>
+    </ScreenFade>
   );
 }
 
@@ -270,6 +315,9 @@ function formatHeaderDate(date: Date) {
     weekday: "short",
     day: "numeric",
   });
-  const time = date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return `${formatted} · ${time}`;
 }
