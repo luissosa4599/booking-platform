@@ -10,15 +10,19 @@ import { Button, type ButtonPillTone } from "@/components/Button";
 import { cn } from "@/lib/cn";
 
 export type RowTrailing = "text" | "chevron" | "action" | "check" | "none";
-type MetaTone = "default" | "waiting" | "last";
+export type MetaTone = "default" | "waiting" | "last";
 
 interface RowProps {
   title: string;
+  /** Time ranges/numbers in the title should align — e.g. ResourceScreen's slot list. */
+  tabularTitle?: boolean;
   subtitle?: string;
   meta?: string;
   metaTone?: MetaTone;
   trailing?: RowTrailing;
   trailingText?: string;
+  /** Tone for trailing="text" — e.g. "Anotarme" (waiting) or "Último lugar" (last). */
+  trailingTone?: MetaTone;
   actionLabel?: string;
   actionTone?: ButtonPillTone;
   actionLoading?: boolean;
@@ -36,11 +40,13 @@ const META_TONE_CLASS: Record<MetaTone, string> = {
 
 export function Row({
   title,
+  tabularTitle = false,
   subtitle,
   meta,
   metaTone = "default",
   trailing = "none",
   trailingText,
+  trailingTone = "default",
   actionLabel,
   actionTone = "filled",
   actionLoading = false,
@@ -87,6 +93,7 @@ export function Row({
       <View className="flex-1 flex-col gap-[3px]">
         <Text
           numberOfLines={1}
+          style={tabularTitle ? { fontVariant: ["tabular-nums"] } : undefined}
           className={cn(
             "text-body-emph",
             disabled ? "text-label-4" : selected ? "text-tint-press" : "text-label-1",
@@ -112,6 +119,7 @@ export function Row({
       <RowTrailingContent
         trailing={effectiveTrailing}
         trailingText={trailingText}
+        trailingTone={trailingTone}
         actionLabel={actionLabel}
         actionTone={actionTone}
         actionLoading={actionLoading}
@@ -136,6 +144,7 @@ export function Row({
 function RowTrailingContent({
   trailing,
   trailingText,
+  trailingTone = "default",
   actionLabel,
   actionTone,
   actionLoading,
@@ -143,6 +152,7 @@ function RowTrailingContent({
 }: {
   trailing: RowTrailing;
   trailingText?: string;
+  trailingTone?: MetaTone;
   actionLabel?: string;
   actionTone: ButtonPillTone;
   actionLoading?: boolean;
@@ -152,7 +162,7 @@ function RowTrailingContent({
     case "text":
       return (
         <Text
-          className="text-body text-label-3"
+          className={cn("text-body", META_TONE_CLASS[trailingTone])}
           style={{ fontVariant: ["tabular-nums"] }}
         >
           {trailingText}

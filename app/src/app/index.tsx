@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
@@ -15,6 +16,7 @@ import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
+import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
 
 function formatTime(iso: string) {
@@ -34,11 +36,14 @@ function withoutId(set: Set<string>, id: string) {
 }
 
 export default function ExploreScreen() {
+  const router = useRouter();
   const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<string | null>(null);
   const [pendingSlotIds, setPendingSlotIds] = useState<Set<string>>(new Set());
   const [confirmedSlotIds, setConfirmedSlotIds] = useState<Set<string>>(new Set());
   const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(new Set());
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Shared (not local) so a booking made from ResourceScreen can show its
+  // success toast here after navigating back — see lib/toastStore.ts.
+  const toastMessage = useToastStore((s) => s.message);
 
   // Captured once per mount — a slight drift against a live clock over a long
   // session is fine, the query itself refetches every 60s regardless.
@@ -114,11 +119,20 @@ export default function ExploreScreen() {
           setTimeout(() => {
             setDismissedSlotIds((prev) => withId(prev, slot.id));
             setConfirmedSlotIds((prev) => withoutId(prev, slot.id));
-            setToastMessage(`${slot.resourceName} · hoy ${formatTime(slot.startsAt)}`);
+            useToastStore
+              .getState()
+              .show(`${slot.resourceName} · hoy ${formatTime(slot.startsAt)}`, "Ver");
           }, 400);
         },
       },
     );
+  }
+
+  function handleOpenResource(slot: AvailabilitySlot) {
+    router.push({
+      pathname: "/resource/[id]",
+      params: { id: slot.resourceId, name: slot.resourceName, location: slot.locationName },
+    });
   }
 
   const isEmpty =
@@ -190,6 +204,7 @@ export default function ExploreScreen() {
                     actionTone={index === 0 ? "filled" : "wash"}
                     actionLoading={pendingSlotIds.has(slot.id)}
                     onActionPress={() => handleBook(slot)}
+                    onPress={() => handleOpenResource(slot)}
                   />
                 </Animated.View>
               ))}
@@ -205,6 +220,7 @@ export default function ExploreScreen() {
                   subtitle={slot.locationName}
                   trailing="chevron"
                   trailingText={formatTime(slot.startsAt)}
+                  onPress={() => handleOpenResource(slot)}
                 />
               ))}
             </Group>
@@ -241,8 +257,8 @@ export default function ExploreScreen() {
         <Toast
           message={toastMessage}
           actionLabel="Ver"
-          onAction={() => setToastMessage(null)}
-          onDismiss={() => setToastMessage(null)}
+          onAction={() => useToastStore.getState().clear()}
+          onDismiss={() => useToastStore.getState().clear()}
         />
       ) : null}
     </View>

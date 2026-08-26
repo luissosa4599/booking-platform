@@ -45,6 +45,19 @@ export interface BookingConflict {
   availabilitySlotId: string;
 }
 
+export interface ResourceDetail {
+  id: string;
+  resourceTypeId: string;
+  resourceTypeName: string;
+  labels: ResourceLabels;
+  locationId: string;
+  locationName: string;
+  name: string;
+  capacity: number;
+  description: string | null;
+  upcomingSlots: AvailabilitySlot[];
+}
+
 export interface WaitlistEntry {
   id: string;
   availabilitySlotId: string;
