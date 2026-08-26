@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, Text } from "react-native";
+import { Animated, Pressable, Text, View } from "react-native";
 
 import { useFadeTransition } from "@/lib/useFadeTransition";
 
@@ -71,16 +71,23 @@ export function Toast({
         opacity,
         transform: [{ translateY }],
       }}
-      className="flex-row items-center justify-between rounded-[14px] bg-label-1 px-4 py-3"
     >
-      <Text className="text-body flex-1 text-white" numberOfLines={1}>
-        {displayMessage}
-      </Text>
-      {actionLabel && onAction ? (
-        <Pressable onPress={onAction} hitSlop={8} className="ml-3">
-          <Text className="text-body-emph text-tint-soft">{actionLabel}</Text>
-        </Pressable>
-      ) : null}
+      {/* Color/shape utilities (bg-label-1, text-white, rounded-[14px]) go on
+          a plain View, not the Animated.View above — NativeWind's CSS-var
+          color classes (rgb(var(--color-x) / <alpha-value>)) silently don't
+          apply when the className is on `Animated.View` from 'react-native'
+          itself (confirmed: computed backgroundColor stayed transparent).
+          Same split `Sheet.web.tsx` already uses. */}
+      <View className="flex-row items-center justify-between rounded-[14px] bg-label-1 px-4 py-3">
+        <Text className="text-body flex-1 text-white" numberOfLines={1}>
+          {displayMessage}
+        </Text>
+        {actionLabel && onAction ? (
+          <Pressable onPress={onAction} hitSlop={8} className="ml-3">
+            <Text className="text-body-emph text-tint-soft">{actionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </Animated.View>
   );
 }
