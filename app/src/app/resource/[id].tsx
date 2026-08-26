@@ -17,6 +17,7 @@ import { useJoinWaitlist } from "@/lib/api/waitlist";
 import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
+import { ArrowLeft } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
@@ -237,9 +238,9 @@ export default function ResourceScreen() {
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/86"
+              className="h-9 w-9 items-center justify-center rounded-full bg-white/86 text-label-1"
             >
-              <Text className="text-[17px] text-label-1">←</Text>
+              <ArrowLeft size={17} />
             </Pressable>
           </View>
 

@@ -32,7 +32,7 @@ export function Placeholder({
 }: PlaceholderProps) {
   return (
     <View className="items-center gap-[14px] px-10">
-      <View className="mb-[6px] h-16 w-16 items-center justify-center rounded-[18px] bg-fill">
+      <View className="mb-[6px] h-16 w-16 items-center justify-center rounded-[18px] bg-fill text-chevron">
         {icon}
       </View>
 

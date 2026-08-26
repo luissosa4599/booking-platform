@@ -8,6 +8,7 @@ import Animated, {
 
 import { Button, Spinner, type ButtonPillTone } from "@/components/Button";
 import { cn } from "@/lib/cn";
+import { Check, ChevronRight } from "@/lib/icons";
 
 export type RowTrailing = "text" | "chevron" | "action" | "check" | "none";
 export type MetaTone = "default" | "waiting" | "last";
@@ -178,17 +179,27 @@ function RowTrailingContent({
         </Text>
       );
     case "chevron":
-      return <Text className="text-[19px] text-chevron">›</Text>;
+      // className goes on the wrapping View, not the icon — see lib/icons.ts.
+      return (
+        <View className="text-chevron">
+          <ChevronRight size={19} />
+        </View>
+      );
     case "check":
       // entering: crossfade + scale-in, ~240ms, per the handoff's "apartar
-      // en un tap" success animation.
+      // en un tap" success animation. Split in two: the outer
+      // Animated.View is what ZoomIn actually animates (layout/transform
+      // only), the inner plain View carries the color className —
+      // Reanimated's Animated.View doesn't reliably apply a `text-*`
+      // (color) class, even though it applies `bg-*` ones fine (see
+      // SuccessCheckmark's halo). Confirmed via getComputedStyle: the same
+      // className stayed black on Animated.View, resolved correctly on View.
       return (
-        <Animated.Text
-          entering={ZoomIn.duration(240)}
-          className="text-[17px] font-semibold text-tint"
-        >
-          ✓
-        </Animated.Text>
+        <Animated.View entering={ZoomIn.duration(240)}>
+          <View className="text-tint">
+            <Check size={17} strokeWidth={3} />
+          </View>
+        </Animated.View>
       );
     case "action":
       return (

@@ -22,6 +22,7 @@ import { useCreateBooking } from "@/lib/api/bookings";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
+import { CalendarX, Search } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
@@ -182,8 +183,8 @@ export default function ExploreScreen() {
           </View>
 
           {/* Static for now — no search endpoint exists yet, see README. */}
-          <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3">
-            <Text className="text-[13px] text-label-4">⌕</Text>
+          <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
+            <Search size={13} />
             <TextInput
               editable={false}
               placeholder="Buscar"
@@ -270,7 +271,7 @@ export default function ExploreScreen() {
             {isEmpty ? (
               <Placeholder
                 reason="noAvailability"
-                icon={<Text className="text-[26px] text-chevron">⌘</Text>}
+                icon={<CalendarX size={26} />}
                 title="Nada libre por ahora"
                 body="No hay espacios disponibles hoy con este filtro. Vuelve a intentar más tarde o quita el filtro."
                 primaryAction={{

@@ -8,6 +8,7 @@ import Animated, {
 
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
+import { Minus, Plus } from "@/lib/icons";
 
 interface StepperProps {
   value: number;
@@ -61,11 +62,12 @@ export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
       <Pressable
         onPress={handleDecrement}
         disabled={!canDecrement}
-        className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card"
+        className={cn(
+          "h-[34px] w-11 items-center justify-center rounded-control-inner bg-card",
+          canDecrement ? "text-label-2" : "text-disabled-label",
+        )}
       >
-        <Text className={cn("text-[19px]", canDecrement ? "text-label-2" : "text-disabled-label")}>
-          −
-        </Text>
+        <Minus size={19} />
       </Pressable>
 
       <Text
@@ -78,9 +80,9 @@ export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
       <Animated.View style={shakeStyle}>
         <Pressable
           onPress={handleIncrement}
-          className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card"
+          className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card text-label-2"
         >
-          <Text className="text-[19px] text-label-2">+</Text>
+          <Plus size={19} />
         </Pressable>
       </Animated.View>
     </View>
