@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -22,7 +23,7 @@ import { useCreateBooking } from "@/lib/api/bookings";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
-import { CalendarX, Search } from "@/lib/icons";
+import { Calendar, CalendarX, Search } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
@@ -177,9 +178,20 @@ export default function ExploreScreen() {
         <View className="gap-5 px-4 pt-3">
           <View className="flex-row items-end justify-between">
             <Text className="text-title-lg text-label-1">Ahora</Text>
-            <Text className="text-subhead text-label-4">
-              {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
-            </Text>
+            <View className="flex-row items-center gap-3">
+              <Text className="text-subhead text-label-4">
+                {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
+              </Text>
+              {/* No TabBar built yet (see docs/session-log.md) — this is a
+                  minimal way to reach /bookings, not the handoff's 3-tab bar. */}
+              <Pressable
+                onPress={() => router.push("/bookings")}
+                hitSlop={8}
+                className="h-8 w-8 items-center justify-center rounded-full bg-fill text-label-2"
+              >
+                <Calendar size={16} />
+              </Pressable>
+            </View>
           </View>
 
           {/* Static for now — no search endpoint exists yet, see README. */}

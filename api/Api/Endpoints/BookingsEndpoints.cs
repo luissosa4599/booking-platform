@@ -13,6 +13,47 @@ public static class BookingsEndpoints
 
     public static void MapBookingsEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/bookings", async (
+            string userId,
+            string scope,
+            BookingEngineDbContext db) =>
+        {
+            if (scope is not ("upcoming" or "past"))
+            {
+                return Results.BadRequest(new { message = "'scope' must be 'upcoming' or 'past'." });
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var query = db.Bookings.AsNoTracking().Where(b => b.UserId == userId);
+
+            // A cancelled booking is never "upcoming" again regardless of
+            // when its slot was — it belongs in history alongside completed
+            // ones, same as the handoff's "ESTE MES" group shows both.
+            query = scope == "upcoming"
+                ? query.Where(b => b.Status == BookingStatus.Confirmed && b.AvailabilitySlot.EndsAt >= now)
+                : query.Where(b => b.Status == BookingStatus.Cancelled || b.AvailabilitySlot.EndsAt < now);
+
+            query = scope == "upcoming"
+                ? query.OrderBy(b => b.AvailabilitySlot.StartsAt)
+                : query.OrderByDescending(b => b.AvailabilitySlot.StartsAt);
+
+            var bookings = await query
+                .Select(b => new MyBookingResponse(
+                    b.Id,
+                    b.AvailabilitySlotId,
+                    b.AvailabilitySlot.ResourceId,
+                    b.AvailabilitySlot.Resource.Name,
+                    b.AvailabilitySlot.Resource.Location.Name,
+                    b.AvailabilitySlot.StartsAt,
+                    b.AvailabilitySlot.EndsAt,
+                    b.Seats,
+                    b.Status.ToString()))
+                .ToListAsync();
+
+            return Results.Ok(bookings);
+        })
+        .WithName("GetMyBookings");
+
         app.MapPost("/bookings", async (
             CreateBookingRequest request,
             HttpRequest httpRequest,

@@ -3,7 +3,18 @@ import { Text, View } from "react-native";
 
 import { Button, type ButtonVariant } from "@/components/Button";
 
-export type PlaceholderReason = "noAvailability" | "noResults" | "filtered" | "offline";
+// The handoff's own 4 values (noAvailability/noResults/filtered/offline)
+// only cover ExploreScreen's filtered-results empty state — "no bookings
+// yet" and "no history yet" are a different case the handoff doesn't
+// enumerate. Added here rather than reusing "noResults" for telemetry that
+// would otherwise mislabel these.
+export type PlaceholderReason =
+  | "noAvailability"
+  | "noResults"
+  | "filtered"
+  | "offline"
+  | "noBookings"
+  | "noHistory";
 
 interface PlaceholderAction {
   label: string;

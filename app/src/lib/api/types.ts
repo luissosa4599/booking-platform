@@ -64,3 +64,17 @@ export interface WaitlistEntry {
   userId: string;
   createdAt: string;
 }
+
+export type BookingScope = "upcoming" | "past";
+
+export interface MyBooking {
+  id: string;
+  availabilitySlotId: string;
+  resourceId: string;
+  resourceName: string;
+  locationName: string;
+  startsAt: string;
+  endsAt: string;
+  seats: number;
+  status: string;
+}

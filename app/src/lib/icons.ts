@@ -1,13 +1,24 @@
 import type { ComponentType } from "react";
 import { Check as LucideCheck } from "lucide-react-native";
 
-export { ArrowLeft, CalendarX, ChevronRight, Minus, Plus, Search } from "lucide-react-native";
+export {
+  ArrowLeft,
+  Calendar,
+  CalendarX,
+  ChevronRight,
+  Minus,
+  Plus,
+  Search,
+} from "lucide-react-native";
 
 // `strokeWidth` is a real, supported SVG attribute lucide forwards at
 // runtime, but it's missing from this version's exported `LucideProps`
 // type — cast just this one icon rather than every call site that needs a
 // bolder stroke.
-export const Check = LucideCheck as ComponentType<{ size?: number; strokeWidth?: number }>;
+export const Check = LucideCheck as ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+}>;
 
 // Handoff: "usar el set de iconos del proyecto — expo-symbols (SF Symbols)
 // en iOS con fallback a lucide-react-native." Using lucide-react-native
