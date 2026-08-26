@@ -6,9 +6,11 @@ export {
   Calendar,
   CalendarX,
   ChevronRight,
+  Compass,
   Minus,
   Plus,
   Search,
+  User,
 } from "lucide-react-native";
 
 // `strokeWidth` is a real, supported SVG attribute lucide forwards at

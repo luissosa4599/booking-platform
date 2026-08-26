@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
-import Index from "../index";
+import Index from "../(tabs)/index";
 
 jest.mock("expo-crypto", () => ({
   randomUUID: () => "test-uuid",
@@ -10,6 +10,10 @@ jest.mock("expo-crypto", () => ({
 // @gorhom/bottom-sheet relies on real native layout/portal machinery that
 // doesn't run under the test renderer — see __mocks__/@gorhom/bottom-sheet.tsx.
 jest.mock("@gorhom/bottom-sheet");
+
+// lucide-react-native ships ESM-only .mjs files Jest can't parse by default
+// — see __mocks__/lucide-react-native.tsx.
+jest.mock("lucide-react-native");
 
 const RESOURCE_TYPES = [
   {
@@ -67,7 +71,9 @@ function mockFetch(handlers: Record<string, FetchHandler>) {
 let queryClient: QueryClient;
 
 beforeEach(() => {
-  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
 });
 
 afterEach(() => {

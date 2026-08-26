@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import Animated, {
   FadeOut,
   LinearTransition,
@@ -21,7 +21,7 @@ import { Toast } from "@/components/Toast";
 import { useCancelBooking, useMyBookings } from "@/lib/api/bookings";
 import type { BookingScope, MyBooking } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
-import { ArrowLeft, CalendarX } from "@/lib/icons";
+import { CalendarX } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { demoUserId } from "@/lib/userId";
 
@@ -160,14 +160,7 @@ export default function BookingsScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-canvas">
-        <View className="flex-row items-center gap-3 px-4 pt-3">
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            className="h-9 w-9 items-center justify-center rounded-full text-label-1"
-          >
-            <ArrowLeft size={20} />
-          </Pressable>
+        <View className="px-4 pt-3">
           <Text className="text-title-lg text-label-1">Reservas</Text>
         </View>
 
@@ -222,7 +215,10 @@ export default function BookingsScreen() {
               }
               primaryAction={{
                 label: "Explorar espacios",
-                onPress: () => router.push("/"),
+                // `.navigate`, not `.push` — this and Explorar are sibling
+                // tabs now, so this should switch tabs, not stack a new
+                // screen on top.
+                onPress: () => router.navigate("/"),
               }}
             />
           ) : null}
