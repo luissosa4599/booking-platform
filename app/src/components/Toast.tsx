@@ -13,10 +13,11 @@ interface ToastProps {
 // interaction spec requires a bottom toast with an action — built minimal
 // and non-reusable-beyond-this-shape on purpose, not a full design-system piece.
 //
-// No entrance/exit animation: a Reanimated (entering/exiting) version of this
-// reliably broke the app on web right after this mounted — reproducible,
-// without a stack trace, same as SuccessCheckmark. Plain mount/unmount here
-// instead of chasing that further.
+// No entrance/exit animation: with `experiments.reactCompiler: false` (see
+// docs/session-log.md), a Reanimated `entering`/`exiting` version no longer
+// crashes on web, but it introduced a separate, still-unresolved rendering
+// glitch — the card doesn't paint reliably even though its computed position
+// is correct. Left static until that's chased down; not a silent omission.
 export function Toast({
   message,
   actionLabel,

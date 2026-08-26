@@ -21,6 +21,7 @@ obj/
 
 # --- Local-only notes ---
 docs/session-log.md
+CLAUDE.md
 
 # --- OS / editor ---
 .DS_Store
