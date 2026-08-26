@@ -325,6 +325,7 @@ export default function ResourceScreen() {
                             trailing={isJoined ? "check" : "text"}
                             trailingText={isJoined ? undefined : "Anotarme"}
                             trailingTone="waiting"
+                            trailingLoading={isJoining}
                             disabled={isJoined || isJoining}
                             onPress={
                               isJoined

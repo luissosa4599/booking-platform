@@ -75,7 +75,7 @@ const PILL_SPINNER_BORDER_CLASS: Record<ButtonPillTone, string> = {
   wash: "border-tint",
 };
 
-function Spinner({ borderClassName }: { borderClassName: string }) {
+export function Spinner({ borderClassName }: { borderClassName: string }) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
   const rotation = useSharedValue(0);

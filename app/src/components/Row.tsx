@@ -6,7 +6,7 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 
-import { Button, type ButtonPillTone } from "@/components/Button";
+import { Button, Spinner, type ButtonPillTone } from "@/components/Button";
 import { cn } from "@/lib/cn";
 
 export type RowTrailing = "text" | "chevron" | "action" | "check" | "none";
@@ -23,6 +23,8 @@ interface RowProps {
   trailingText?: string;
   /** Tone for trailing="text" — e.g. "Anotarme" (waiting) or "Último lugar" (last). */
   trailingTone?: MetaTone;
+  /** trailing="text" only — swaps trailingText for a small spinner (e.g. joining a waitlist). */
+  trailingLoading?: boolean;
   actionLabel?: string;
   actionTone?: ButtonPillTone;
   actionLoading?: boolean;
@@ -47,6 +49,7 @@ export function Row({
   trailing = "none",
   trailingText,
   trailingTone = "default",
+  trailingLoading = false,
   actionLabel,
   actionTone = "filled",
   actionLoading = false,
@@ -120,6 +123,7 @@ export function Row({
         trailing={effectiveTrailing}
         trailingText={trailingText}
         trailingTone={trailingTone}
+        trailingLoading={trailingLoading}
         actionLabel={actionLabel}
         actionTone={actionTone}
         actionLoading={actionLoading}
@@ -145,6 +149,7 @@ function RowTrailingContent({
   trailing,
   trailingText,
   trailingTone = "default",
+  trailingLoading = false,
   actionLabel,
   actionTone,
   actionLoading,
@@ -153,6 +158,7 @@ function RowTrailingContent({
   trailing: RowTrailing;
   trailingText?: string;
   trailingTone?: MetaTone;
+  trailingLoading?: boolean;
   actionLabel?: string;
   actionTone: ButtonPillTone;
   actionLoading?: boolean;
@@ -160,6 +166,9 @@ function RowTrailingContent({
 }) {
   switch (trailing) {
     case "text":
+      if (trailingLoading) {
+        return <Spinner borderClassName="border-state-waiting" />;
+      }
       return (
         <Text
           className={cn("text-body", META_TONE_CLASS[trailingTone])}
