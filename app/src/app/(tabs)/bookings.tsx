@@ -168,7 +168,7 @@ export default function BookingsScreen() {
           <SegmentedControl
             options={[
               { label: "Próximas", value: "upcoming" },
-              { label: "Pasadas", value: "past" },
+              { label: "Anteriores", value: "past" },
             ]}
             value={scope}
             onChange={(v) => setScope(v as BookingScope)}
