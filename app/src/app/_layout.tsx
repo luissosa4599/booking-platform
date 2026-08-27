@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View } from "react-native";
+import { LogBox, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -9,6 +9,14 @@ import { useAuthStore } from "@/lib/session";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 
 import "@/global.css";
+
+// Dev-tooling noise, not app bugs: the HMR client warns loudly when it can't
+// reach Metro (common when testing on a phone over LAN/VPN — the app itself
+// still works, Fast Refresh just doesn't).
+LogBox.ignoreLogs([
+  "Cannot connect to Expo CLI",
+  /Cannot connect to Metro/,
+]);
 
 // Routes reachable without a session.
 const PUBLIC_SEGMENTS = new Set(["sign-in", "auth"]);
