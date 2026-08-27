@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Crypto from "expo-crypto";
 
 import { cancelBookingReminder } from "@/lib/notifications";
+import { uuid } from "@/lib/uuid";
 import { ApiError, apiFetch } from "./client";
 import type {
   Booking,
@@ -32,7 +32,7 @@ export function useCreateBooking() {
       // A fresh Idempotency-Key per attempt — never reused across distinct
       // user attempts, so retrying a genuinely new tap never gets mistaken
       // for a duplicate of a previous one.
-      const idempotencyKey = Crypto.randomUUID();
+      const idempotencyKey = uuid();
 
       return apiFetch<Booking>("/bookings", {
         method: "POST",
