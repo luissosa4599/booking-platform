@@ -96,15 +96,24 @@ export default function ResourceScreen() {
     id,
     name: passedName,
     location: passedLocation,
+    repeatTime,
+    repeatSeats,
   } = useLocalSearchParams<{
     id: string;
     name?: string;
     location?: string;
+    /** "Repetir" from BookingsScreen: HH:MM to preselect, and the party size. */
+    repeatTime?: string;
+    repeatSeats?: string;
   }>();
 
-  const [seatCount, setSeatCount] = useState(1);
+  const [seatCount, setSeatCount] = useState(() => {
+    const n = Number(repeatSeats);
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  });
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [repeatApplied, setRepeatApplied] = useState(!repeatTime);
   const [joinedWaitlistSlotIds, setJoinedWaitlistSlotIds] = useState<
     Set<string>
   >(new Set());
@@ -136,6 +145,29 @@ export default function ResourceScreen() {
     () => buildDayBuckets(resource?.upcomingSlots ?? []),
     [resource],
   );
+
+  // "Repetir": once real slots are in, land on the first day that has a slot at
+  // the requested time-of-day with room, and select it. Done during render (a
+  // guarded, one-shot state adjustment — same pattern as ConflictSheet's
+  // retained props) rather than an effect, so there's no cascading-render lint
+  // and the preselection is visible on the very first painted frame with data.
+  if (!repeatApplied && repeatTime && resource) {
+    const wantSeats = Number(repeatSeats) || 1;
+    for (let d = 0; d < days.length; d++) {
+      const match = days[d].slots.find(
+        (s) =>
+          formatTime(s.startsAt) === repeatTime &&
+          s.capacityRemaining >= wantSeats,
+      );
+      if (match) {
+        setSelectedDayIndex(d);
+        setSelectedSlotId(match.id);
+        break;
+      }
+    }
+    setRepeatApplied(true);
+  }
+
   const daySlots = days[selectedDayIndex]?.slots ?? [];
   // Handoff: "Stepper máximo = seatsLeft del slot seleccionado. Si el usuario
   // sube personas por encima de lo que permite el slot elegido, ese slot se

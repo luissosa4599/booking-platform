@@ -1,11 +1,22 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "./client";
-import type { WaitlistEntry } from "./types";
+import type { WaitlistEntry, WaitlistEntryDetail } from "./types";
 
 interface JoinWaitlistInput {
   availabilitySlotId: string;
   userId: string;
+}
+
+// Feeds the "EN ESPERA" section of the Bookings screen.
+export function useMyWaitlist(userId: string) {
+  return useQuery({
+    queryKey: ["waitlist", userId],
+    queryFn: () =>
+      apiFetch<WaitlistEntryDetail[]>(
+        `/waitlist?${new URLSearchParams({ userId }).toString()}`,
+      ),
+  });
 }
 
 // Not one of the three named hooks in the task, but ConflictSheet's "Anotarme"

@@ -82,6 +82,7 @@ export interface WaitlistEntry {
 export interface WaitlistEntryDetail {
   id: string;
   availabilitySlotId: string;
+  resourceId: string;
   resourceName: string;
   locationName: string;
   startsAt: string;

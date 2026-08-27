@@ -15,6 +15,7 @@ public record WaitlistEntryResponse(
 public record WaitlistEntryDetailResponse(
     Guid Id,
     Guid AvailabilitySlotId,
+    Guid ResourceId,
     string ResourceName,
     string LocationName,
     DateTimeOffset StartsAt,

@@ -19,6 +19,7 @@ public static class WaitlistEndpoints
                 .Select(w => new WaitlistEntryDetailResponse(
                     w.Id,
                     w.AvailabilitySlotId,
+                    w.AvailabilitySlot.ResourceId,
                     w.AvailabilitySlot.Resource.Name,
                     w.AvailabilitySlot.Resource.Location.Name,
                     w.AvailabilitySlot.StartsAt,
