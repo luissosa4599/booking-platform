@@ -47,12 +47,28 @@ public static class BookingsEndpoints
                     b.AvailabilitySlot.StartsAt,
                     b.AvailabilitySlot.EndsAt,
                     b.Seats,
-                    b.Status.ToString()))
+                    b.Status.ToString(),
+                    b.Code))
                 .ToListAsync();
 
             return Results.Ok(bookings);
         })
         .WithName("GetMyBookings");
+
+        // Consecutive-week booking streak for the confirmation screen's
+        // "Octava semana seguida" line. Separate endpoint — it's cheap and only
+        // one screen needs it.
+        app.MapGet("/bookings/streak", async (string userId, BookingEngineDbContext db) =>
+        {
+            var starts = await db.Bookings
+                .AsNoTracking()
+                .Where(b => b.UserId == userId && b.Status == BookingStatus.Confirmed)
+                .Select(b => b.AvailabilitySlot.StartsAt)
+                .ToListAsync();
+
+            return Results.Ok(new { weeks = BookingStreak.Count(starts, DateTimeOffset.UtcNow) });
+        })
+        .WithName("GetBookingStreak");
 
         app.MapPost("/bookings", async (
             CreateBookingRequest request,
@@ -82,10 +98,29 @@ public static class BookingsEndpoints
                 return Results.Ok(ToResponse(existingBooking));
             }
 
-            var slot = await db.AvailabilitySlots.FirstOrDefaultAsync(s => s.Id == request.AvailabilitySlotId);
+            var slot = await db.AvailabilitySlots
+                .Include(s => s.Resource)
+                .FirstOrDefaultAsync(s => s.Id == request.AvailabilitySlotId);
             if (slot is null)
             {
                 return Results.NotFound(new { message = "Availability slot not found." });
+            }
+
+            // Optional stale-read guard: the client tells us which version of
+            // the slot it acted on; if the slot moved on since, reject before
+            // writing rather than letting the xmin check fire mid-transaction.
+            if (request.RowVersion is uint clientVersion && slot.RowVersion != clientVersion)
+            {
+                logger.LogWarning(
+                    "Booking rejected — stale slot version for {SlotId} (client {ClientVersion}, current {CurrentVersion})",
+                    slot.Id,
+                    clientVersion,
+                    slot.RowVersion);
+
+                return Results.Conflict(new BookingConflictResponse(
+                    "This slot changed since you loaded it.",
+                    slot.Id,
+                    await BookingAlternativesFinder.FindAsync(db, slot.Id, request.Seats)));
             }
 
             if (slot.CapacityRemaining < request.Seats)
@@ -98,10 +133,13 @@ public static class BookingsEndpoints
 
                 return Results.Conflict(new BookingConflictResponse(
                     "This slot no longer has enough capacity.",
-                    slot.Id));
+                    slot.Id,
+                    await BookingAlternativesFinder.FindAsync(db, slot.Id, request.Seats)));
             }
 
             slot.CapacityRemaining -= request.Seats;
+
+            var code = await GenerateUniqueCodeAsync(db, slot.Resource.Name);
 
             var booking = new Booking
             {
@@ -110,6 +148,7 @@ public static class BookingsEndpoints
                 UserId = request.UserId,
                 Seats = request.Seats,
                 Status = BookingStatus.Confirmed,
+                Code = code,
                 IdempotencyKey = idempotencyKey,
                 CreatedAt = DateTimeOffset.UtcNow,
             };
@@ -127,15 +166,17 @@ public static class BookingsEndpoints
                 // booked (or cancelled into) it first. This is the case that
                 // resolves a race for the last seat to exactly one 201 + one 409.
                 await transaction.RollbackAsync();
+                db.ChangeTracker.Clear();
 
                 logger.LogWarning(
                     "Concurrency conflict booking slot {SlotId} for {UserId}",
-                    slot.Id,
+                    request.AvailabilitySlotId,
                     request.UserId);
 
                 return Results.Conflict(new BookingConflictResponse(
                     "Someone else just booked this slot.",
-                    slot.Id));
+                    request.AvailabilitySlotId,
+                    await BookingAlternativesFinder.FindAsync(db, request.AvailabilitySlotId, request.Seats)));
             }
             catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
             {
@@ -144,6 +185,7 @@ public static class BookingsEndpoints
                 // index on IdempotencyKey lets only one through. The loser
                 // returns the winner's booking instead of erroring.
                 await transaction.RollbackAsync();
+                db.ChangeTracker.Clear();
 
                 var winner = await db.Bookings
                     .AsNoTracking()
@@ -158,8 +200,9 @@ public static class BookingsEndpoints
             }
 
             logger.LogInformation(
-                "Booking {BookingId} created for slot {SlotId} by {UserId}",
+                "Booking {BookingId} ({Code}) created for slot {SlotId} by {UserId}",
                 booking.Id,
+                booking.Code,
                 slot.Id,
                 request.UserId);
 
@@ -208,6 +251,22 @@ public static class BookingsEndpoints
         .WithName("CancelBooking");
     }
 
+    private static async Task<string> GenerateUniqueCodeAsync(BookingEngineDbContext db, string resourceName)
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            var candidate = BookingCode.Generate(resourceName, Random.Shared);
+            if (!await db.Bookings.AnyAsync(b => b.Code == candidate))
+            {
+                return candidate;
+            }
+        }
+
+        // Astronomically unlikely with a per-resource prefix + 4 digits; fall
+        // back to a guaranteed-unique suffix rather than loop forever.
+        return $"{BookingCode.Prefix(resourceName)}-{Guid.NewGuid():N}"[..12];
+    }
+
     private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
@@ -217,6 +276,7 @@ public static class BookingsEndpoints
         booking.UserId,
         booking.Seats,
         booking.Status.ToString(),
+        booking.Code,
         booking.IdempotencyKey,
         booking.CreatedAt);
 }

@@ -48,6 +48,11 @@ function nowSlot(overrides: Partial<Record<string, unknown>> = {}) {
 
 type FetchHandler = () => { status: number; body: unknown };
 
+// GET /availability returns an envelope: { slots, emptyContext }.
+function availability(slots: unknown[], emptyContext: unknown = null) {
+  return { status: 200, body: { slots, emptyContext } };
+}
+
 // A real fetch mock keyed by path, not a fixed response — every test still
 // exercises the same lib/api/client.ts + TanStack Query code paths the app
 // uses against the real backend, just with the network call swapped out
@@ -91,7 +96,7 @@ function renderScreen() {
 test("renders ExploreScreen without crashing", async () => {
   mockFetch({
     "/resource-types": () => ({ status: 200, body: [] }),
-    "/availability": () => ({ status: 200, body: [] }),
+    "/availability": () => availability([]),
   });
 
   const { getByText } = await renderScreen();
@@ -104,7 +109,7 @@ test("renders ExploreScreen without crashing", async () => {
 test("renders a real available slot grouped under LIBRE AHORA MISMO", async () => {
   mockFetch({
     "/resource-types": () => ({ status: 200, body: RESOURCE_TYPES }),
-    "/availability": () => ({ status: 200, body: [nowSlot()] }),
+    "/availability": () => availability([nowSlot()]),
   });
 
   const { getByText } = await renderScreen();
@@ -118,12 +123,13 @@ test("renders a real available slot grouped under LIBRE AHORA MISMO", async () =
 test("shows ConflictSheet when POST /bookings returns 409", async () => {
   mockFetch({
     "/resource-types": () => ({ status: 200, body: RESOURCE_TYPES }),
-    "/availability": () => ({ status: 200, body: [nowSlot()] }),
+    "/availability": () => availability([nowSlot()]),
     "/bookings": () => ({
       status: 409,
       body: {
         message: "Someone else just booked this slot.",
         availabilitySlotId: "slot-1",
+        alternatives: [],
       },
     }),
   });

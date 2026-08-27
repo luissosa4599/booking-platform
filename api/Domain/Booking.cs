@@ -15,6 +15,13 @@ public class Booking
 
     public BookingStatus Status { get; set; }
 
+    /// <summary>
+    /// Human-readable confirmation code shown on the confirmation and bookings
+    /// screens (e.g. "SAL-8241"). Generated once at creation, unique — see
+    /// BookingConfiguration. Kept even after cancellation.
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+
     /// <summary>Client-generated per booking attempt. Unique — see BookingConfiguration.</summary>
     public string IdempotencyKey { get; set; } = string.Empty;
 

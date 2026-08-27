@@ -23,6 +23,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(b => b.Code)
+            .IsRequired()
+            .HasMaxLength(20);
+
         builder.Property(b => b.CreatedAt).IsRequired();
 
         builder.HasOne(b => b.AvailabilitySlot)
@@ -35,6 +39,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         // never both insert, even under concurrent requests.
         builder.HasIndex(b => b.IdempotencyKey).IsUnique();
 
+        builder.HasIndex(b => b.Code).IsUnique();
+
         builder.HasIndex(b => b.AvailabilitySlotId);
+
+        builder.HasIndex(b => b.UserId);
     }
 }

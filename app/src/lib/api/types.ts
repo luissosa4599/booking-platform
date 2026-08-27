@@ -36,13 +36,24 @@ export interface Booking {
   userId: string;
   seats: number;
   status: string;
+  code: string;
   idempotencyKey: string;
   createdAt: string;
+}
+
+/** One pre-calculated "next best" slot returned in a 409 body — see ConflictSheet. */
+export interface BookingAlternative {
+  slotId: string;
+  resourceName: string;
+  startsAt: string;
+  seatsLeft: number;
+  distanceNote: string;
 }
 
 export interface BookingConflict {
   message: string;
   availabilitySlotId: string;
+  alternatives: BookingAlternative[];
 }
 
 export interface ResourceDetail {
@@ -63,6 +74,19 @@ export interface WaitlistEntry {
   availabilitySlotId: string;
   userId: string;
   createdAt: string;
+  /** 1-indexed place in line. */
+  position: number;
+}
+
+/** GET /waitlist — flattened for the "Reservas" screen's waitlist section. */
+export interface WaitlistEntryDetail {
+  id: string;
+  availabilitySlotId: string;
+  resourceName: string;
+  locationName: string;
+  startsAt: string;
+  endsAt: string;
+  position: number;
 }
 
 export type BookingScope = "upcoming" | "past";
@@ -77,4 +101,26 @@ export interface MyBooking {
   endsAt: string;
   seats: number;
   status: string;
+  code: string;
+}
+
+/**
+ * GET /availability envelope. `emptyContext` is populated only when `slots`
+ * is empty — enough for the client to compose a useful empty state.
+ */
+export interface AvailabilityResponse {
+  slots: AvailabilitySlot[];
+  emptyContext: EmptyContext | null;
+}
+
+export interface EmptyContext {
+  /** "noAvailability" | "noResults" | "filtered" */
+  reason: string;
+  nextAvailableAt: string | null;
+  blockingFilter: string | null;
+  occupancyNote: string | null;
+}
+
+export interface BookingStreak {
+  weeks: number;
 }

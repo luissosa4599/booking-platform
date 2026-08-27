@@ -100,7 +100,7 @@ export default function ExploreScreen() {
     [resourceTypesQuery.data],
   );
 
-  const availableSlots = (availabilityQuery.data ?? []).filter(
+  const availableSlots = availabilityQuery.slots.filter(
     (slot) => slot.capacityRemaining > 0 && !dismissedSlotIds.has(slot.id),
   );
 
@@ -121,7 +121,7 @@ export default function ExploreScreen() {
     );
 
   const conflictSlot = createBooking.conflict
-    ? (availabilityQuery.data?.find(
+    ? (availabilityQuery.slots.find(
         (s) => s.id === createBooking.conflict!.availabilitySlotId,
       ) ?? null)
     : null;

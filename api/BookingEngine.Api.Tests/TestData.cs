@@ -59,4 +59,26 @@ public static class TestData
 
         return slot;
     }
+
+    /// <summary>Adds another slot to an existing slot's resource — for testing "same resource" alternatives.</summary>
+    public static async Task<AvailabilitySlot> AddSlotToResourceAsync(
+        BookingEngineDbContext db,
+        Guid resourceId,
+        int capacityRemaining,
+        DateTimeOffset startsAt)
+    {
+        var slot = new AvailabilitySlot
+        {
+            Id = Guid.NewGuid(),
+            ResourceId = resourceId,
+            StartsAt = startsAt,
+            EndsAt = startsAt.AddMinutes(90),
+            CapacityRemaining = capacityRemaining,
+        };
+
+        db.AvailabilitySlots.Add(slot);
+        await db.SaveChangesAsync();
+
+        return slot;
+    }
 }

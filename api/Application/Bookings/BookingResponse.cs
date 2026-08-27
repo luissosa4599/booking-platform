@@ -6,11 +6,27 @@ public record BookingResponse(
     string UserId,
     int Seats,
     string Status,
+    string Code,
     string IdempotencyKey,
     DateTimeOffset CreatedAt);
 
+/// <summary>
+/// One "next best" slot the client can offer instead of the one that just
+/// filled. Pre-calculated server-side so the ConflictSheet renders instantly
+/// with no second round-trip. See docs/design-handoff.md, screen 07.
+/// </summary>
+public record BookingAlternative(
+    Guid SlotId,
+    string ResourceName,
+    DateTimeOffset StartsAt,
+    int SeatsLeft,
+    string DistanceNote);
+
 /// <summary>Body for 409 Conflict — the slot's capacity/version changed since the client read it.</summary>
-public record BookingConflictResponse(string Message, Guid AvailabilitySlotId);
+public record BookingConflictResponse(
+    string Message,
+    Guid AvailabilitySlotId,
+    IReadOnlyList<BookingAlternative> Alternatives);
 
 /// <summary>
 /// GET /bookings — flattened with resource/location like AvailabilitySlotResponse,
@@ -25,4 +41,5 @@ public record MyBookingResponse(
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
     int Seats,
-    string Status);
+    string Status,
+    string Code);
