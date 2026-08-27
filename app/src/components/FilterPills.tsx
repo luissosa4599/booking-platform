@@ -28,6 +28,10 @@ export function FilterPills({ options, selectedId, onSelect }: FilterPillsProps)
           <Pressable
             key={option.id ?? "all"}
             onPress={() => onSelect(option.id)}
+            accessibilityRole="button"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected: active }}
+            hitSlop={{ top: 5, bottom: 5 }}
             className={cn(
               "h-[34px] items-center justify-center rounded-full px-[14px]",
               active ? "bg-label-1" : "bg-card",

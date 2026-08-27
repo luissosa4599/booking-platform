@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Animated } from "react-native";
+import { Animated, View } from "react-native";
 
 // `Stack`'s `animation` screenOption is documented Android-only — confirmed
 // empirically too (screenshots at t+0/30/60/150/300ms after navigating showed
@@ -28,5 +28,16 @@ export function ScreenFade({ children }: { children: ReactNode }) {
     return () => animation.stop();
   }, [opacity]);
 
-  return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
+  // Handoff § "Cross-platform": "Web sin rediseñar: max-w-[420px] mx-auto y
+  // el mismo árbol." The bg-canvas backdrop fills the letterboxed margins on
+  // wide viewports instead of leaving them the browser's default background
+  // — legacy Animated.View doesn't apply NativeWind color classes, so it
+  // goes on a plain View, not the Animated.View itself.
+  return (
+    <Animated.View style={{ flex: 1, opacity }}>
+      <View className="flex-1 bg-canvas">
+        <View className="mx-auto w-full max-w-[420px] flex-1">{children}</View>
+      </View>
+    </Animated.View>
+  );
 }

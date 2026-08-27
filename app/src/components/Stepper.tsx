@@ -9,19 +9,24 @@ import Animated, {
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { Minus, Plus } from "@/lib/icons";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 interface StepperProps {
   value: number;
   min?: number;
   max: number;
   onChange: (value: number) => void;
+  /** e.g. "personas" — used to build "Quitar persona" / "Agregar persona"
+   * accessibility labels. Falls back to generic "Quitar"/"Agregar" verbs. */
+  unitLabel?: string;
 }
 
 // Handoff § "6. Stepper" — max = slot.seatsLeft, min = 1. At max, the "+"
 // button shakes (4px, 120ms) and gives a warning haptic; no error message.
-export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
+export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperProps) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
+  const reduceMotion = useReduceMotion();
   const shakeX = useSharedValue(0);
 
   const shakeStyle = useAnimatedStyle(() => ({
@@ -44,12 +49,14 @@ export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
 
   const handleIncrement = () => {
     if (!canIncrement) {
-      shakeX.value = withSequence(
-        withTiming(-4, { duration: 30 }),
-        withTiming(4, { duration: 30 }),
-        withTiming(-4, { duration: 30 }),
-        withTiming(0, { duration: 30 }),
-      );
+      shakeX.value = reduceMotion
+        ? 0
+        : withSequence(
+            withTiming(-4, { duration: 30 }),
+            withTiming(4, { duration: 30 }),
+            withTiming(-4, { duration: 30 }),
+            withTiming(0, { duration: 30 }),
+          );
       haptics.warning();
       return;
     }
@@ -57,11 +64,18 @@ export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
     onChange(value + 1);
   };
 
+  const decrementLabel = unitLabel ? `Quitar ${unitLabel}` : "Quitar";
+  const incrementLabel = unitLabel ? `Agregar ${unitLabel}` : "Agregar";
+
   return (
     <View className="flex-row items-center gap-[2px] rounded-control bg-fill p-[2px]">
       <Pressable
         onPress={handleDecrement}
         disabled={!canDecrement}
+        accessibilityRole="button"
+        accessibilityLabel={decrementLabel}
+        accessibilityState={{ disabled: !canDecrement }}
+        hitSlop={{ top: 5, bottom: 5 }}
         className={cn(
           "h-[34px] w-11 items-center justify-center rounded-control-inner bg-card",
           canDecrement ? "text-label-2" : "text-disabled-label",
@@ -80,6 +94,10 @@ export function Stepper({ value, min = 1, max, onChange }: StepperProps) {
       <Animated.View style={shakeStyle}>
         <Pressable
           onPress={handleIncrement}
+          accessibilityRole="button"
+          accessibilityLabel={incrementLabel}
+          accessibilityState={{ disabled: !canIncrement }}
+          hitSlop={{ top: 5, bottom: 5 }}
           className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card text-label-2"
         >
           <Plus size={19} />

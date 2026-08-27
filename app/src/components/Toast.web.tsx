@@ -78,12 +78,22 @@ export function Toast({
           apply when the className is on `Animated.View` from 'react-native'
           itself (confirmed: computed backgroundColor stayed transparent).
           Same split `Sheet.web.tsx` already uses. */}
-      <View className="flex-row items-center justify-between rounded-[14px] bg-label-1 px-4 py-3">
+      {/* Fixed dark surface, not the theme-reactive `bg-label-1` token —
+          `label-1` flips to white in dark mode, which would have put white
+          text on a white toast. A toast is conventionally an always-dark
+          pill regardless of the app's own light/dark mode. */}
+      <View className="flex-row items-center justify-between rounded-[14px] bg-[#1C1C1E] px-4 py-3">
         <Text className="text-body flex-1 text-white" numberOfLines={1}>
           {displayMessage}
         </Text>
         {actionLabel && onAction ? (
-          <Pressable onPress={onAction} hitSlop={8} className="ml-3">
+          <Pressable
+            onPress={onAction}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={actionLabel}
+            className="ml-3"
+          >
             <Text className="text-body-emph text-tint-soft">{actionLabel}</Text>
           </Pressable>
         ) : null}

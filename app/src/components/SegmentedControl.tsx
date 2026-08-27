@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { cn } from "@/lib/cn";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 export interface SegmentedControlOption {
   label: string;
@@ -33,6 +34,7 @@ export function SegmentedControl({
 }: SegmentedControlProps) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
+  const reduceMotion = useReduceMotion();
   const [containerWidth, setContainerWidth] = useState(0);
   const activeIndex = Math.max(
     0,
@@ -46,11 +48,11 @@ export function SegmentedControl({
   const translateX = useSharedValue(0);
 
   useEffect(() => {
-    translateX.value = withTiming(activeIndex * segmentWidth, {
-      duration: 220,
-      easing: Easing.out(Easing.ease),
-    });
-  }, [activeIndex, segmentWidth, translateX]);
+    const target = activeIndex * segmentWidth;
+    translateX.value = reduceMotion
+      ? target
+      : withTiming(target, { duration: 220, easing: Easing.out(Easing.ease) });
+  }, [activeIndex, segmentWidth, translateX, reduceMotion]);
 
   const pillStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -59,6 +61,7 @@ export function SegmentedControl({
 
   return (
     <View
+      accessibilityRole="tablist"
       className="h-[34px] flex-row gap-[2px] rounded-control-segmented bg-fill p-[2px]"
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
@@ -82,6 +85,10 @@ export function SegmentedControl({
           <Pressable
             key={option.value}
             onPress={() => onChange(option.value)}
+            accessibilityRole="tab"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected: isActive }}
+            hitSlop={{ top: 5, bottom: 5 }}
             className="flex-1 items-center justify-center"
           >
             <Text

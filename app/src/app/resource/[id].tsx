@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import Animated, { FadeOut } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
@@ -230,14 +231,34 @@ export default function ResourceScreen() {
     );
   }
 
+  // Handoff § "Cross-platform": "La barra de acción inferior del detalle
+  // pasa a position: static al final del contenido en web" — on native it
+  // stays a fixed overlay pinned to the bottom of the screen; on web it's an
+  // ordinary in-flow element after the slot list, so it scrolls with the
+  // content instead of floating over it.
+  const isWeb = Platform.OS === "web";
+  const ctaButton = (
+    <Button
+      variant="filled"
+      subtitle={ctaSubtitle}
+      disabled={!selectedSlot}
+      loading={createBooking.isPending}
+      onPress={handleConfirm}
+    >
+      {ctaLabel}
+    </Button>
+  );
+
   return (
     <ScreenFade>
       <View className="flex-1 bg-card">
-        <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}>
           <View className="h-[196px] justify-start bg-fill p-4">
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
               className="h-9 w-9 items-center justify-center rounded-full bg-white/86 text-label-1"
             >
               <ArrowLeft size={17} />
@@ -263,6 +284,7 @@ export default function ResourceScreen() {
                   value={seatCount}
                   max={stepperMax}
                   onChange={setSeatCount}
+                  unitLabel={pluralizeUnit(1, capacityUnitLabel)}
                 />
               </View>
             ) : null}
@@ -277,6 +299,9 @@ export default function ResourceScreen() {
                       key={day.date.toISOString()}
                       disabled={!hasSlots}
                       onPress={() => setSelectedDayIndex(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${day.label}, día ${day.dayNumber}${hasSlots ? "" : ", sin horarios"}`}
+                      accessibilityState={{ selected: isSelected, disabled: !hasSlots }}
                       className={cn(
                         "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
                         isSelected ? "bg-tint-wash" : "bg-fill",
@@ -303,8 +328,12 @@ export default function ResourceScreen() {
               <Group variant="canvas">
                 {showSlotSkeleton ? (
                   <>
-                    <Skeleton />
-                    <Skeleton />
+                    <Animated.View exiting={FadeOut.duration(200)}>
+                      <Skeleton />
+                    </Animated.View>
+                    <Animated.View exiting={FadeOut.duration(200)}>
+                      <Skeleton />
+                    </Animated.View>
                   </>
                 ) : daySlots.length > 0 ? (
                   daySlots.map((slot) => {
@@ -333,6 +362,11 @@ export default function ResourceScreen() {
                                 ? undefined
                                 : () => handleJoinWaitlist(slot)
                             }
+                            accessibilityLabel={
+                              isJoined
+                                ? `Horario ${title}, en lista de espera`
+                                : `Anotarme a la lista de espera para ${title}`
+                            }
                           />
                         );
                       }
@@ -344,6 +378,7 @@ export default function ResourceScreen() {
                           trailing="text"
                           trailingText="Ocupada"
                           disabled
+                          accessibilityLabel={`Horario ${title}, ocupado`}
                         />
                       );
                     }
@@ -369,6 +404,11 @@ export default function ResourceScreen() {
                             ? () => setSelectedSlotId(slot.id)
                             : undefined
                         }
+                        accessibilityLabel={
+                          eligible
+                            ? `Horario ${title}, ${slot.capacityRemaining === 1 ? "último lugar" : `${slot.capacityRemaining} lugares disponibles`}`
+                            : `Horario ${title}, no hay lugares suficientes para ${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)}`
+                        }
                       />
                     );
                   })
@@ -382,19 +422,19 @@ export default function ResourceScreen() {
               </Group>
             </View>
           </View>
+
+          {isWeb ? (
+            <View className="border-t border-hairline bg-card px-4 pb-4 pt-3">
+              {ctaButton}
+            </View>
+          ) : null}
         </ScrollView>
 
-        <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">
-          <Button
-            variant="filled"
-            subtitle={ctaSubtitle}
-            disabled={!selectedSlot}
-            loading={createBooking.isPending}
-            onPress={handleConfirm}
-          >
-            {ctaLabel}
-          </Button>
-        </View>
+        {!isWeb ? (
+          <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">
+            {ctaButton}
+          </View>
+        ) : null}
 
         <ConflictSheet
           isOpen={!!conflictSlot}

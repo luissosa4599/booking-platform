@@ -23,6 +23,7 @@ import type { BookingScope, MyBooking } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
 import { CalendarX } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 import { demoUserId } from "@/lib/userId";
 
 function formatSchedule(startsAt: string, endsAt: string) {
@@ -58,10 +59,11 @@ function BookingRow({
 }: BookingRowProps) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
+  const reduceMotion = useReduceMotion();
   const shakeX = useSharedValue(0);
 
   useEffect(() => {
-    if (!shaking) {
+    if (!shaking || reduceMotion) {
       return;
     }
     // Same 4-value shake used by Stepper's "at max" feedback, just a wider
@@ -73,7 +75,7 @@ function BookingRow({
       withTiming(-6, { duration: 30 }),
       withTiming(0, { duration: 30 }),
     );
-  }, [shaking, shakeX]);
+  }, [shaking, shakeX, reduceMotion]);
 
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shakeX.value + 0 }],
@@ -91,6 +93,7 @@ function BookingRow({
         trailing={canCancel ? "action" : "none"}
         actionLabel="Cancelar"
         actionTone="wash"
+        actionAccessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${formatSchedule(booking.startsAt, booking.endsAt)}`}
         onActionPress={onCancel}
       />
     </Animated.View>
@@ -181,8 +184,12 @@ export default function BookingsScreen() {
         >
           {showSkeleton ? (
             <Group>
-              <Skeleton />
-              <Skeleton />
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
             </Group>
           ) : null}
 

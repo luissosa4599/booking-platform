@@ -215,8 +215,12 @@ export default function ExploreScreen() {
           <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
             {showSkeleton ? (
               <Group header="LIBRE AHORA MISMO">
-                <Skeleton />
-                <Skeleton />
+                <Animated.View exiting={FadeOut.duration(200)}>
+                  <Skeleton />
+                </Animated.View>
+                <Animated.View exiting={FadeOut.duration(200)}>
+                  <Skeleton />
+                </Animated.View>
               </Group>
             ) : null}
 
@@ -225,7 +229,7 @@ export default function ExploreScreen() {
                 {nowGroup.map((slot, index) => (
                   <Animated.View
                     key={slot.id}
-                    layout={LinearTransition}
+                    layout={LinearTransition.springify()}
                     exiting={FadeOut}
                   >
                     <Row
@@ -245,8 +249,10 @@ export default function ExploreScreen() {
                       actionLabel="Apartar"
                       actionTone={index === 0 ? "filled" : "wash"}
                       actionLoading={pendingSlotIds.has(slot.id)}
+                      actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
                       onActionPress={() => handleBook(slot)}
                       onPress={() => handleOpenResource(slot)}
+                      accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible hasta ${formatTime(slot.endsAt)}`}
                     />
                   </Animated.View>
                 ))}
@@ -263,6 +269,7 @@ export default function ExploreScreen() {
                     trailing="chevron"
                     trailingText={formatTime(slot.startsAt)}
                     onPress={() => handleOpenResource(slot)}
+                    accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible a las ${formatTime(slot.startsAt)}`}
                   />
                 ))}
               </Group>

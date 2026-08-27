@@ -14,6 +14,12 @@ const TAB_ICON: Record<string, ComponentType<{ size?: number }>> = {
   profile: User,
 };
 
+const TAB_ACCESSIBILITY_LABEL: Record<string, string> = {
+  index: "Explorar espacios disponibles",
+  bookings: "Tus reservas",
+  profile: "Tu perfil",
+};
+
 // Custom renderer instead of the built-in tabBar*Color/Style options: those
 // take literal color strings, not classNames, which would mean hardcoding
 // `tint` (a runtime theme value) here. Rendering the bar ourselves lets
@@ -79,6 +85,7 @@ function CustomTabBar({
               key={route.key}
               onPress={onPress}
               accessibilityRole="tab"
+              accessibilityLabel={TAB_ACCESSIBILITY_LABEL[route.name] ?? label}
               accessibilityState={isFocused ? { selected: true } : {}}
               className="flex-1 items-center gap-1"
             >

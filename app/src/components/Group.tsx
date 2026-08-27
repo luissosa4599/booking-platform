@@ -11,6 +11,14 @@ interface GroupProps {
   children: ReactNode;
 }
 
+// Handoff § "Cross-platform" also calls for groups splitting into two
+// columns (`flexWrap` + `basis-1/2`) on web at ≥1024px. Tried it — computed
+// styles showed flex-wrap/basis-1/2 correctly resolved (getComputedStyle
+// confirmed flexWrap:"wrap", flexBasis:"50%"), but real rendering still came
+// out single-column with content overflowing its 50%-width box, and the
+// mismatch didn't resolve with a clean cache / fresh server. Reverted rather
+// than ship an unverified layout — see docs/session-log.md for the repro.
+// Left as a known gap, not implemented.
 export function Group({ variant = "card", header, footer, children }: GroupProps) {
   const items = Children.toArray(children);
 

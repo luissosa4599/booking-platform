@@ -9,15 +9,24 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useReduceMotion } from "@/lib/useReduceMotion";
+
 // A real row shape, not a loading screen — the list never changes shape
 // between the loading and loaded states. Never mount this directly; gate it
 // with useDelayedFlag(loading, 150) so fast responses never show it at all.
 export function Skeleton() {
   "use no memo";
 
-  const pulse = useSharedValue(0.45);
+  const reduceMotion = useReduceMotion();
+  // Midpoint of the 0.45–0.9 pulse range, not a static 0.45 — a Skeleton
+  // that never pulses should still read as "a mid-tone placeholder", not
+  // freeze at the pulse's dimmest frame.
+  const pulse = useSharedValue(0.675);
 
   useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
     pulse.value = withRepeat(
       withSequence(
         withTiming(0.9, { duration: 700, easing: Easing.inOut(Easing.ease) }),
@@ -25,7 +34,7 @@ export function Skeleton() {
       ),
       -1,
     );
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, pulse.value),

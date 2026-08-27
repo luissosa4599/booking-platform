@@ -1,16 +1,18 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 export type ButtonVariant = "filled" | "dark" | "gray" | "plain" | "pill";
 export type ButtonPillTone = "filled" | "wash";
@@ -25,6 +27,10 @@ interface ButtonProps {
   onPress?: () => void;
   children: ReactNode;
   className?: string;
+  /** Falls back to `children` when it's a plain string — pass this when the
+   * label alone isn't descriptive enough (e.g. a "Cancelar" pill should
+   * announce which booking it cancels). */
+  accessibilityLabel?: string;
 }
 
 // Shape (height/radius/padding) is separate from background so `disabled`
@@ -65,14 +71,18 @@ const PILL_CONTAINER_CLASS: Record<ButtonPillTone, string> = {
   wash: "bg-tint-wash",
 };
 
+// "wash" is 3.99:1 with plain `text-tint` on `bg-tint-wash` — under the 4.5:1
+// AA floor for 15px text. `text-tint-press` is the same combination Row's
+// selected state and the day pills already use for AA (5.55:1) on this exact
+// background.
 const PILL_LABEL_CLASS: Record<ButtonPillTone, string> = {
   filled: "text-white",
-  wash: "text-tint",
+  wash: "text-tint-press",
 };
 
 const PILL_SPINNER_BORDER_CLASS: Record<ButtonPillTone, string> = {
   filled: "border-white",
-  wash: "border-tint",
+  wash: "border-tint-press",
 };
 
 export function Spinner({ borderClassName }: { borderClassName: string }) {
@@ -111,15 +121,54 @@ export function Button({
   onPress,
   children,
   className,
+  accessibilityLabel,
 }: ButtonProps) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
+  const reduceMotion = useReduceMotion();
   const pressProgress = useSharedValue(0);
   const loadingProgress = useSharedValue(loading ? 1 : 0);
 
   useEffect(() => {
-    loadingProgress.value = withTiming(loading ? 1 : 0, { duration: 120 });
-  }, [loading, loadingProgress]);
+    loadingProgress.value = withTiming(loading ? 1 : 0, {
+      duration: reduceMotion ? 0 : 120,
+    });
+  }, [loading, loadingProgress, reduceMotion]);
+
+  // Handoff: "El CTA nunca desaparece ni cambia de tamaño al cambiar la
+  // selección: solo su label hace crossfade de 120ms" — e.g. ResourceScreen's
+  // "Elige un horario" → "Apartar 14:00" as the user picks a slot. Held in
+  // local state so the outgoing label stays on screen through the first half
+  // of the fade instead of being replaced instantly by the incoming one.
+  const [displayChildren, setDisplayChildren] = useState(children);
+  const [displaySubtitle, setDisplaySubtitle] = useState(subtitle);
+  const labelCrossfade = useSharedValue(1);
+
+  // Reduce motion: sync instantly, computed during render rather than in an
+  // effect — same "derive next state from a changed prop" pattern
+  // ConflictSheet already uses for its own retained-value state.
+  if (reduceMotion && (children !== displayChildren || subtitle !== displaySubtitle)) {
+    setDisplayChildren(children);
+    setDisplaySubtitle(subtitle);
+  }
+
+  useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
+    if (children === displayChildren && subtitle === displaySubtitle) {
+      return;
+    }
+    labelCrossfade.value = withSequence(
+      withTiming(0, { duration: 60 }),
+      withTiming(1, { duration: 60 }),
+    );
+    const timeout = setTimeout(() => {
+      setDisplayChildren(children);
+      setDisplaySubtitle(subtitle);
+    }, 60);
+    return () => clearTimeout(timeout);
+  }, [children, subtitle, displayChildren, displaySubtitle, labelCrossfade, reduceMotion]);
 
   const pressStyle = useAnimatedStyle(() => ({
     opacity: 1 - pressProgress.value * 0.25,
@@ -127,7 +176,7 @@ export function Button({
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
-    opacity: 1 - loadingProgress.value,
+    opacity: (1 - loadingProgress.value) * labelCrossfade.value,
   }));
 
   const spinnerStyle = useAnimatedStyle(() => ({
@@ -138,12 +187,14 @@ export function Button({
   const isPill = variant === "pill";
 
   const handlePressIn = () => {
-    pressProgress.value = withTiming(1, { duration: 90 });
+    pressProgress.value = reduceMotion
+      ? 1
+      : withTiming(1, { duration: 90 });
     haptics.selection();
   };
 
   const handlePressOut = () => {
-    pressProgress.value = withSpring(0);
+    pressProgress.value = reduceMotion ? 0 : withSpring(0);
   };
 
   const shapeClass = isPill ? "h-[38px] rounded-full px-4" : CONTAINER_SHAPE_CLASS[variant];
@@ -166,6 +217,16 @@ export function Button({
         onPressIn={interactive ? handlePressIn : undefined}
         onPressOut={interactive ? handlePressOut : undefined}
         disabled={!interactive}
+        accessibilityRole="button"
+        accessibilityLabel={
+          accessibilityLabel ??
+          (typeof children === "string"
+            ? [children, subtitle].filter(Boolean).join(", ")
+            : undefined)
+        }
+        accessibilityState={{ disabled: !interactive, busy: loading }}
+        // Pill is 38pt tall — under the 44×44pt minimum touch target.
+        hitSlop={isPill ? { top: 6, bottom: 6 } : undefined}
         className={cn(
           "flex-row items-center justify-center",
           shapeClass,
@@ -184,9 +245,9 @@ export function Button({
                 disabled ? "text-disabled-label" : labelClass,
               )}
             >
-              {children}
+              {displayChildren}
             </Text>
-            {subtitle ? (
+            {displaySubtitle ? (
               <Text
                 className={cn(
                   "text-[12px]",
@@ -197,7 +258,7 @@ export function Button({
                       : labelClass,
                 )}
               >
-                {subtitle}
+                {displaySubtitle}
               </Text>
             ) : null}
           </Animated.View>

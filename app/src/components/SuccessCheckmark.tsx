@@ -12,6 +12,7 @@ import Animated, {
 
 import { haptics } from "@/lib/haptics";
 import { Check } from "@/lib/icons";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 // Handoff § "04 · ConfirmedScreen" microinteraction — circle + halo. Exact
 // spec (handoff's own "Interactions & Behavior" table + Reanimated hint):
@@ -27,12 +28,21 @@ import { Check } from "@/lib/icons";
 export function SuccessCheckmark() {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
+  const reduceMotion = useReduceMotion();
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0);
   const haloProgress = useSharedValue(0);
 
   useEffect(() => {
     haptics.success();
+    if (reduceMotion) {
+      scale.value = 1;
+      opacity.value = 1;
+      // No infinite halo loop under reduce motion — its opacity sits at the
+      // low end of its own range instead of stopping mid-pulse at 0.
+      haloProgress.value = 0;
+      return;
+    }
     scale.value = withSequence(withTiming(1.06, { duration: 190 }), withSpring(1));
     opacity.value = withTiming(1, { duration: 187 });
     haloProgress.value = withRepeat(
@@ -40,7 +50,7 @@ export function SuccessCheckmark() {
       -1,
       false,
     );
-  }, [scale, opacity, haloProgress]);
+  }, [scale, opacity, haloProgress, reduceMotion]);
 
   const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
