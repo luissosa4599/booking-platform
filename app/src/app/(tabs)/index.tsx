@@ -24,6 +24,7 @@ import type { AvailabilitySlot } from "@/lib/api/types";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
 import { CalendarX, Search } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
@@ -76,6 +77,7 @@ export default function ExploreScreen() {
   const toastMessage = useToastStore((s) => s.message);
 
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
+  const searchIconColor = useColor("label-4");
 
   // Captured once per mount — a slight drift against a live clock over a long
   // session is fine, the query itself refetches every 60s regardless.
@@ -252,7 +254,7 @@ export default function ExploreScreen() {
           </View>
 
           <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
-            <Search size={13} />
+            <Search size={13} color={searchIconColor} />
             <TextInput
               value={searchInput}
               onChangeText={setSearchInput}

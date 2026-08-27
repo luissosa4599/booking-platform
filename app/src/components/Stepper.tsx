@@ -9,6 +9,7 @@ import Animated, {
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { Minus, Plus } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
 interface StepperProps {
@@ -27,6 +28,8 @@ export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperPro
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
   const reduceMotion = useReduceMotion();
+  const glyphColor = useColor("label-2");
+  const disabledGlyphColor = useColor("disabled-label");
   const shakeX = useSharedValue(0);
 
   const shakeStyle = useAnimatedStyle(() => ({
@@ -81,7 +84,7 @@ export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperPro
           canDecrement ? "text-label-2" : "text-disabled-label",
         )}
       >
-        <Minus size={19} />
+        <Minus size={19} color={canDecrement ? glyphColor : disabledGlyphColor} />
       </Pressable>
 
       <Text
@@ -100,7 +103,7 @@ export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperPro
           hitSlop={{ top: 5, bottom: 5 }}
           className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card text-label-2"
         >
-          <Plus size={19} />
+          <Plus size={19} color={glyphColor} />
         </Pressable>
       </Animated.View>
     </View>

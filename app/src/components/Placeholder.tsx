@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 import { Text, View } from "react-native";
 
 import { Button, type ButtonVariant } from "@/components/Button";
+import { useColor } from "@/lib/theme/useColor";
 
 // The handoff's own 4 values (noAvailability/noResults/filtered/offline)
 // only cover ExploreScreen's filtered-results empty state — "no bookings
@@ -41,10 +42,14 @@ export function Placeholder({
   primaryAction,
   secondaryAction,
 }: PlaceholderProps) {
+  const chevron = useColor("chevron");
+
   return (
     <View className="items-center gap-[14px] px-10">
       <View className="mb-[6px] h-16 w-16 items-center justify-center rounded-[18px] bg-fill text-chevron">
-        {icon}
+        {isValidElement<{ color?: string }>(icon)
+          ? cloneElement(icon, { color: icon.props.color ?? chevron })
+          : icon}
       </View>
 
       <Text className="text-title-sm text-center text-label-1">{title}</Text>

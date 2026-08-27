@@ -10,6 +10,7 @@ import Animated, {
 import { Button, Spinner, type ButtonPillTone } from "@/components/Button";
 import { cn } from "@/lib/cn";
 import { Check, ChevronRight } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
 export type RowTrailing = "text" | "chevron" | "action" | "check" | "none";
@@ -212,6 +213,7 @@ function CheckIcon() {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
   const reduceMotion = useReduceMotion();
+  const tintColor = useColor("tint");
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -226,7 +228,7 @@ function CheckIcon() {
   return (
     <Animated.View style={style}>
       <View className="text-tint">
-        <Check size={17} strokeWidth={3} />
+        <Check size={17} strokeWidth={3} color={tintColor} />
       </View>
     </Animated.View>
   );
@@ -253,6 +255,8 @@ function RowTrailingContent({
   actionAccessibilityLabel?: string;
   onActionPress?: () => void;
 }) {
+  const chevronColor = useColor("chevron");
+
   switch (trailing) {
     case "text":
       if (trailingLoading) {
@@ -283,7 +287,7 @@ function RowTrailingContent({
             </Text>
           ) : null}
           <View className="text-chevron">
-            <ChevronRight size={19} />
+            <ChevronRight size={19} color={chevronColor} />
           </View>
         </View>
       );

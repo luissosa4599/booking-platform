@@ -18,6 +18,7 @@ import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { getUserId } from "@/lib/session";
 
@@ -185,6 +186,7 @@ export default function ResourceScreen() {
     ? selectedSlot.capacityRemaining
     : (resource?.capacity ?? 1);
   const showSlotSkeleton = useDelayedFlag(resourceQuery.isLoading, 150);
+  const backIconColor = useColor("label-1");
 
   const conflictSlot = createBooking.conflict
     ? (resource?.upcomingSlots.find(
@@ -293,7 +295,7 @@ export default function ResourceScreen() {
               accessibilityLabel="Volver"
               className="h-9 w-9 items-center justify-center rounded-full bg-card/90 text-label-1"
             >
-              <ArrowLeft size={17} />
+              <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
           </View>
 

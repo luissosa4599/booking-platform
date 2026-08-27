@@ -2,6 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { cn } from "@/lib/cn";
 import { X } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 
 export interface FilterPillOption {
   /** null = "Cualquiera" (no filter). */
@@ -33,6 +34,10 @@ export function FilterPills({
   surface = "canvas",
   removable = false,
 }: FilterPillsProps) {
+  // `canvas` is the inverse of `label-1` (the active pill's bg) — matches the
+  // active label's `text-canvas`.
+  const removeColor = useColor("canvas");
+
   return (
     <ScrollView
       horizontal
@@ -82,7 +87,7 @@ export function FilterPills({
               // Color class on the wrapping View, not the icon — see lib/icons.ts.
               // `canvas` is the inverse of `label-1`, matching the active label.
               <View className="text-canvas opacity-70">
-                <X size={15} />
+                <X size={15} color={removeColor} />
               </View>
             ) : null}
           </Pressable>

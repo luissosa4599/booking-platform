@@ -5,10 +5,11 @@ import { useColorScheme } from "nativewind";
 import { Pressable, Text, View } from "react-native";
 
 import { cn } from "@/lib/cn";
-import { Calendar, Compass, User } from "@/lib/icons";
+import { Calendar, Compass, User, type IconProps } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 
 // Handoff § "TabBar": 3 tabs, no more, no fourth without a redesign.
-const TAB_ICON: Record<string, ComponentType<{ size?: number }>> = {
+const TAB_ICON: Record<string, ComponentType<IconProps>> = {
   index: Compass,
   bookings: Calendar,
   profile: User,
@@ -33,6 +34,8 @@ function CustomTabBar({
   insets,
 }: BottomTabBarProps) {
   const { colorScheme } = useColorScheme();
+  const activeColor = useColor("tint");
+  const inactiveColor = useColor("label-4");
 
   return (
     // Full-width wrapper so the letterboxed gutters on wide web viewports read
@@ -103,7 +106,10 @@ function CustomTabBar({
                 className="flex-1 items-center gap-1"
               >
                 <View className={isFocused ? "text-tint" : "text-label-4"}>
-                  <Icon size={22} />
+                  <Icon
+                    size={22}
+                    color={isFocused ? activeColor : inactiveColor}
+                  />
                 </View>
                 <Text
                   className={cn(

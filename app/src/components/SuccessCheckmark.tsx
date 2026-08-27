@@ -12,6 +12,7 @@ import Animated, {
 
 import { haptics } from "@/lib/haptics";
 import { Check } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
 // Handoff § "04 · ConfirmedScreen" microinteraction — circle + halo. Exact
@@ -29,6 +30,7 @@ export function SuccessCheckmark() {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
   const reduceMotion = useReduceMotion();
+  const onTintColor = useColor("on-tint");
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0);
   const haloProgress = useSharedValue(0);
@@ -72,7 +74,7 @@ export function SuccessCheckmark() {
         className="absolute h-[104px] w-[104px] rounded-full bg-tint-wash"
       />
       <View className="h-[84px] w-[84px] items-center justify-center rounded-full bg-tint text-on-tint">
-        <Check size={40} strokeWidth={3} />
+        <Check size={40} strokeWidth={3} color={onTintColor} />
       </View>
     </Animated.View>
   );

@@ -1,27 +1,45 @@
 import type { ComponentType } from "react";
-import { Check as LucideCheck } from "lucide-react-native";
-
-export {
-  ArrowLeft,
-  Calendar,
-  CalendarX,
-  ChevronRight,
-  Compass,
-  Minus,
-  Plus,
-  Search,
-  User,
-  X,
+import {
+  ArrowLeft as LArrowLeft,
+  Calendar as LCalendar,
+  CalendarX as LCalendarX,
+  Check as LCheck,
+  ChevronRight as LChevronRight,
+  Compass as LCompass,
+  Minus as LMinus,
+  Plus as LPlus,
+  Search as LSearch,
+  User as LUser,
+  X as LX,
 } from "lucide-react-native";
 
-// `strokeWidth` is a real, supported SVG attribute lucide forwards at
-// runtime, but it's missing from this version's exported `LucideProps`
-// type — cast just this one icon rather than every call site that needs a
-// bolder stroke.
-export const Check = LucideCheck as ComponentType<{
+// `strokeWidth` and `color` are real, supported props lucide forwards at
+// runtime, but this version's exported `LucideProps` type is narrow. One
+// shared prop shape for every icon we use.
+export interface IconProps {
   size?: number;
   strokeWidth?: number;
-}>;
+  /**
+   * Explicit stroke color. **Always pass this** — lucide renders
+   * `stroke="currentColor"`, which does NOT inherit from a parent View on
+   * native (see lib/theme/palette.ts). Resolve it with `useColor()`.
+   */
+  color?: string;
+}
+
+const typed = <T,>(icon: T) => icon as ComponentType<IconProps>;
+
+export const ArrowLeft = typed(LArrowLeft);
+export const Calendar = typed(LCalendar);
+export const CalendarX = typed(LCalendarX);
+export const Check = typed(LCheck);
+export const ChevronRight = typed(LChevronRight);
+export const Compass = typed(LCompass);
+export const Minus = typed(LMinus);
+export const Plus = typed(LPlus);
+export const Search = typed(LSearch);
+export const User = typed(LUser);
+export const X = typed(LX);
 
 // Handoff: "usar el set de iconos del proyecto — expo-symbols (SF Symbols)
 // en iOS con fallback a lucide-react-native." Using lucide-react-native
@@ -29,14 +47,9 @@ export const Check = LucideCheck as ComponentType<{
 // consistent icon language everywhere, matching the rest of this app's
 // single-codebase approach (see CLAUDE.md's cross-platform notes).
 //
-// No `className` support on these — `cssInterop`'s `nativeStyleToProp`
-// (the documented way to give a non-View/Text component className support)
-// didn't actually forward color on web: every icon rendered black
-// regardless of the class passed, confirmed via getComputedStyle. Lucide
-// sets `stroke="currentColor"` on its SVG paths, so color instead comes
-// from ordinary CSS inheritance — put the `text-*` class on the
-// View/Pressable/Text that already wraps the icon (never on the icon
-// itself), and `currentColor` resolves correctly with zero extra plumbing.
-// This also means these keep working through a real theme switch (`tint`
-// is a runtime CSS var, not a static class) without needing cssInterop to
-// understand that at all.
+// Color: lucide sets `stroke="currentColor"`. On **web** that resolves via
+// ordinary CSS inheritance from a wrapping View/Text/Pressable, so a `text-*`
+// class on the wrapper works. On **native** it does NOT inherit — every icon
+// must be given an explicit `color` prop (resolve the token with
+// `useColor()` from lib/theme/useColor.ts). Passing `color` also works fine
+// on web, so it's the cross-platform-safe way.
