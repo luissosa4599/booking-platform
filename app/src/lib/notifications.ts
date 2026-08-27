@@ -1,9 +1,28 @@
-import * as Notifications from "expo-notifications";
+import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
 
 // Handoff § "04 · ConfirmedScreen": "Te avisamos 30 minutos antes." Scheduled
 // on confirm, cancelled by booking id when the booking is cancelled.
 const REMINDER_LEAD_MS = 30 * 60 * 1000;
+
+type NotificationsModule = typeof import("expo-notifications");
+
+// `expo-notifications` CANNOT be imported at module load in Expo Go on Android:
+// its DevicePushTokenAutoRegistration side-effect calls warnOfExpoGoPushUsage,
+// which `throw`s (SDK 53+ removed push from Expo Go). So it's require()d lazily
+// and only outside Expo Go / web — the reminder is a native-dev-build feature,
+// silently absent elsewhere.
+function loadNotifications(): NotificationsModule | null {
+  if (Platform.OS === "web" || isRunningInExpoGo()) {
+    return null;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("expo-notifications") as NotificationsModule;
+  } catch {
+    return null;
+  }
+}
 
 interface ReminderInput {
   bookingId: string;
@@ -17,9 +36,8 @@ export async function scheduleBookingReminder({
   resourceName,
   startsAt,
 }: ReminderInput): Promise<boolean> {
-  // Web has no reliable local-notification scheduling — the reminder is a
-  // native-only affordance, silently skipped elsewhere.
-  if (Platform.OS === "web") return false;
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
 
   const fireAt = new Date(new Date(startsAt).getTime() - REMINDER_LEAD_MS);
   if (fireAt.getTime() <= Date.now()) return false; // starts in under 30 min
@@ -51,7 +69,8 @@ export async function scheduleBookingReminder({
 }
 
 export async function cancelBookingReminder(bookingId: string): Promise<void> {
-  if (Platform.OS === "web") return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(bookingId);
   } catch {
