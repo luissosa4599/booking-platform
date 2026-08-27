@@ -41,6 +41,14 @@
   --color-fill: 44 44 46; /* #2C2C2E */
   --color-hairline: 56 56 58; /* #38383A */
   --color-label-1: 255 255 255; /* #FFFFFF */
+  /* Handoff's "tema oscuro" table: "label-3/4 igual en ambos temas" = #8A8A8E.
+     The static :root value (#6C6C70) is only ~3.9:1 on pure-black canvas —
+     under AA for body text (Placeholder body, Row subtitle all use label-3). */
+  --color-label-3: 138 138 142; /* #8A8A8E */
+  /* label-2 has no dark row in the handoff, but its light value (#3C3C43) is
+     ~1.3:1 on #1C1C1E — invisible. Kept one step lighter than label-3 so the
+     text hierarchy still reads (gray button label, inactive filter pill). */
+  --color-label-2: 174 174 178; /* #AEAEB2 */
   --color-chevron: 72 72 74; /* #48484A */
 
   --color-state-free: 48 181 101; /* #30B565 */

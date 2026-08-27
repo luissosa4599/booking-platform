@@ -52,16 +52,20 @@ const CONTAINER_BG_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
 // Label color also doubles as the spinner's ring color while loading — both
 // need to react to a theme change the same way, so they share this map
 // instead of the spinner hardcoding a hex value.
+// `filled` sits on `tint`, so its label follows `on-tint` (white in light,
+// #40200B in dark — see ThemeProvider). `dark` sits on `label-1`, which is
+// near-black in light and *white* in dark, so its label follows `canvas`
+// (the inverse) rather than a fixed white that would vanish in dark mode.
 const LABEL_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
-  filled: "text-white",
-  dark: "text-white",
+  filled: "text-on-tint",
+  dark: "text-canvas",
   gray: "text-label-2",
   plain: "text-tint",
 };
 
 const SPINNER_BORDER_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
-  filled: "border-white",
-  dark: "border-white",
+  filled: "border-on-tint",
+  dark: "border-canvas",
   gray: "border-label-2",
   plain: "border-tint",
 };
@@ -76,12 +80,12 @@ const PILL_CONTAINER_CLASS: Record<ButtonPillTone, string> = {
 // selected state and the day pills already use for AA (5.55:1) on this exact
 // background.
 const PILL_LABEL_CLASS: Record<ButtonPillTone, string> = {
-  filled: "text-white",
+  filled: "text-on-tint",
   wash: "text-tint-press",
 };
 
 const PILL_SPINNER_BORDER_CLASS: Record<ButtonPillTone, string> = {
-  filled: "border-white",
+  filled: "border-on-tint",
   wash: "border-tint-press",
 };
 
@@ -254,7 +258,7 @@ export function Button({
                   disabled
                     ? "text-disabled-label"
                     : variant === "filled"
-                      ? "text-[#F6D9C7]"
+                      ? "text-on-tint opacity-80"
                       : labelClass,
                 )}
               >

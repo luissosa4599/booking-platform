@@ -40,7 +40,10 @@ export function FilterPills({ options, selectedId, onSelect }: FilterPillsProps)
             <Text
               className={cn(
                 "text-[15px] font-medium",
-                active ? "text-white" : "text-label-2",
+                // Active pill bg is `label-1`, which flips near-black→white
+                // between themes; the label follows `canvas` (its inverse) so
+                // it stays readable in dark instead of white-on-white.
+                active ? "text-canvas" : "text-label-2",
               )}
             >
               {option.label}

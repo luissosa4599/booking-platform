@@ -30,6 +30,7 @@ module.exports = {
         "tint-press": "rgb(var(--color-tint-press) / <alpha-value>)",
         "tint-soft": "rgb(var(--color-tint-soft) / <alpha-value>)",
         "tint-wash": "rgb(var(--color-tint-wash) / <alpha-value>)",
+        "on-tint": "rgb(var(--color-on-tint) / <alpha-value>)",
 
         // Static — variables come from global.css, never themeable.
         "label-1": "rgb(var(--color-label-1) / <alpha-value>)",

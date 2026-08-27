@@ -71,7 +71,7 @@ export function SuccessCheckmark() {
         style={haloStyle}
         className="absolute h-[104px] w-[104px] rounded-full bg-tint-wash"
       />
-      <View className="h-[84px] w-[84px] items-center justify-center rounded-full bg-tint text-white">
+      <View className="h-[84px] w-[84px] items-center justify-center rounded-full bg-tint text-on-tint">
         <Check size={40} strokeWidth={3} />
       </View>
     </Animated.View>

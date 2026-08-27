@@ -23,6 +23,12 @@ export const appleTheme = vars({
   "--color-tint-press": "160 69 26" /* #A0451A */,
   "--color-tint-soft": "232 168 131" /* #E8A883 */,
   "--color-tint-wash": "251 239 232" /* #FBEFE8 */,
+  /* Text/icon color that sits on top of a `tint` fill (filled button label,
+     success checkmark). Paired with `tint`, so it lives here and flips with
+     the theme — white on the dark-orange light accent, near-black on the
+     lightened dark accent (handoff § "tema oscuro": "texto sobre él es
+     #40200B"). Without this the filled CTA is white-on-#E8A883 in dark mode. */
+  "--color-on-tint": "255 255 255" /* #FFFFFF */,
 });
 
 /**
@@ -36,6 +42,7 @@ export const appleThemeDark = vars({
   "--color-tint-press": "160 69 26" /* #A0451A */,
   "--color-tint-soft": "232 168 131" /* #E8A883 */,
   "--color-tint-wash": "251 239 232" /* #FBEFE8 */,
+  "--color-on-tint": "64 32 11" /* #40200B — handoff § "tema oscuro" */,
 });
 
 interface ThemeProviderProps {

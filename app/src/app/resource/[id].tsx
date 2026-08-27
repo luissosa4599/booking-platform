@@ -259,7 +259,7 @@ export default function ResourceScreen() {
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Volver"
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/86 text-label-1"
+              className="h-9 w-9 items-center justify-center rounded-full bg-card/90 text-label-1"
             >
               <ArrowLeft size={17} />
             </Pressable>
