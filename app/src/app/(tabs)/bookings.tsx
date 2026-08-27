@@ -28,7 +28,7 @@ import { haptics } from "@/lib/haptics";
 import { CalendarX } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useReduceMotion } from "@/lib/useReduceMotion";
-import { demoUserId } from "@/lib/userId";
+import { useUserId } from "@/lib/session";
 
 function timeOfDay(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", {
@@ -201,9 +201,10 @@ export default function BookingsScreen() {
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [shakeId, setShakeId] = useState<string | null>(null);
   const [passBooking, setPassBooking] = useState<MyBooking | null>(null);
+  const userId = useUserId();
 
-  const bookingsQuery = useMyBookings(scope, demoUserId);
-  const waitlistQuery = useMyWaitlist(demoUserId);
+  const bookingsQuery = useMyBookings(scope, userId);
+  const waitlistQuery = useMyWaitlist(userId);
   const cancelBooking = useCancelBooking();
   const showSkeleton = useDelayedFlag(bookingsQuery.isLoading, 150);
 
@@ -247,7 +248,7 @@ export default function BookingsScreen() {
     cancelBooking.mutate(id, {
       onSuccess: () => {
         queryClient.setQueryData<MyBooking[]>(
-          ["bookings", { scope: "upcoming", userId: demoUserId }],
+          ["bookings", { scope: "upcoming", userId }],
           (old) => (old ?? []).filter((b) => b.id !== id),
         );
       },

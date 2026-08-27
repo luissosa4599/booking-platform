@@ -27,7 +27,7 @@ import { CalendarX, Search } from "@/lib/icons";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
-import { demoUserId } from "@/lib/userId";
+import { getUserId } from "@/lib/session";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", {
@@ -148,7 +148,7 @@ export default function ExploreScreen() {
     createBooking.mutate(
       {
         availabilitySlotId: slot.id,
-        userId: demoUserId,
+        userId: getUserId(),
         seats: 1,
         rowVersion: slot.rowVersion,
       },

@@ -86,6 +86,7 @@ try
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
         .WithName("HealthCheck");
 
+    app.MapAuthEndpoints();
     app.MapResourceTypesEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapResourcesEndpoints();

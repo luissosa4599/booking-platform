@@ -9,7 +9,7 @@ import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { useBookingStreak } from "@/lib/api/bookings";
 import { addBookingToCalendar, copyBookingDetails } from "@/lib/calendar";
 import { scheduleBookingReminder } from "@/lib/notifications";
-import { demoUserId } from "@/lib/userId";
+import { useUserId } from "@/lib/session";
 
 const ORDINALS = [
   "",
@@ -98,7 +98,7 @@ export default function ConfirmedScreen() {
     unit?: string;
   }>();
 
-  const streakQuery = useBookingStreak(demoUserId);
+  const streakQuery = useBookingStreak(useUserId());
   const weeks = streakQuery.data?.weeks ?? 0;
 
   const [reminderSet, setReminderSet] = useState(false);

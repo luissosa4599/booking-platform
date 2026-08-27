@@ -38,6 +38,9 @@ const config: ExpoConfig = {
     // 30-minutes-before reminder for a confirmed booking (ConfirmedScreen).
     // Default config — no custom notification icon/sound asset in this project.
     "expo-notifications",
+    // Persists the signed-in user id on native (web falls back to localStorage
+    // in lib/session.ts).
+    "expo-secure-store",
   ],
   experiments: {
     reactCompiler: false,

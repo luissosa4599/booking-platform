@@ -19,7 +19,7 @@ import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
-import { demoUserId } from "@/lib/userId";
+import { getUserId } from "@/lib/session";
 
 const DAYS_SHOWN = 4;
 
@@ -218,7 +218,7 @@ export default function ResourceScreen() {
   function handleJoinWaitlist(slot: AvailabilitySlot) {
     haptics.selection();
     joinWaitlist.mutate(
-      { availabilitySlotId: slot.id, userId: demoUserId },
+      { availabilitySlotId: slot.id, userId: getUserId() },
       {
         onSuccess: () =>
           setJoinedWaitlistSlotIds((prev) => withId(prev, slot.id)),
@@ -236,7 +236,7 @@ export default function ResourceScreen() {
     createBooking.mutate(
       {
         availabilitySlotId: bookedSlot.id,
-        userId: demoUserId,
+        userId: getUserId(),
         seats: seatCount,
         rowVersion: bookedSlot.rowVersion,
       },
