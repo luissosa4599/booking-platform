@@ -267,10 +267,24 @@ function RowTrailingContent({
         </Text>
       );
     case "chevron":
-      // className goes on the wrapping View, not the icon — see lib/icons.ts.
+      // Handoff § "02 · ExploreScreen": "MÁS TARDE HOY" rows show the hour
+      // (tabular-nums) *and* a chevron — the time on its own doesn't say the
+      // row is tappable, the chevron on its own drops the one piece of info
+      // that matters. className goes on the wrapping View, not the icon —
+      // see lib/icons.ts.
       return (
-        <View className="text-chevron">
-          <ChevronRight size={19} />
+        <View className="flex-row items-center gap-2">
+          {trailingText ? (
+            <Text
+              className={cn("text-body", META_TONE_CLASS[trailingTone])}
+              style={{ fontVariant: ["tabular-nums"] }}
+            >
+              {trailingText}
+            </Text>
+          ) : null}
+          <View className="text-chevron">
+            <ChevronRight size={19} />
+          </View>
         </View>
       );
     case "check":

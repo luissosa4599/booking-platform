@@ -1,6 +1,7 @@
-import { Pressable, ScrollView, Text } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { cn } from "@/lib/cn";
+import { X } from "@/lib/icons";
 
 export interface FilterPillOption {
   /** null = "Cualquiera" (no filter). */
@@ -12,9 +13,26 @@ interface FilterPillsProps {
   options: FilterPillOption[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /**
+   * Handoff § "FilterPills": inactive pills are `bg-card` when the row sits on
+   * a canvas screen, `bg-fill` when it sits on a card. Default "canvas".
+   */
+  surface?: "canvas" | "card";
+  /**
+   * Handoff § "FilterPills": the removable variant — the active (non-"Cualquiera")
+   * pill gets a trailing `×`; tapping the `×` clears the filter, tapping the
+   * rest is a no-op here (there's no per-filter editor on this screen yet).
+   */
+  removable?: boolean;
 }
 
-export function FilterPills({ options, selectedId, onSelect }: FilterPillsProps) {
+export function FilterPills({
+  options,
+  selectedId,
+  onSelect,
+  surface = "canvas",
+  removable = false,
+}: FilterPillsProps) {
   return (
     <ScrollView
       horizontal
@@ -23,18 +41,30 @@ export function FilterPills({ options, selectedId, onSelect }: FilterPillsProps)
     >
       {options.map((option) => {
         const active = option.id === selectedId;
+        const showRemove = removable && active && option.id !== null;
 
         return (
           <Pressable
             key={option.id ?? "all"}
-            onPress={() => onSelect(option.id)}
+            // No per-filter editor on this screen, so an active removable pill
+            // is a single "clear this filter" target — tapping anywhere on it
+            // (label or ×) clears. A nested Pressable for the × alone would
+            // render as a <button> inside a <button> on web (see Row.tsx).
+            onPress={() => onSelect(showRemove ? null : option.id)}
             accessibilityRole="button"
-            accessibilityLabel={option.label}
+            accessibilityLabel={
+              showRemove ? `Quitar filtro ${option.label}` : option.label
+            }
             accessibilityState={{ selected: active }}
-            hitSlop={{ top: 5, bottom: 5 }}
+            hitSlop={{ top: 5, bottom: 5, left: 8, right: 8 }}
             className={cn(
-              "h-[34px] items-center justify-center rounded-full px-[14px]",
-              active ? "bg-label-1" : "bg-card",
+              "h-[34px] flex-row items-center justify-center rounded-full px-[14px]",
+              showRemove ? "gap-2" : undefined,
+              active
+                ? "bg-label-1"
+                : surface === "card"
+                  ? "bg-fill"
+                  : "bg-card",
             )}
           >
             <Text
@@ -48,6 +78,13 @@ export function FilterPills({ options, selectedId, onSelect }: FilterPillsProps)
             >
               {option.label}
             </Text>
+            {showRemove ? (
+              // Color class on the wrapping View, not the icon — see lib/icons.ts.
+              // `canvas` is the inverse of `label-1`, matching the active label.
+              <View className="text-canvas opacity-70">
+                <X size={15} />
+              </View>
+            ) : null}
           </Pressable>
         );
       })}

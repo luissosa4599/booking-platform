@@ -11,6 +11,7 @@ export {
   Plus,
   Search,
   User,
+  X,
 } from "lucide-react-native";
 
 // `strokeWidth` is a real, supported SVG attribute lucide forwards at

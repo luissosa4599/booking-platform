@@ -13,6 +13,13 @@ interface CreateBookingInput {
   availabilitySlotId: string;
   userId: string;
   seats: number;
+  /**
+   * The slot's `rowVersion` as the client last saw it. When sent, the backend
+   * rejects the booking with 409 (carrying `alternatives`) if the slot moved on
+   * since — so a tap on stale availability data surfaces the ConflictSheet
+   * instead of silently racing.
+   */
+  rowVersion?: number;
 }
 
 export function useCreateBooking() {

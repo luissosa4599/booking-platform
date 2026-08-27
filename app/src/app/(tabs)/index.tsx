@@ -21,8 +21,10 @@ import { useAvailability } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot } from "@/lib/api/types";
+import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
 import { CalendarX, Search } from "@/lib/icons";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
@@ -32,6 +34,12 @@ function formatTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function endOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 function withId(set: Set<string>, id: string) {
@@ -51,6 +59,11 @@ export default function ExploreScreen() {
   const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<
     string | null
   >(null);
+  const [searchInput, setSearchInput] = useState("");
+  // Set from the empty state's primary action ("Ver disponibilidad") — extends
+  // the query window past today so `emptyContext.nextAvailableAt` actually
+  // shows up in the list.
+  const [horizon, setHorizon] = useState<Date | null>(null);
   const [pendingSlotIds, setPendingSlotIds] = useState<Set<string>>(new Set());
   const [confirmedSlotIds, setConfirmedSlotIds] = useState<Set<string>>(
     new Set(),
@@ -62,20 +75,20 @@ export default function ExploreScreen() {
   // success toast here after navigating back — see lib/toastStore.ts.
   const toastMessage = useToastStore((s) => s.message);
 
+  const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
+
   // Captured once per mount — a slight drift against a live clock over a long
   // session is fine, the query itself refetches every 60s regardless.
   const now = useMemo(() => new Date(), []);
-  const endOfToday = useMemo(() => {
-    const d = new Date(now);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }, [now]);
+  const endOfToday = useMemo(() => endOfDay(now), [now]);
+  const to = horizon ?? endOfToday;
 
   const resourceTypesQuery = useResourceTypes();
   const availabilityQuery = useAvailability({
     resourceTypeId: selectedResourceTypeId,
     from: now,
-    to: endOfToday,
+    to,
+    q: debouncedSearch || undefined,
   });
   const createBooking = useCreateBooking();
 
@@ -120,6 +133,8 @@ export default function ExploreScreen() {
       (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
 
+  const laterHeader = horizon ? "PRÓXIMAMENTE" : "MÁS TARDE HOY";
+
   const conflictSlot = createBooking.conflict
     ? (availabilityQuery.slots.find(
         (s) => s.id === createBooking.conflict!.availabilitySlotId,
@@ -131,7 +146,12 @@ export default function ExploreScreen() {
     setPendingSlotIds((prev) => withId(prev, slot.id));
 
     createBooking.mutate(
-      { availabilitySlotId: slot.id, userId: demoUserId, seats: 1 },
+      {
+        availabilitySlotId: slot.id,
+        userId: demoUserId,
+        seats: 1,
+        rowVersion: slot.rowVersion,
+      },
       {
         onSettled: () => {
           setPendingSlotIds((prev) => withoutId(prev, slot.id));
@@ -171,6 +191,55 @@ export default function ExploreScreen() {
     nowGroup.length === 0 &&
     laterGroup.length === 0;
 
+  const emptyCopy = composeEmptyStateCopy(availabilityQuery.emptyContext);
+  const nextAvailableAt = availabilityQuery.emptyContext?.nextAvailableAt ?? null;
+
+  // The primary action *executes* the resolving datum. A typo'd search is
+  // resolved by clearing it, not by jumping the calendar forward — so that
+  // takes precedence over `nextAvailableAt` when the cause is `noResults`.
+  const emptyReason = availabilityQuery.emptyContext?.reason;
+  let emptyPrimary: { label: string; onPress: () => void };
+  if (debouncedSearch && emptyReason === "noResults") {
+    emptyPrimary = {
+      label: "Ver todo",
+      onPress: () => {
+        setSearchInput("");
+        setSelectedResourceTypeId(null);
+      },
+    };
+  } else if (nextAvailableAt && !horizon) {
+    emptyPrimary = {
+      label: "Ver disponibilidad",
+      onPress: () => setHorizon(endOfDay(new Date(nextAvailableAt))),
+    };
+  } else if (debouncedSearch) {
+    emptyPrimary = {
+      label: "Ver todo",
+      onPress: () => {
+        setSearchInput("");
+        setSelectedResourceTypeId(null);
+      },
+    };
+  } else if (selectedResourceTypeId) {
+    emptyPrimary = {
+      label: "Quitar filtro",
+      onPress: () => setSelectedResourceTypeId(null),
+    };
+  } else {
+    emptyPrimary = {
+      label: "Actualizar",
+      onPress: () => availabilityQuery.refetch(),
+    };
+  }
+
+  const emptySecondary =
+    selectedResourceTypeId && emptyPrimary.label !== "Quitar filtro"
+      ? {
+          label: "Quitar filtro",
+          onPress: () => setSelectedResourceTypeId(null),
+        }
+      : undefined;
+
   return (
     <ScreenFade>
       <View className="flex-1 bg-canvas">
@@ -182,14 +251,16 @@ export default function ExploreScreen() {
             </Text>
           </View>
 
-          {/* Static for now — no search endpoint exists yet, see README. */}
           <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
             <Search size={13} />
             <TextInput
-              editable={false}
-              placeholder="Buscar"
+              value={searchInput}
+              onChangeText={setSearchInput}
+              placeholder="Buscar sala, cabina, piso…"
               placeholderTextColor="#8A8A8E"
-              className="flex-1 text-label-4"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              className="flex-1 text-body text-label-1"
             />
           </View>
 
@@ -197,6 +268,7 @@ export default function ExploreScreen() {
             options={filterOptions}
             selectedId={selectedResourceTypeId}
             onSelect={setSelectedResourceTypeId}
+            removable={isEmpty && !!selectedResourceTypeId}
           />
         </View>
 
@@ -260,7 +332,7 @@ export default function ExploreScreen() {
             ) : null}
 
             {!showSkeleton && laterGroup.length > 0 ? (
-              <Group header="MÁS TARDE HOY">
+              <Group header={laterHeader}>
                 {laterGroup.map((slot) => (
                   <Row
                     key={slot.id}
@@ -277,22 +349,18 @@ export default function ExploreScreen() {
 
             {isEmpty ? (
               <Placeholder
-                reason="noAvailability"
-                icon={<CalendarX size={26} />}
-                title="Nada libre por ahora"
-                body="No hay espacios disponibles hoy con este filtro. Vuelve a intentar más tarde o quita el filtro."
-                primaryAction={{
-                  label: "Actualizar",
-                  onPress: () => availabilityQuery.refetch(),
-                }}
-                secondaryAction={
-                  selectedResourceTypeId
-                    ? {
-                        label: "Quitar filtro",
-                        onPress: () => setSelectedResourceTypeId(null),
-                      }
-                    : undefined
+                reason={
+                  (availabilityQuery.emptyContext?.reason as
+                    | "noAvailability"
+                    | "noResults"
+                    | "filtered"
+                    | undefined) ?? "noAvailability"
                 }
+                icon={<CalendarX size={26} />}
+                title={emptyCopy.title}
+                body={emptyCopy.body}
+                primaryAction={emptyPrimary}
+                secondaryAction={emptySecondary}
               />
             ) : null}
           </View>
@@ -304,13 +372,17 @@ export default function ExploreScreen() {
           slotId={conflictSlot?.id ?? null}
           slotStartsAt={conflictSlot?.startsAt ?? null}
           technicalMessage={createBooking.conflict?.message}
+          alternatives={createBooking.conflict?.alternatives ?? []}
         />
 
         <Toast
           isOpen={!!toastMessage}
           message={toastMessage ?? ""}
           actionLabel="Ver"
-          onAction={() => useToastStore.getState().clear()}
+          onAction={() => {
+            useToastStore.getState().clear();
+            router.navigate("/bookings");
+          }}
           onDismiss={() => useToastStore.getState().clear()}
         />
       </View>

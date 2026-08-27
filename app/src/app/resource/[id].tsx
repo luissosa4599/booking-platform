@@ -213,6 +213,7 @@ export default function ResourceScreen() {
         availabilitySlotId: bookedSlot.id,
         userId: demoUserId,
         seats: seatCount,
+        rowVersion: bookedSlot.rowVersion,
       },
       {
         onSuccess: () => {
@@ -441,6 +442,8 @@ export default function ResourceScreen() {
           onClose={() => createBooking.reset()}
           slotId={conflictSlot?.id ?? null}
           slotStartsAt={conflictSlot?.startsAt ?? null}
+          alternatives={createBooking.conflict?.alternatives ?? []}
+          seats={seatCount}
           technicalMessage={createBooking.conflict?.message}
         />
 
