@@ -42,6 +42,19 @@ try
     {
         options.AddPolicy(AllowWebPolicy, policy =>
         {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Dev only: the Expo web app can be served from any host/port
+                // (localhost, a LAN IP for phone testing, a tunnel URL). Native
+                // clients (Expo Go / a dev build) send no Origin and bypass CORS
+                // entirely; this is purely so the browser build works from
+                // wherever the dev server happens to be.
+                policy.SetIsOriginAllowed(_ => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+                return;
+            }
+
             var allowedOrigins = new[]
             {
                 "http://localhost:8081",
