@@ -9,7 +9,6 @@ import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
 import { Stepper } from "@/components/Stepper";
-import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { Button } from "@/components/Button";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useResource } from "@/lib/api/resources";
@@ -20,13 +19,8 @@ import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft } from "@/lib/icons";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
-import { useToastStore } from "@/lib/toastStore";
 import { demoUserId } from "@/lib/userId";
 
-// Brief pause on the checkmark before returning to Explore — long enough to
-// see the 340ms entrance plus a beat of the halo, same idea as ExploreScreen's
-// 400ms pause on its own (smaller) confirmation checkmark.
-const SUCCESS_PAUSE_MS = 900;
 const DAYS_SHOWN = 4;
 
 function formatTime(iso: string) {
@@ -114,7 +108,6 @@ export default function ResourceScreen() {
   const [joinedWaitlistSlotIds, setJoinedWaitlistSlotIds] = useState<
     Set<string>
   >(new Set());
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const resourceQuery = useResource(id);
   const resourceTypesQuery = useResourceTypes();
@@ -216,17 +209,23 @@ export default function ResourceScreen() {
         rowVersion: bookedSlot.rowVersion,
       },
       {
-        onSuccess: () => {
-          setShowSuccess(true);
-          setTimeout(() => {
-            useToastStore
-              .getState()
-              .show(
-                `${resource.name} · hoy ${formatTime(bookedSlot.startsAt)}`,
-                "Ver",
-              );
-            router.back();
-          }, SUCCESS_PAUSE_MS);
+        // The long flow (from the detail screen, with a chosen time + party
+        // size) ends on the ConfirmedScreen — the one-tap Explore flow does
+        // not (handoff §02). `replace` so Back doesn't return here.
+        onSuccess: (booking) => {
+          router.replace({
+            pathname: "/confirmed/[id]",
+            params: {
+              id: booking.id,
+              code: booking.code,
+              name: resource.name,
+              location: resource.locationName,
+              startsAt: bookedSlot.startsAt,
+              endsAt: bookedSlot.endsAt,
+              seats: String(seatCount),
+              unit: capacityUnitLabel,
+            },
+          });
         },
       },
     );
@@ -446,12 +445,6 @@ export default function ResourceScreen() {
           seats={seatCount}
           technicalMessage={createBooking.conflict?.message}
         />
-
-        {showSuccess ? (
-          <View className="absolute inset-0 items-center justify-center bg-card">
-            <SuccessCheckmark />
-          </View>
-        ) : null}
       </View>
     </ScreenFade>
   );

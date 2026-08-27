@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 
+import { cancelBookingReminder } from "@/lib/notifications";
 import { ApiError, apiFetch } from "./client";
 import type {
   Booking,
   BookingConflict,
   BookingScope,
+  BookingStreak,
   MyBooking,
 } from "./types";
 
@@ -62,6 +64,18 @@ export function useMyBookings(scope: BookingScope, userId: string) {
   });
 }
 
+// Feeds the ConfirmedScreen "Octava semana seguida" line — shown only when
+// weeks >= 3, per the handoff.
+export function useBookingStreak(userId: string) {
+  return useQuery({
+    queryKey: ["bookings", "streak", userId],
+    queryFn: () =>
+      apiFetch<BookingStreak>(
+        `/bookings/streak?${new URLSearchParams({ userId }).toString()}`,
+      ),
+  });
+}
+
 // Handoff § "05 · BookingsScreen": "Cancelar (optimista, reversible) ... El
 // DELETE se envía al expirar el toast, no antes." So the row's own optimistic
 // removal + 5s undo window is UI-only state on the calling screen — this
@@ -74,7 +88,10 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: (bookingId: string) =>
       apiFetch<void>(`/bookings/${bookingId}`, { method: "DELETE" }),
-    onSuccess: () => {
+    onSuccess: (_data, bookingId) => {
+      // The 30-min reminder was keyed by booking id when it was confirmed —
+      // drop it so a cancelled booking doesn't still buzz.
+      void cancelBookingReminder(bookingId);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });

@@ -35,6 +35,9 @@ const config: ExpoConfig = {
         imageWidth: 76,
       },
     ],
+    // 30-minutes-before reminder for a confirmed booking (ConfirmedScreen).
+    // Default config — no custom notification icon/sound asset in this project.
+    "expo-notifications",
   ],
   experiments: {
     reactCompiler: false,
