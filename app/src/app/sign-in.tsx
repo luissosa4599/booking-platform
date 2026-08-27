@@ -63,6 +63,8 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
+              textContentType="emailAddress"
+              importantForAutofill="yes"
               editable={!busy}
               onSubmitEditing={() => emailValid && enterWith(email.trim())}
               className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"

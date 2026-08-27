@@ -1,4 +1,7 @@
-import * as Calendar from "expo-calendar";
+// expo-calendar 57 deprecated the functional *Async API on the main entry —
+// those names still exist but `throw` (after a console.warn) at runtime. The
+// working functional API lives at "expo-calendar/legacy".
+import * as Calendar from "expo-calendar/legacy";
 import * as Clipboard from "expo-clipboard";
 import { Platform } from "react-native";
 
