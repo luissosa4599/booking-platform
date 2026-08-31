@@ -63,6 +63,9 @@ export interface ResourceDetail {
   labels: ResourceLabels;
   locationId: string;
   locationName: string;
+  locationAddress: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   name: string;
   capacity: number;
   description: string | null;
