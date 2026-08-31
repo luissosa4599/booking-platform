@@ -1,10 +1,13 @@
 using System.Threading.RateLimiting;
 using BookingEngine.Api.Api.Endpoints;
+using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Api.Infrastructure;
+using BookingEngine.Api.Infrastructure.Auth;
 using BookingEngine.Api.Infrastructure.Seed;
 using DotNetEnv;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -36,6 +39,28 @@ try
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
     builder.Services.AddValidatorsFromAssemblyContaining<CreateBookingRequestValidator>();
+
+    // Auth: Google ID token is exchanged once for a first-party session
+    // (short-lived JWT access token + rotating refresh token). See AuthEndpoints.
+    var authOptions = new AuthOptions
+    {
+        Secret = builder.Configuration["AUTH_TOKEN_SECRET"] ?? AuthOptions.DevSecret,
+        GoogleClientIds = (builder.Configuration["GOOGLE_CLIENT_ID"] ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+    };
+    builder.Services.AddSingleton(authOptions);
+    builder.Services.AddSingleton<SessionTokens>();
+    builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters =
+                new SessionTokens(authOptions).ValidationParameters();
+        });
+    builder.Services.AddAuthorization();
 
     const string AllowWebPolicy = "AllowWeb";
     builder.Services.AddCors(options =>
@@ -95,6 +120,8 @@ try
 
     app.UseCors(AllowWebPolicy);
     app.UseRateLimiter();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
         .WithName("HealthCheck");
@@ -108,6 +135,8 @@ try
 
     if (app.Environment.IsDevelopment())
     {
+        app.MapDevAuthEndpoints();
+
         app.MapPost("/dev/seed", async (BookingEngineDbContext db, ILogger<Program> logger) =>
         {
             var result = await DevSeeder.SeedAsync(db, logger);
