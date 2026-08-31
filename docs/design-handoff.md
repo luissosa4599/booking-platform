@@ -1,8 +1,8 @@
-# Handoff: Cupo — flujo de usuario final (motor genérico de reservas)
+# Handoff: Tempo — flujo de usuario final (motor genérico de reservas)
 
 ## Overview
 
-Cupo es la app de usuario final de un **motor genérico de reservas de recursos**. Un "recurso" es cualquier entidad con disponibilidad limitada en el tiempo: una sala, un escritorio, un equipo en renta, una cita médica, una mesa. El mockup usa un dominio concreto —espacios de la Biblioteca Central de un campus— para que la UI se lea como producto real, pero **ninguna pantalla escribe literales de dominio**: los sustantivos vienen de `resourceType.labels`.
+Tempo es la app de usuario final de un **motor genérico de reservas de recursos**. Un "recurso" es cualquier entidad con disponibilidad limitada en el tiempo: una sala, un escritorio, un equipo en renta, una cita médica, una mesa. El mockup usa un dominio concreto —espacios de la Biblioteca Central de un campus— para que la UI se lea como producto real, pero **ninguna pantalla escribe literales de dominio**: los sustantivos vienen de `resourceType.labels`.
 
 Alcance de este handoff: **solo el flujo del usuario final**, 7 pantallas + una variante en modo oscuro. No incluye panel de administración.
 
