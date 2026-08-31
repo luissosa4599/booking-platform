@@ -5,17 +5,15 @@ import type { WaitlistEntry, WaitlistEntryDetail } from "./types";
 
 interface JoinWaitlistInput {
   availabilitySlotId: string;
-  userId: string;
 }
 
-// Feeds the "EN ESPERA" section of the Bookings screen.
+// Feeds the "EN ESPERA" section of the Bookings screen. `userId` only scopes the
+// cache — the request is authenticated by the bearer token.
 export function useMyWaitlist(userId: string) {
   return useQuery({
     queryKey: ["waitlist", userId],
-    queryFn: () =>
-      apiFetch<WaitlistEntryDetail[]>(
-        `/waitlist?${new URLSearchParams({ userId }).toString()}`,
-      ),
+    enabled: userId !== "",
+    queryFn: () => apiFetch<WaitlistEntryDetail[]>("/waitlist"),
   });
 }
 

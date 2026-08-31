@@ -10,7 +10,6 @@ import { useJoinWaitlist } from "@/lib/api/waitlist";
 import type { BookingAlternative } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
 import { useToastStore } from "@/lib/toastStore";
-import { getUserId } from "@/lib/session";
 
 interface ConflictSheetProps {
   isOpen: boolean;
@@ -73,7 +72,7 @@ export function ConflictSheet({
     haptics.selection();
     setPendingAltId(alt.slotId);
     bookAlternative.mutate(
-      { availabilitySlotId: alt.slotId, userId: getUserId(), seats },
+      { availabilitySlotId: alt.slotId, seats },
       {
         onSettled: () => setPendingAltId(null),
         onSuccess: () => {
@@ -133,10 +132,7 @@ export function ConflictSheet({
             disabled={joinWaitlist.isSuccess || !lastSlotId}
             onPress={() =>
               lastSlotId &&
-              joinWaitlist.mutate({
-                availabilitySlotId: lastSlotId,
-                userId: getUserId(),
-              })
+              joinWaitlist.mutate({ availabilitySlotId: lastSlotId })
             }
           >
             {joinWaitlist.isSuccess
