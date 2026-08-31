@@ -16,10 +16,10 @@ public class BookingCodeAndConflictTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 3);
 
-        var client = fixture.Factory.CreateClient();
+        var client = fixture.CreateAuthenticatedClient("user-1");
         var request = new HttpRequestMessage(HttpMethod.Post, "/bookings")
         {
-            Content = JsonContent.Create(new { availabilitySlotId = slot.Id, userId = "user-1", seats = 1 }),
+            Content = JsonContent.Create(new { availabilitySlotId = slot.Id, seats = 1 }),
         };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
 
@@ -43,10 +43,10 @@ public class BookingCodeAndConflictTests(ApiTestFixture fixture)
         var altSlot = await TestData.AddSlotToResourceAsync(
             db, fullSlot.ResourceId, capacityRemaining: 4, startsAt: now.AddHours(3));
 
-        var client = fixture.Factory.CreateClient();
+        var client = fixture.CreateAuthenticatedClient("user-1");
         var request = new HttpRequestMessage(HttpMethod.Post, "/bookings")
         {
-            Content = JsonContent.Create(new { availabilitySlotId = fullSlot.Id, userId = "user-1", seats = 1 }),
+            Content = JsonContent.Create(new { availabilitySlotId = fullSlot.Id, seats = 1 }),
         };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
 
@@ -66,13 +66,12 @@ public class BookingCodeAndConflictTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 5);
 
-        var client = fixture.Factory.CreateClient();
+        var client = fixture.CreateAuthenticatedClient("user-1");
         var request = new HttpRequestMessage(HttpMethod.Post, "/bookings")
         {
             Content = JsonContent.Create(new
             {
                 availabilitySlotId = slot.Id,
-                userId = "user-1",
                 seats = 1,
                 rowVersion = 1u, // definitely not the slot's real xmin
             }),
@@ -86,12 +85,33 @@ public class BookingCodeAndConflictTests(ApiTestFixture fixture)
     [Fact]
     public async Task GetBookingStreak_NoBookings_ReturnsZero()
     {
-        var client = fixture.Factory.CreateClient();
-        var body = await client.GetFromJsonAsync<StreakResponse>(
-            $"/bookings/streak?userId=nobody-{Guid.NewGuid():N}");
+        var client = fixture.CreateAuthenticatedClient($"nobody-{Guid.NewGuid():N}");
+        var body = await client.GetFromJsonAsync<StreakResponse>("/bookings/streak");
 
         Assert.NotNull(body);
         Assert.Equal(0, body!.Weeks);
+    }
+
+    [Fact]
+    public async Task DeleteBooking_NotOwnedByCaller_Returns404()
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 3);
+
+        var owner = fixture.CreateAuthenticatedClient("owner-1");
+        var create = new HttpRequestMessage(HttpMethod.Post, "/bookings")
+        {
+            Content = JsonContent.Create(new { availabilitySlotId = slot.Id, seats = 1 }),
+        };
+        create.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var created = await owner.SendAsync(create);
+        var booking = await created.Content.ReadFromJsonAsync<BookingResponse>();
+
+        var stranger = fixture.CreateAuthenticatedClient("stranger-2");
+        var response = await stranger.DeleteAsync($"/bookings/{booking!.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private record StreakResponse(int Weeks);

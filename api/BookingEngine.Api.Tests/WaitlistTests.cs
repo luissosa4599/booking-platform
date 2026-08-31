@@ -16,10 +16,10 @@ public class WaitlistTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
 
-        var client = fixture.Factory.CreateClient();
-
-        var first = await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id, userId = "user-a" });
-        var second = await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id, userId = "user-b" });
+        var first = await fixture.CreateAuthenticatedClient("user-a")
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
+        var second = await fixture.CreateAuthenticatedClient("user-b")
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
 
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         Assert.Equal(HttpStatusCode.Created, second.StatusCode);
@@ -38,8 +38,8 @@ public class WaitlistTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
 
-        var client = fixture.Factory.CreateClient();
-        var body = new { availabilitySlotId = slot.Id, userId = "repeat-user" };
+        var client = fixture.CreateAuthenticatedClient("repeat-user");
+        var body = new { availabilitySlotId = slot.Id };
 
         var first = await client.PostAsJsonAsync("/waitlist", body);
         var second = await client.PostAsJsonAsync("/waitlist", body);
@@ -47,7 +47,7 @@ public class WaitlistTests(ApiTestFixture fixture)
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
 
-        var list = await client.GetFromJsonAsync<List<WaitlistEntryDetailResponse>>("/waitlist?userId=repeat-user");
+        var list = await client.GetFromJsonAsync<List<WaitlistEntryDetailResponse>>("/waitlist");
         Assert.Single(list!, e => e.AvailabilitySlotId == slot.Id);
     }
 
@@ -58,10 +58,23 @@ public class WaitlistTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 3);
 
-        var client = fixture.Factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id, userId = "user-a" });
+        var response = await fixture.CreateAuthenticatedClient("user-a")
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostWaitlist_WithoutToken_Is401()
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
+
+        var response = await fixture.Factory.CreateClient()
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -71,11 +84,12 @@ public class WaitlistTests(ApiTestFixture fixture)
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
 
-        var client = fixture.Factory.CreateClient();
-        await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id, userId = "ahead" });
-        await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id, userId = "mine" });
+        await fixture.CreateAuthenticatedClient("ahead")
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
+        var mineClient = fixture.CreateAuthenticatedClient("mine");
+        await mineClient.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
 
-        var list = await client.GetFromJsonAsync<List<WaitlistEntryDetailResponse>>("/waitlist?userId=mine");
+        var list = await mineClient.GetFromJsonAsync<List<WaitlistEntryDetailResponse>>("/waitlist");
 
         var entry = Assert.Single(list!);
         Assert.Equal(slot.Id, entry.AvailabilitySlotId);

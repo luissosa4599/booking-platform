@@ -16,9 +16,9 @@ public class BookingIdempotencyTests(ApiTestFixture fixture)
         var setupDb = setupScope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var slot = await TestData.CreateSlotAsync(setupDb, capacityRemaining: 5);
 
-        var client = fixture.Factory.CreateClient();
+        var client = fixture.CreateAuthenticatedClient("user-1");
         var idempotencyKey = Guid.NewGuid().ToString();
-        var body = new { availabilitySlotId = slot.Id, userId = "user-1", seats = 1 };
+        var body = new { availabilitySlotId = slot.Id, seats = 1 };
 
         using var request1 = new HttpRequestMessage(HttpMethod.Post, "/bookings")
         {

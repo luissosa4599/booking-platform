@@ -17,17 +17,15 @@ public class BookingConcurrencyTests(ApiTestFixture fixture)
         // pass the initial check; only one can win the SaveChanges race.
         var slot = await TestData.CreateSlotAsync(setupDb, capacityRemaining: 1);
 
-        var client = fixture.Factory.CreateClient();
-
         Task<HttpResponseMessage> PostBooking(string userId)
         {
-            var body = new { availabilitySlotId = slot.Id, userId, seats = 1 };
+            var body = new { availabilitySlotId = slot.Id, seats = 1 };
             var request = new HttpRequestMessage(HttpMethod.Post, "/bookings")
             {
                 Content = JsonContent.Create(body),
             };
             request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
-            return client.SendAsync(request);
+            return fixture.CreateAuthenticatedClient(userId).SendAsync(request);
         }
 
         var responses = await Task.WhenAll(PostBooking("user-a"), PostBooking("user-b"));
