@@ -79,6 +79,9 @@ public static class DevSeeder
             Name = "Biblioteca Central",
             Address = "Circuito Escolar s/n, Ciudad Universitaria",
             TimeZone = "America/Mexico_City",
+            // Real coordinates (UNAM CU) for the map preview + directions link.
+            Latitude = 19.4195,
+            Longitude = -99.1810,
         };
 
         var resources = new List<Resource>
