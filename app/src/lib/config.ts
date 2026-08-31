@@ -29,3 +29,11 @@ function resolveApiUrl(): string {
 }
 
 export const API_URL = resolveApiUrl();
+
+// Optional — the resource detail hero falls back to a plain placeholder block
+// when this isn't set (no key means no Static Maps image, not a crash).
+// Get one at console.cloud.google.com -> APIs & Services -> enable "Maps
+// Static API" -> Credentials -> restrict it (HTTP referrers for web, app
+// restriction for native).
+export const GOOGLE_MAPS_STATIC_KEY: string | null =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY || null;

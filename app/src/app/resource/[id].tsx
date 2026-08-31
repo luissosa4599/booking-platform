@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { useColorScheme } from "nativewind";
 import Animated, { FadeOut } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -17,9 +19,12 @@ import { useJoinWaitlist } from "@/lib/api/waitlist";
 import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
-import { ArrowLeft } from "@/lib/icons";
+import { ArrowLeft, MapPin } from "@/lib/icons";
+import { directionsUrl, staticMapUrl } from "@/lib/maps";
 import { useColor } from "@/lib/theme/useColor";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
+
+const HERO_HEIGHT = 196;
 
 const DAYS_SHOWN = 4;
 
@@ -186,6 +191,27 @@ export default function ResourceScreen() {
     : (resource?.capacity ?? 1);
   const showSlotSkeleton = useDelayedFlag(resourceQuery.isLoading, 150);
   const backIconColor = useColor("label-1");
+  const mapPinColor = useColor("label-3");
+  const { colorScheme } = useColorScheme();
+
+  const hasCoords =
+    resource?.locationLatitude != null && resource?.locationLongitude != null;
+  const mapImageUrl = hasCoords
+    ? staticMapUrl(
+        { lat: resource!.locationLatitude!, lng: resource!.locationLongitude! },
+        { width: 700, height: HERO_HEIGHT, dark: colorScheme === "dark" },
+      )
+    : null;
+  const directions = hasCoords
+    ? directionsUrl({ lat: resource!.locationLatitude!, lng: resource!.locationLongitude! })
+    : resource?.locationAddress
+      ? directionsUrl({ address: resource.locationAddress })
+      : null;
+  function openDirections() {
+    if (!directions) return;
+    haptics.selection();
+    void Linking.openURL(directions);
+  }
 
   const conflictSlot = createBooking.conflict
     ? (resource?.upcomingSlots.find(
@@ -252,6 +278,9 @@ export default function ResourceScreen() {
               code: booking.code,
               name: resource.name,
               location: resource.locationName,
+              locationAddress: resource.locationAddress ?? undefined,
+              locationLat: resource.locationLatitude?.toString(),
+              locationLng: resource.locationLongitude?.toString(),
               startsAt: bookedSlot.startsAt,
               endsAt: bookedSlot.endsAt,
               seats: String(seatCount),
@@ -285,7 +314,33 @@ export default function ResourceScreen() {
     <ScreenFade>
       <View className="flex-1 bg-card">
         <ScrollView contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}>
-          <View className="h-[196px] justify-start bg-fill p-4">
+          {/* No accessibilityRole="button" here — the back button nested inside
+              is a real button, and react-native-web renders that role as a
+              literal <button>; two nested would be invalid HTML (see
+              CLAUDE.md's Row accessibilityRole gotcha, same trap). */}
+          <Pressable
+            onPress={directions ? openDirections : undefined}
+            disabled={!directions}
+            accessibilityLabel={
+              directions ? "Ver ubicación en Google Maps" : undefined
+            }
+            style={{ height: HERO_HEIGHT }}
+            className="justify-start bg-fill p-4"
+          >
+            {mapImageUrl ? (
+              <Image
+                source={{ uri: mapImageUrl }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                contentFit="cover"
+                accessibilityIgnoresInvertColors
+              />
+            ) : null}
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
@@ -295,7 +350,7 @@ export default function ResourceScreen() {
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
-          </View>
+          </Pressable>
 
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
@@ -304,6 +359,25 @@ export default function ResourceScreen() {
                 <Text className="text-body text-label-3">
                   {subtitleParts.join(" · ")}
                 </Text>
+              ) : null}
+              {resource?.locationAddress ? (
+                <Pressable
+                  onPress={directions ? openDirections : undefined}
+                  disabled={!directions}
+                  hitSlop={4}
+                  accessibilityRole={directions ? "button" : undefined}
+                  accessibilityLabel={
+                    directions
+                      ? `${resource.locationAddress}, ver en Google Maps`
+                      : undefined
+                  }
+                  className="flex-row items-center gap-1"
+                >
+                  <MapPin size={14} color={mapPinColor} />
+                  <Text className="text-footnote text-label-3">
+                    {resource.locationAddress}
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
 

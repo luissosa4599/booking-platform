@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
@@ -8,8 +8,12 @@ import { ScreenFade } from "@/components/ScreenFade";
 import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { useBookingStreak } from "@/lib/api/bookings";
 import { addBookingToCalendar, copyBookingDetails } from "@/lib/calendar";
+import { haptics } from "@/lib/haptics";
+import { MapPin } from "@/lib/icons";
+import { directionsUrl } from "@/lib/maps";
 import { scheduleBookingReminder } from "@/lib/notifications";
 import { useUserId } from "@/lib/session";
+import { useColor } from "@/lib/theme/useColor";
 
 const ORDINALS = [
   "",
@@ -83,6 +87,9 @@ export default function ConfirmedScreen() {
     code = "",
     name = "Tu reserva",
     location = "",
+    locationAddress = "",
+    locationLat,
+    locationLng,
     startsAt = "",
     endsAt = "",
     seats = "1",
@@ -92,11 +99,29 @@ export default function ConfirmedScreen() {
     code?: string;
     name?: string;
     location?: string;
+    locationAddress?: string;
+    locationLat?: string;
+    locationLng?: string;
     startsAt?: string;
     endsAt?: string;
     seats?: string;
     unit?: string;
   }>();
+
+  const mapPinColor = useColor("label-3");
+  const lat = locationLat ? Number(locationLat) : null;
+  const lng = locationLng ? Number(locationLng) : null;
+  const directions =
+    lat != null && lng != null
+      ? directionsUrl({ lat, lng })
+      : locationAddress
+        ? directionsUrl({ address: locationAddress })
+        : null;
+  function openDirections() {
+    if (!directions) return;
+    haptics.selection();
+    void Linking.openURL(directions);
+  }
 
   const streakQuery = useBookingStreak(useUserId());
   const weeks = streakQuery.data?.weeks ?? 0;
@@ -170,6 +195,25 @@ export default function ConfirmedScreen() {
               <Text className="text-title-sm text-label-1">{name}</Text>
               {location ? (
                 <Text className="text-body text-label-3">{location}</Text>
+              ) : null}
+              {locationAddress ? (
+                <Pressable
+                  onPress={directions ? openDirections : undefined}
+                  disabled={!directions}
+                  hitSlop={4}
+                  accessibilityRole={directions ? "button" : undefined}
+                  accessibilityLabel={
+                    directions
+                      ? `${locationAddress}, ver en Google Maps`
+                      : undefined
+                  }
+                  className="flex-row items-center gap-1 pt-px"
+                >
+                  <MapPin size={13} color={mapPinColor} />
+                  <Text className="text-footnote text-label-3">
+                    {locationAddress}
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
 

@@ -6,6 +6,7 @@ import {
   Check as LCheck,
   ChevronRight as LChevronRight,
   Compass as LCompass,
+  MapPin as LMapPin,
   Minus as LMinus,
   Plus as LPlus,
   Search as LSearch,
@@ -35,6 +36,7 @@ export const CalendarX = typed(LCalendarX);
 export const Check = typed(LCheck);
 export const ChevronRight = typed(LChevronRight);
 export const Compass = typed(LCompass);
+export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
 export const Plus = typed(LPlus);
 export const Search = typed(LSearch);
