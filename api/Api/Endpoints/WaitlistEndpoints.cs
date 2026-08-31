@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Validation;
 using BookingEngine.Api.Application.Waitlist;
 using BookingEngine.Api.Domain;
@@ -10,8 +12,9 @@ public static class WaitlistEndpoints
 {
     public static void MapWaitlistEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/waitlist", async (string userId, BookingEngineDbContext db) =>
+        app.MapGet("/waitlist", async (ClaimsPrincipal principal, BookingEngineDbContext db) =>
         {
+            var userId = principal.UserId();
             var entries = await db.WaitlistEntries
                 .AsNoTracking()
                 .Where(w => w.UserId == userId)
@@ -32,13 +35,16 @@ public static class WaitlistEndpoints
 
             return Results.Ok(entries);
         })
+        .RequireAuthorization()
         .WithName("GetMyWaitlist");
 
         app.MapPost("/waitlist", async (
             JoinWaitlistRequest request,
+            ClaimsPrincipal principal,
             BookingEngineDbContext db,
             ILogger<Program> logger) =>
         {
+            var userId = principal.UserId();
             var slot = await db.AvailabilitySlots
                 .Include(s => s.Resource)
                 .ThenInclude(r => r.ResourceType)
@@ -61,7 +67,7 @@ public static class WaitlistEndpoints
 
             var existing = await db.WaitlistEntries
                 .FirstOrDefaultAsync(w =>
-                    w.AvailabilitySlotId == slot.Id && w.UserId == request.UserId);
+                    w.AvailabilitySlotId == slot.Id && w.UserId == userId);
 
             var entry = existing;
             if (entry is null)
@@ -70,7 +76,7 @@ public static class WaitlistEndpoints
                 {
                     Id = Guid.NewGuid(),
                     AvailabilitySlotId = slot.Id,
-                    UserId = request.UserId,
+                    UserId = userId,
                     CreatedAt = DateTimeOffset.UtcNow,
                 };
                 db.WaitlistEntries.Add(entry);
@@ -78,7 +84,7 @@ public static class WaitlistEndpoints
 
                 logger.LogInformation(
                     "{UserId} joined waitlist for slot {SlotId}",
-                    request.UserId,
+                    userId,
                     slot.Id);
             }
 
@@ -98,6 +104,7 @@ public static class WaitlistEndpoints
                 ? Results.Created($"/waitlist/{entry.Id}", response)
                 : Results.Ok(response);
         })
+        .RequireAuthorization()
         .AddEndpointFilter<ValidationFilter<JoinWaitlistRequest>>()
         .WithName("JoinWaitlist");
     }

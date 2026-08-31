@@ -8,6 +8,5 @@ namespace BookingEngine.Api.Application.Bookings;
 /// </summary>
 public record CreateBookingRequest(
     Guid AvailabilitySlotId,
-    string UserId,
     int Seats,
     uint? RowVersion = null);
