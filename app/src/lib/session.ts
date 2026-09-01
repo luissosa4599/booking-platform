@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { create } from "zustand";
 
 import { apiFetch, setAuthHandlers } from "@/lib/api/client";
+import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
 const STORAGE_KEY = "tempo.session.v1";
 
@@ -129,6 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       body: { idToken },
     });
     await persist(set, toSession(res));
+    void registerForPushNotificationsAsync();
   },
 
   requestLink: (email) =>
@@ -143,6 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       body: { token },
     });
     await persist(set, toSession(res));
+    void registerForPushNotificationsAsync();
   },
 
   refresh: () => {

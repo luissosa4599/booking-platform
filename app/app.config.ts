@@ -40,8 +40,9 @@ const config: ExpoConfig = {
         imageWidth: 76,
       },
     ],
-    // 30-minutes-before reminder for a confirmed booking (ConfirmedScreen).
-    // Default config — no custom notification icon/sound asset in this project.
+    // Push notifications (booking reminders, waitlist openings — both sent
+    // server-side by the notification worker, see CLAUDE.md). Default
+    // config — no custom notification icon/sound asset in this project.
     "expo-notifications",
     // Persists the signed-in user id on native (web falls back to localStorage
     // in lib/session.ts).
@@ -49,6 +50,13 @@ const config: ExpoConfig = {
   ],
   experiments: {
     reactCompiler: false,
+  },
+  extra: {
+    eas: {
+      // Set once `eas init` has run — lib/notifications.ts reads this to get
+      // an Expo push token; until then, push registration silently no-ops.
+      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    },
   },
 };
 

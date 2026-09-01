@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -11,7 +11,6 @@ import { addBookingToCalendar, copyBookingDetails } from "@/lib/calendar";
 import { haptics } from "@/lib/haptics";
 import { MapPin } from "@/lib/icons";
 import { directionsUrl } from "@/lib/maps";
-import { scheduleBookingReminder } from "@/lib/notifications";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
 
@@ -83,7 +82,6 @@ function SummaryRow({
 export default function ConfirmedScreen() {
   const router = useRouter();
   const {
-    id,
     code = "",
     name = "Tu reserva",
     location = "",
@@ -126,19 +124,11 @@ export default function ConfirmedScreen() {
   const streakQuery = useBookingStreak(useUserId());
   const weeks = streakQuery.data?.weeks ?? 0;
 
-  const [reminderSet, setReminderSet] = useState(false);
   // "add" → offer the calendar; "copy" → the calendar was unavailable/denied,
   // so per the handoff the button silently becomes "Copiar detalles".
   const [calMode, setCalMode] = useState<"add" | "copy">("add");
   const [calDone, setCalDone] = useState(false);
   const [calBusy, setCalBusy] = useState(false);
-
-  useEffect(() => {
-    if (!id || !startsAt) return;
-    scheduleBookingReminder({ bookingId: id, resourceName: name, startsAt }).then(
-      setReminderSet,
-    );
-  }, [id, name, startsAt]);
 
   const calendarEvent = {
     title: name,
@@ -183,9 +173,7 @@ export default function ConfirmedScreen() {
             <View className="items-center gap-2">
               <Text className="text-title-md text-label-1">Es tuya</Text>
               <Text className="text-body text-center text-label-3">
-                {reminderSet
-                  ? "Te avisamos 30 minutos antes."
-                  : "Guarda tu código para la entrada."}
+                Te avisamos 30 minutos antes.
               </Text>
             </View>
           </View>
