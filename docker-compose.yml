@@ -1,0 +1,67 @@
+# Local dev stack only — no CD, no real hosting yet (see CLAUDE.md). Neon dev
+# stays the normal day-to-day workflow (`dotnet run` from api/); this compose
+# file exists to demonstrate/verify the multi-service (api + worker, shared
+# DB) architecture end-to-end against a throwaway local Postgres.
+#
+# Usage:
+#   docker compose up --build
+#   curl http://localhost:5190/health
+#   curl -X POST http://localhost:5190/dev/seed   # ASPNETCORE_ENVIRONMENT=Development below
+#
+# The api container applies migrations itself on startup (RUN_MIGRATIONS_ON_STARTUP,
+# see Program.cs) since there's no interactive shell here to run `dotnet ef`
+# by hand against a fresh container. The worker has no readiness signal to
+# wait on beyond "api container started" (no HTTP healthcheck wired here to
+# keep the images minimal) — if it starts polling before migrations finish,
+# its poll loop catches and logs the failure and just succeeds on the next
+# cycle a few seconds later; nothing crashes.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: bookingengine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d bookingengine"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5190:5190"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=postgres;Database=bookingengine;Username=booking;Password=booking"
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+      # Dev-only stub secret — fine for a throwaway local stack, never use in
+      # a real deployment. Google sign-in needs GOOGLE_CLIENT_ID set to your
+      # own OAuth client id(s) if you want to test that flow against compose.
+      AUTH_TOKEN_SECRET: dev-compose-secret-change-me
+
+  worker:
+    build:
+      context: ./api
+      dockerfile: BookingEngine.Worker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      ConnectionStrings__Default: "Host=postgres;Database=bookingengine;Username=booking;Password=booking"
+
+volumes:
+  postgres-data:
