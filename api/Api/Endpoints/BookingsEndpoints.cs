@@ -2,8 +2,8 @@ using System.Security.Claims;
 using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Api.Application.Validation;
-using BookingEngine.Api.Domain;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -245,6 +245,19 @@ public static class BookingsEndpoints
 
             booking.Status = BookingStatus.Cancelled;
             booking.AvailabilitySlot.CapacityRemaining += booking.Seats;
+
+            // Outbox pattern: written in the same SaveChanges as the cancellation
+            // itself, so "a slot opened up" is never lost even if the worker is
+            // down when this happens. Written unconditionally — cheap, and the
+            // worker's own query naturally no-ops when nobody is waiting on this
+            // slot, so there's no need to check AllowsWaitlist/existing entries here.
+            db.NotificationOutbox.Add(new NotificationOutbox
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.WaitlistSlotOpened,
+                AvailabilitySlotId = booking.AvailabilitySlotId,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
 
             try
             {
