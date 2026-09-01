@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using BookingEngine.Api.Application.Availability;
-using BookingEngine.Api.Domain;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BookingEngine.Api.Tests;

@@ -1,6 +1,6 @@
 using BookingEngine.Api.Application.Auth;
-using BookingEngine.Api.Domain;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Api.Endpoints;

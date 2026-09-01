@@ -1,7 +1,7 @@
 using BookingEngine.Api.Application.Availability;
 using BookingEngine.Api.Application.ResourceTypes;
 using BookingEngine.Api.Application.Resources;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Api.Endpoints;

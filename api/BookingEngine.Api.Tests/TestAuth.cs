@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using BookingEngine.Api.Application.Auth;
-using BookingEngine.Api.Domain;
+using BookingEngine.Domain;
 
 namespace BookingEngine.Api.Tests;
 
