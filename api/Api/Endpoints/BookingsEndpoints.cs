@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Api.Application.Validation;
 using BookingEngine.Api.Domain;
@@ -14,7 +16,7 @@ public static class BookingsEndpoints
     public static void MapBookingsEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/bookings", async (
-            string userId,
+            ClaimsPrincipal principal,
             string scope,
             BookingEngineDbContext db) =>
         {
@@ -23,6 +25,7 @@ public static class BookingsEndpoints
                 return Results.BadRequest(new { message = "'scope' must be 'upcoming' or 'past'." });
             }
 
+            var userId = principal.UserId();
             var now = DateTimeOffset.UtcNow;
             var query = db.Bookings.AsNoTracking().Where(b => b.UserId == userId);
 
@@ -53,13 +56,15 @@ public static class BookingsEndpoints
 
             return Results.Ok(bookings);
         })
+        .RequireAuthorization()
         .WithName("GetMyBookings");
 
         // Consecutive-week booking streak for the confirmation screen's
         // "Octava semana seguida" line. Separate endpoint — it's cheap and only
         // one screen needs it.
-        app.MapGet("/bookings/streak", async (string userId, BookingEngineDbContext db) =>
+        app.MapGet("/bookings/streak", async (ClaimsPrincipal principal, BookingEngineDbContext db) =>
         {
+            var userId = principal.UserId();
             var starts = await db.Bookings
                 .AsNoTracking()
                 .Where(b => b.UserId == userId && b.Status == BookingStatus.Confirmed)
@@ -68,14 +73,18 @@ public static class BookingsEndpoints
 
             return Results.Ok(new { weeks = BookingStreak.Count(starts, DateTimeOffset.UtcNow) });
         })
+        .RequireAuthorization()
         .WithName("GetBookingStreak");
 
         app.MapPost("/bookings", async (
             CreateBookingRequest request,
+            ClaimsPrincipal principal,
             HttpRequest httpRequest,
             BookingEngineDbContext db,
             ILogger<Program> logger) =>
         {
+            var userId = principal.UserId();
+
             if (!httpRequest.Headers.TryGetValue(IdempotencyKeyHeader, out var headerValues) ||
                 string.IsNullOrWhiteSpace(headerValues.FirstOrDefault()))
             {
@@ -145,7 +154,7 @@ public static class BookingsEndpoints
             {
                 Id = Guid.NewGuid(),
                 AvailabilitySlotId = slot.Id,
-                UserId = request.UserId,
+                UserId = userId,
                 Seats = request.Seats,
                 Status = BookingStatus.Confirmed,
                 Code = code,
@@ -171,7 +180,7 @@ public static class BookingsEndpoints
                 logger.LogWarning(
                     "Concurrency conflict booking slot {SlotId} for {UserId}",
                     request.AvailabilitySlotId,
-                    request.UserId);
+                    userId);
 
                 return Results.Conflict(new BookingConflictResponse(
                     "Someone else just booked this slot.",
@@ -204,20 +213,27 @@ public static class BookingsEndpoints
                 booking.Id,
                 booking.Code,
                 slot.Id,
-                request.UserId);
+                userId);
 
             return Results.Created($"/bookings/{booking.Id}", ToResponse(booking));
         })
+        .RequireAuthorization()
         .AddEndpointFilter<ValidationFilter<CreateBookingRequest>>()
         .WithName("CreateBooking");
 
-        app.MapDelete("/bookings/{id:guid}", async (Guid id, BookingEngineDbContext db, ILogger<Program> logger) =>
+        app.MapDelete("/bookings/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            BookingEngineDbContext db,
+            ILogger<Program> logger) =>
         {
             var booking = await db.Bookings
                 .Include(b => b.AvailabilitySlot)
                 .FirstOrDefaultAsync(b => b.Id == id);
 
-            if (booking is null)
+            // A booking the caller doesn't own is indistinguishable from one
+            // that doesn't exist — same 404, no ownership oracle.
+            if (booking is null || booking.UserId != principal.UserId())
             {
                 return Results.NotFound();
             }
@@ -248,6 +264,7 @@ public static class BookingsEndpoints
 
             return Results.NoContent();
         })
+        .RequireAuthorization()
         .WithName("CancelBooking");
     }
 

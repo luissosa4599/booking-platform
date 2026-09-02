@@ -28,7 +28,6 @@ import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
-import { getUserId } from "@/lib/session";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", {
@@ -150,7 +149,6 @@ export default function ExploreScreen() {
     createBooking.mutate(
       {
         availabilitySlotId: slot.id,
-        userId: getUserId(),
         seats: 1,
         rowVersion: slot.rowVersion,
       },

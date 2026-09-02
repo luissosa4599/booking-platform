@@ -13,7 +13,6 @@ import type {
 
 interface CreateBookingInput {
   availabilitySlotId: string;
-  userId: string;
   seats: number;
   /**
    * The slot's `rowVersion` as the client last saw it. When sent, the backend
@@ -54,12 +53,16 @@ export function useCreateBooking() {
   return { ...mutation, isConflict, conflict };
 }
 
+// `userId` scopes the query cache (so a re-login for a different account doesn't
+// show stale rows) — the request itself is authenticated by the bearer token,
+// the server derives the user from it.
 export function useMyBookings(scope: BookingScope, userId: string) {
   return useQuery({
     queryKey: ["bookings", { scope, userId }],
+    enabled: userId !== "",
     queryFn: () =>
       apiFetch<MyBooking[]>(
-        `/bookings?${new URLSearchParams({ userId, scope }).toString()}`,
+        `/bookings?${new URLSearchParams({ scope }).toString()}`,
       ),
   });
 }
@@ -69,10 +72,8 @@ export function useMyBookings(scope: BookingScope, userId: string) {
 export function useBookingStreak(userId: string) {
   return useQuery({
     queryKey: ["bookings", "streak", userId],
-    queryFn: () =>
-      apiFetch<BookingStreak>(
-        `/bookings/streak?${new URLSearchParams({ userId }).toString()}`,
-      ),
+    enabled: userId !== "",
+    queryFn: () => apiFetch<BookingStreak>("/bookings/streak"),
   });
 }
 

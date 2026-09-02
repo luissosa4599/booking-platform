@@ -7,6 +7,5 @@ public class JoinWaitlistRequestValidator : AbstractValidator<JoinWaitlistReques
     public JoinWaitlistRequestValidator()
     {
         RuleFor(x => x.AvailabilitySlotId).NotEmpty();
-        RuleFor(x => x.UserId).NotEmpty().MaximumLength(200);
     }
 }

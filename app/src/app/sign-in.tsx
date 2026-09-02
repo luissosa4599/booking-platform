@@ -3,10 +3,13 @@ import { Platform, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { ScreenFade } from "@/components/ScreenFade";
+import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { useAuthStore } from "@/lib/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const googleReady = isGoogleAuthConfigured();
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -19,18 +22,17 @@ export default function SignInScreen() {
 
   const emailValid = EMAIL_RE.test(email.trim());
 
-  async function enterWith(address: string) {
+  // Dev-only: no mail is sent, so we verify the token right away. The
+  // /auth/request-link + /auth/verify endpoints only exist in Development.
+  async function continueWithDevLink(address: string) {
     setBusy(true);
     setError(null);
     try {
-      // Stub magic link: no mail is sent, so we verify the token right away —
-      // matching the handoff's "el deep link entra directo a Explorar, sin
-      // pantalla intermedia". A real deep link into /auth/verify still works.
       const { token } = await requestLink(address);
       await verify(token);
       router.replace("/");
     } catch {
-      setError("No pudimos entrar. Revisa el correo e intenta de nuevo.");
+      setError("No pudimos entrar. Intenta de nuevo.");
     } finally {
       setBusy(false);
     }
@@ -54,31 +56,47 @@ export default function SignInScreen() {
           </View>
 
           <View className="gap-3">
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Correo institucional"
-              placeholderTextColor="#8A8A8E"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              importantForAutofill="yes"
-              editable={!busy}
-              onSubmitEditing={() => emailValid && enterWith(email.trim())}
-              className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
-            />
-            <Button
-              variant="filled"
-              disabled={!emailValid || busy}
-              loading={busy}
-              onPress={() => enterWith(email.trim())}
-            >
-              Continuar
-            </Button>
+            {googleReady ? (
+              <GoogleSignInButton
+                busy={busy}
+                emphasis="primary"
+                onBusyChange={setBusy}
+                onError={setError}
+              />
+            ) : null}
+
+            {__DEV__ ? (
+              <>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Correo (solo dev)"
+                  placeholderTextColor="#8A8A8E"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  importantForAutofill="yes"
+                  editable={!busy}
+                  onSubmitEditing={() =>
+                    emailValid && continueWithDevLink(email.trim())
+                  }
+                  className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
+                />
+                <Button
+                  variant={googleReady ? "gray" : "filled"}
+                  disabled={!emailValid || busy}
+                  loading={busy}
+                  onPress={() => continueWithDevLink(email.trim())}
+                >
+                  Entrar con enlace de dev
+                </Button>
+              </>
+            ) : null}
+
             <Text className="text-footnote text-center text-label-4">
-              Te enviamos un enlace. Sin contraseñas.
+              Sin contraseñas.
             </Text>
             {error ? (
               <Text className="text-footnote text-center text-state-error">
@@ -88,27 +106,20 @@ export default function SignInScreen() {
           </View>
         </View>
 
-        <View className="gap-[10px] px-6 pb-[34px]">
-          {/* App Store Review 4.8: Apple sign-in is required on iOS when other
-              social logins exist; hidden elsewhere. Both are demo entries that
-              sign in as a fixed account. */}
-          {Platform.OS === "ios" ? (
+        {/* App Store Review 4.8: Apple sign-in is required on iOS when other
+            social logins exist. Wired as a dev demo entry for now — a real
+            Sign in with Apple flow is out of scope for this pass. */}
+        {__DEV__ && Platform.OS === "ios" ? (
+          <View className="gap-[10px] px-6 pb-[34px]">
             <Button
               variant="dark"
               disabled={busy}
-              onPress={() => enterWith("apple-user@cupo.demo")}
+              onPress={() => continueWithDevLink("apple-user@tempo.demo")}
             >
               Continuar con Apple
             </Button>
-          ) : null}
-          <Button
-            variant="plain"
-            disabled={busy}
-            onPress={() => enterWith("google-user@cupo.demo")}
-          >
-            Continuar con Google
-          </Button>
-        </View>
+          </View>
+        ) : null}
       </View>
     </ScreenFade>
   );

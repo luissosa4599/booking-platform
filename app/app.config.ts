@@ -1,8 +1,8 @@
 import type { ExpoConfig } from "expo/config";
 
 const config: ExpoConfig = {
-  name: "app",
-  slug: "app",
+  name: "Tempo",
+  slug: "tempo",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -10,6 +10,9 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   ios: {
     icon: "./assets/expo.icon",
+    // Must match the "iOS" OAuth client's bundle id in Google Cloud Console —
+    // expo-auth-session derives the native redirect scheme from it.
+    bundleIdentifier: "mx.tempo.app",
   },
   android: {
     adaptiveIcon: {
@@ -19,6 +22,8 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: false,
+    // Must match the "Android" OAuth client's package name in Google Cloud Console.
+    package: "mx.tempo.app",
   },
   web: {
     output: "static",
