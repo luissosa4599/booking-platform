@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
-import { ScreenFade } from "@/components/ScreenFade";
+import { Screen } from "@/components/Screen";
 import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { useBookingStreak } from "@/lib/api/bookings";
 import { addBookingToCalendar, copyBookingDetails } from "@/lib/calendar";
@@ -43,7 +42,8 @@ function formatWhen(startsAt: string, endsAt: string): string {
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const dayDiff = Math.round(
-    (new Date(start).setHours(0, 0, 0, 0) - startOfToday.getTime()) / 86_400_000,
+    (new Date(start).setHours(0, 0, 0, 0) - startOfToday.getTime()) /
+      86_400_000,
   );
 
   const day =
@@ -51,7 +51,10 @@ function formatWhen(startsAt: string, endsAt: string): string {
       ? "Hoy"
       : dayDiff === 1
         ? "Mañana"
-        : start.toLocaleDateString("es-MX", { weekday: "long", day: "numeric" });
+        : start.toLocaleDateString("es-MX", {
+            weekday: "long",
+            day: "numeric",
+          });
   const t = (d: Date) =>
     d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
@@ -71,7 +74,9 @@ function SummaryRow({
     <View className="flex-row items-center justify-between px-4 py-3">
       <Text className="text-body text-label-3">{label}</Text>
       <Text
-        className={emphasis ? "text-body-emph text-label-1" : "text-body text-label-1"}
+        className={
+          emphasis ? "text-body-emph text-label-1" : "text-body text-label-1"
+        }
         style={{ fontVariant: ["tabular-nums"] }}
       >
         {value}
@@ -82,7 +87,6 @@ function SummaryRow({
 
 export default function ConfirmedScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const {
     code = "",
     name = "Tu reserva",
@@ -167,92 +171,79 @@ export default function ConfirmedScreen() {
       : "Copiar detalles";
 
   return (
-    <ScreenFade>
-      <View className="flex-1 bg-card">
-        <View
-          className="flex-1 justify-center gap-8 px-6"
-          style={{ paddingTop: insets.top }}
-        >
-          <View className="items-center gap-8">
-            <SuccessCheckmark />
-            <View className="items-center gap-2">
-              <Text className="text-title-md text-label-1">Es tuya</Text>
-              <Text className="text-body text-center text-label-3">
-                Te avisamos 30 minutos antes.
-              </Text>
-            </View>
+    <Screen bg="card" edges={["top", "bottom"]}>
+      <View className="flex-1 justify-center gap-8 px-6">
+        <View className="items-center gap-8">
+          <SuccessCheckmark />
+          <View className="items-center gap-2">
+            <Text className="text-title-md text-label-1">Es tuya</Text>
+            <Text className="text-body text-center text-label-3">
+              Te avisamos 30 minutos antes.
+            </Text>
           </View>
+        </View>
 
-          <View className="gap-3">
-            <View className="gap-[3px] px-1">
-              <Text className="text-title-sm text-label-1">{name}</Text>
-              {location ? (
-                <Text className="text-body text-label-3">{location}</Text>
-              ) : null}
-              {locationAddress ? (
-                <Pressable
-                  onPress={directions ? openDirections : undefined}
-                  disabled={!directions}
-                  hitSlop={4}
-                  accessibilityRole={directions ? "button" : undefined}
-                  accessibilityLabel={
-                    directions
-                      ? `${locationAddress}, ver en Google Maps`
-                      : undefined
-                  }
-                  className="flex-row items-center gap-1 pt-px"
-                >
-                  <MapPin size={13} color={mapPinColor} />
-                  <Text className="text-footnote text-label-3">
-                    {locationAddress}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-
-            <Group variant="canvas">
-              <SummaryRow
-                label="Cuándo"
-                value={
-                  startsAt && endsAt ? formatWhen(startsAt, endsAt) : "—"
+        <View className="gap-3">
+          <View className="gap-[3px] px-1">
+            <Text className="text-title-sm text-label-1">{name}</Text>
+            {location ? (
+              <Text className="text-body text-label-3">{location}</Text>
+            ) : null}
+            {locationAddress ? (
+              <Pressable
+                onPress={directions ? openDirections : undefined}
+                disabled={!directions}
+                hitSlop={4}
+                accessibilityRole={directions ? "button" : undefined}
+                accessibilityLabel={
+                  directions
+                    ? `${locationAddress}, ver en Google Maps`
+                    : undefined
                 }
-              />
-              <SummaryRow label={capitalize(unit)} value={seats} />
-              <SummaryRow label="Código" value={code || "—"} emphasis />
-            </Group>
-
-            {weeks >= 3 ? (
-              <Text className="px-1 text-subhead text-label-4">
-                {streakLine(weeks)}
-              </Text>
+                className="flex-row items-center gap-1 pt-px"
+              >
+                <MapPin size={13} color={mapPinColor} />
+                <Text className="text-footnote text-label-3">
+                  {locationAddress}
+                </Text>
+              </Pressable>
             ) : null}
           </View>
-        </View>
 
-        <View
-          className="gap-2 px-6 pb-[34px]"
-          style={{ paddingBottom: insets.bottom + 16 }}
-        >
-          <Button
-            variant="filled"
-            loading={calBusy}
-            disabled={calDone}
-            onPress={handleCalendar}
-          >
-            {calLabel}
-          </Button>
-          <Button
-            variant="gray"
-            onPress={() => router.replace("/bookings")}
-          >
-            Ver reservación
-          </Button>
-          <Button variant="plain" onPress={() => router.replace("/")}>
-            Listo
-          </Button>
+          <Group variant="canvas">
+            <SummaryRow
+              label="Cuándo"
+              value={startsAt && endsAt ? formatWhen(startsAt, endsAt) : "—"}
+            />
+            <SummaryRow label={capitalize(unit)} value={seats} />
+            <SummaryRow label="Código" value={code || "—"} emphasis />
+          </Group>
+
+          {weeks >= 3 ? (
+            <Text className="px-1 text-subhead text-label-4">
+              {streakLine(weeks)}
+            </Text>
+          ) : null}
         </View>
       </View>
-    </ScreenFade>
+
+      <View className="gap-2 px-6 pb-4">
+        <Button
+          variant="filled"
+          loading={calBusy}
+          disabled={calDone}
+          onPress={handleCalendar}
+        >
+          {calLabel}
+        </Button>
+        <Button variant="gray" onPress={() => router.replace("/bookings")}>
+          Ver reservación
+        </Button>
+        <Button variant="plain" onPress={() => router.replace("/")}>
+          Listo
+        </Button>
+      </View>
+    </Screen>
   );
 }
 

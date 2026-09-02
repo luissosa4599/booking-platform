@@ -8,7 +8,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
@@ -17,7 +16,7 @@ import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
-import { ScreenFade } from "@/components/ScreenFade";
+import { Screen } from "@/components/Screen";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { Skeleton } from "@/components/Skeleton";
 import { Toast } from "@/components/Toast";
@@ -61,7 +60,10 @@ function formatCountdown(startsAt: string): string | null {
 
 function formatCardDate(startsAt: string): string {
   const d = new Date(startsAt);
-  const day = d.toLocaleDateString("es-MX", { weekday: "short", day: "numeric" });
+  const day = d.toLocaleDateString("es-MX", {
+    weekday: "short",
+    day: "numeric",
+  });
   return `${day} · ${timeOfDay(startsAt)}`;
 }
 
@@ -134,7 +136,9 @@ function NextBookingCard({
         </Text>
 
         <View className="gap-[3px]">
-          <Text className="text-title-sm text-label-1">{booking.resourceName}</Text>
+          <Text className="text-title-sm text-label-1">
+            {booking.resourceName}
+          </Text>
           <Text
             className="text-body text-label-3"
             style={{ fontVariant: ["tabular-nums"] }}
@@ -198,7 +202,6 @@ function CancelableRow({
 export default function BookingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const insets = useSafeAreaInsets();
   const [scope, setScope] = useState<BookingScope>("upcoming");
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [shakeId, setShakeId] = useState<string | null>(null);
@@ -282,143 +285,141 @@ export default function BookingsScreen() {
   }
 
   return (
-    <ScreenFade>
-      <View className="flex-1 bg-canvas">
-        <View className="px-4 pt-3" style={{ paddingTop: insets.top + 12 }}>
-          <Text className="text-title-lg text-label-1">Reservas</Text>
-        </View>
-
-        <View className="px-4 pt-[22px]">
-          <SegmentedControl
-            options={[
-              { label: "Próximas", value: "upcoming" },
-              { label: "Anteriores", value: "past" },
-            ]}
-            value={scope}
-            onChange={(v) => setScope(v as BookingScope)}
-          />
-        </View>
-
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ gap: 22, padding: 16 }}
-        >
-          {showSkeleton ? (
-            <Group>
-              <Animated.View exiting={FadeOut.duration(200)}>
-                <Skeleton />
-              </Animated.View>
-              <Animated.View exiting={FadeOut.duration(200)}>
-                <Skeleton />
-              </Animated.View>
-            </Group>
-          ) : null}
-
-          {!showSkeleton && bookingsQuery.isError ? (
-            <Placeholder
-              reason="offline"
-              icon={<CalendarX size={26} />}
-              title="Sin conexión"
-              body="No pudimos cargar tus reservas. Revisa tu conexión e intenta de nuevo."
-              primaryAction={{
-                label: "Reintentar",
-                onPress: () => bookingsQuery.refetch(),
-              }}
-            />
-          ) : null}
-
-          {nextBooking ? (
-            <NextBookingCard
-              booking={nextBooking}
-              shaking={shakeId === nextBooking.id}
-              onShowPass={() => setPassBooking(nextBooking)}
-              onCancel={() => handleCancel(nextBooking)}
-            />
-          ) : null}
-
-          {otherUpcoming.length > 0 ? (
-            <Group>
-              {otherUpcoming.map((booking) => (
-                <CancelableRow
-                  key={booking.id}
-                  booking={booking}
-                  shaking={shakeId === booking.id}
-                  onCancel={() => handleCancel(booking)}
-                />
-              ))}
-            </Group>
-          ) : null}
-
-          {scope === "upcoming" && waitlist.length > 0 ? (
-            <Group header="EN ESPERA">
-              {waitlist.map((entry) => (
-                <Row
-                  key={entry.id}
-                  title={entry.resourceName}
-                  subtitle={`${entry.locationName} · ${formatSchedule(entry.startsAt, entry.endsAt)}`}
-                  meta={`En espera · eres el ${ordinal(entry.position)}`}
-                  metaTone="waiting"
-                  trailing="chevron"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/resource/[id]",
-                      params: {
-                        id: entry.resourceId,
-                        name: entry.resourceName,
-                        location: entry.locationName,
-                      },
-                    })
-                  }
-                  accessibilityLabel={`Lista de espera para ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}, eres el ${ordinal(entry.position)}`}
-                />
-              ))}
-            </Group>
-          ) : null}
-
-          {scope === "past" && history.length > 0 ? (
-            <Group header="ESTE MES">
-              {history.map((booking) => (
-                <Row
-                  key={booking.id}
-                  title={booking.resourceName}
-                  subtitle={formatHistoryLine(booking)}
-                  trailing="action"
-                  actionLabel="Repetir"
-                  actionTone="wash"
-                  actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
-                  onActionPress={() => handleRepeat(booking)}
-                />
-              ))}
-            </Group>
-          ) : null}
-
-          {nothingUpcoming ? (
-            <Placeholder
-              reason="noBookings"
-              icon={<CalendarX size={26} />}
-              title="Nada por aquí todavía"
-              body="Cuando reserves un espacio, aparecerá aquí."
-              primaryAction={{
-                label: "Explorar espacios",
-                onPress: () => router.navigate("/"),
-              }}
-            />
-          ) : null}
-
-          {nothingPast ? (
-            <Placeholder
-              reason="noHistory"
-              icon={<CalendarX size={26} />}
-              title="Todavía no tienes historial"
-              body="Tus reservas pasadas y canceladas aparecerán aquí."
-              primaryAction={{
-                label: "Explorar espacios",
-                onPress: () => router.navigate("/"),
-              }}
-            />
-          ) : null}
-        </ScrollView>
+    <Screen bg="canvas">
+      <View className="px-4 pt-3">
+        <Text className="text-title-lg text-label-1">Reservas</Text>
       </View>
+
+      <View className="px-4 pt-[22px]">
+        <SegmentedControl
+          options={[
+            { label: "Próximas", value: "upcoming" },
+            { label: "Anteriores", value: "past" },
+          ]}
+          value={scope}
+          onChange={(v) => setScope(v as BookingScope)}
+        />
+      </View>
+
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ gap: 22, padding: 16 }}
+      >
+        {showSkeleton ? (
+          <Group>
+            <Animated.View exiting={FadeOut.duration(200)}>
+              <Skeleton />
+            </Animated.View>
+            <Animated.View exiting={FadeOut.duration(200)}>
+              <Skeleton />
+            </Animated.View>
+          </Group>
+        ) : null}
+
+        {!showSkeleton && bookingsQuery.isError ? (
+          <Placeholder
+            reason="offline"
+            icon={<CalendarX size={26} />}
+            title="Sin conexión"
+            body="No pudimos cargar tus reservas. Revisa tu conexión e intenta de nuevo."
+            primaryAction={{
+              label: "Reintentar",
+              onPress: () => bookingsQuery.refetch(),
+            }}
+          />
+        ) : null}
+
+        {nextBooking ? (
+          <NextBookingCard
+            booking={nextBooking}
+            shaking={shakeId === nextBooking.id}
+            onShowPass={() => setPassBooking(nextBooking)}
+            onCancel={() => handleCancel(nextBooking)}
+          />
+        ) : null}
+
+        {otherUpcoming.length > 0 ? (
+          <Group>
+            {otherUpcoming.map((booking) => (
+              <CancelableRow
+                key={booking.id}
+                booking={booking}
+                shaking={shakeId === booking.id}
+                onCancel={() => handleCancel(booking)}
+              />
+            ))}
+          </Group>
+        ) : null}
+
+        {scope === "upcoming" && waitlist.length > 0 ? (
+          <Group header="EN ESPERA">
+            {waitlist.map((entry) => (
+              <Row
+                key={entry.id}
+                title={entry.resourceName}
+                subtitle={`${entry.locationName} · ${formatSchedule(entry.startsAt, entry.endsAt)}`}
+                meta={`En espera · eres el ${ordinal(entry.position)}`}
+                metaTone="waiting"
+                trailing="chevron"
+                onPress={() =>
+                  router.push({
+                    pathname: "/resource/[id]",
+                    params: {
+                      id: entry.resourceId,
+                      name: entry.resourceName,
+                      location: entry.locationName,
+                    },
+                  })
+                }
+                accessibilityLabel={`Lista de espera para ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}, eres el ${ordinal(entry.position)}`}
+              />
+            ))}
+          </Group>
+        ) : null}
+
+        {scope === "past" && history.length > 0 ? (
+          <Group header="ESTE MES">
+            {history.map((booking) => (
+              <Row
+                key={booking.id}
+                title={booking.resourceName}
+                subtitle={formatHistoryLine(booking)}
+                trailing="action"
+                actionLabel="Repetir"
+                actionTone="wash"
+                actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
+                onActionPress={() => handleRepeat(booking)}
+              />
+            ))}
+          </Group>
+        ) : null}
+
+        {nothingUpcoming ? (
+          <Placeholder
+            reason="noBookings"
+            icon={<CalendarX size={26} />}
+            title="Nada por aquí todavía"
+            body="Cuando reserves un espacio, aparecerá aquí."
+            primaryAction={{
+              label: "Explorar espacios",
+              onPress: () => router.navigate("/"),
+            }}
+          />
+        ) : null}
+
+        {nothingPast ? (
+          <Placeholder
+            reason="noHistory"
+            icon={<CalendarX size={26} />}
+            title="Todavía no tienes historial"
+            body="Tus reservas pasadas y canceladas aparecerán aquí."
+            primaryAction={{
+              label: "Explorar espacios",
+              onPress: () => router.navigate("/"),
+            }}
+          />
+        ) : null}
+      </ScrollView>
 
       <BookingPassSheet
         isOpen={!!passBooking}
@@ -440,6 +441,6 @@ export default function BookingsScreen() {
         onAction={handleUndo}
         onDismiss={handleToastExpired}
       />
-    </ScreenFade>
+    </Screen>
   );
 }

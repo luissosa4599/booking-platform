@@ -16,10 +16,7 @@ import "@/global.css";
 // Dev-tooling noise, not app bugs: the HMR client warns loudly when it can't
 // reach Metro (common when testing on a phone over LAN/VPN — the app itself
 // still works, Fast Refresh just doesn't).
-LogBox.ignoreLogs([
-  "Cannot connect to Expo CLI",
-  /Cannot connect to Metro/,
-]);
+LogBox.ignoreLogs(["Cannot connect to Expo CLI", /Cannot connect to Metro/]);
 
 // Routes reachable without a session.
 const PUBLIC_SEGMENTS = new Set(["sign-in", "auth"]);
@@ -34,6 +31,9 @@ function AuthGate() {
   // scene has an explicit background — very visible on Android, especially
   // going resource/[id] → back → tabs. `canvas` is the app's ground colour
   // (near-black in dark mode), so the flash reads as "the app" not "a gap".
+  // MUST stay reactive via `useColor` (not a literal): on a light/dark switch
+  // this re-renders in the same frame as every `Screen`, so no layer is ever
+  // a stale colour mid-transition. See CLAUDE.md "Safe area + theme-flash".
   const canvas = useColor("canvas");
 
   useEffect(() => {

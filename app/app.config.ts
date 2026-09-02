@@ -8,6 +8,15 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: "app",
   userInterfaceStyle: "automatic",
+  // Native window background — the colour the OS paints *before* JS mounts
+  // (cold start) and, on the native stack, briefly behind a scene mid-push.
+  // This is baked at build time, so it can only be ONE value; we use the
+  // LIGHT `canvas` (global.css `--color-canvas`). See "Safe area + theme-flash"
+  // in the root CLAUDE.md — a `values-night` config plugin is the follow-up
+  // for a dark-mode cold-start with zero flash. Per-client theming never
+  // touches this: the swappable tokens are only `tint*`, and `canvas`/`card`
+  // flip on light/dark alone.
+  backgroundColor: "#F7F7F8",
   ios: {
     icon: "./assets/expo.icon",
     // Must match the "iOS" OAuth client's bundle id in Google Cloud Console —
@@ -15,6 +24,7 @@ const config: ExpoConfig = {
     bundleIdentifier: "mx.tempo.app",
   },
   android: {
+    backgroundColor: "#F7F7F8",
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",

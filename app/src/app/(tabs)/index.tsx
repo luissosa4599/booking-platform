@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
@@ -15,7 +14,7 @@ import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
-import { ScreenFade } from "@/components/ScreenFade";
+import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
 import { Toast } from "@/components/Toast";
 import { useAvailability } from "@/lib/api/availability";
@@ -57,7 +56,6 @@ function withoutId(set: Set<string>, id: string) {
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<
     string | null
   >(null);
@@ -194,7 +192,8 @@ export default function ExploreScreen() {
     laterGroup.length === 0;
 
   const emptyCopy = composeEmptyStateCopy(availabilityQuery.emptyContext);
-  const nextAvailableAt = availabilityQuery.emptyContext?.nextAvailableAt ?? null;
+  const nextAvailableAt =
+    availabilityQuery.emptyContext?.nextAvailableAt ?? null;
 
   // The primary action *executes* the resolving datum. A typo'd search is
   // resolved by clearing it, not by jumping the calendar forward — so that
@@ -243,155 +242,146 @@ export default function ExploreScreen() {
       : undefined;
 
   return (
-    <ScreenFade>
-      <View className="flex-1 bg-canvas">
-        <View
-          className="gap-5 px-4 pt-3"
-          style={{ paddingTop: insets.top + 12 }}
-        >
-          <View className="flex-row items-end justify-between">
-            <Text className="text-title-lg text-label-1">Ahora</Text>
-            <Text className="text-subhead text-label-4">
-              {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
-            </Text>
-          </View>
+    <Screen bg="canvas">
+      <View className="gap-5 px-4 pt-3">
+        <View className="flex-row items-end justify-between">
+          <Text className="text-title-lg text-label-1">Ahora</Text>
+          <Text className="text-subhead text-label-4">
+            {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
+          </Text>
+        </View>
 
-          <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
-            <Search size={13} color={searchIconColor} />
-            <TextInput
-              value={searchInput}
-              onChangeText={setSearchInput}
-              placeholder="Buscar sala, cabina, piso…"
-              placeholderTextColor="#8A8A8E"
-              returnKeyType="search"
-              clearButtonMode="while-editing"
-              className="flex-1 text-body text-label-1"
-            />
-          </View>
-
-          <FilterPills
-            options={filterOptions}
-            selectedId={selectedResourceTypeId}
-            onSelect={setSelectedResourceTypeId}
-            removable={isEmpty && !!selectedResourceTypeId}
+        <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
+          <Search size={13} color={searchIconColor} />
+          <TextInput
+            value={searchInput}
+            onChangeText={setSearchInput}
+            placeholder="Buscar sala, cabina, piso…"
+            placeholderTextColor="#8A8A8E"
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            className="flex-1 text-body text-label-1"
           />
         </View>
 
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ gap: 20, padding: 16 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => availabilityQuery.refetch()}
-              tintColor="transparent"
-              colors={["transparent"]}
-            />
-          }
-        >
-          <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
-            {showSkeleton ? (
-              <Group header="LIBRE AHORA MISMO">
-                <Animated.View exiting={FadeOut.duration(200)}>
-                  <Skeleton />
-                </Animated.View>
-                <Animated.View exiting={FadeOut.duration(200)}>
-                  <Skeleton />
-                </Animated.View>
-              </Group>
-            ) : null}
-
-            {!showSkeleton && nowGroup.length > 0 ? (
-              <Group header="LIBRE AHORA MISMO">
-                {nowGroup.map((slot) => (
-                  <Animated.View
-                    key={slot.id}
-                    layout={LinearTransition.springify()}
-                    exiting={FadeOut}
-                  >
-                    <Row
-                      title={slot.resourceName}
-                      subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
-                      meta={
-                        slot.capacityRemaining === 1
-                          ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
-                          : undefined
-                      }
-                      metaTone={
-                        slot.capacityRemaining === 1 ? "last" : "default"
-                      }
-                      trailing={
-                        confirmedSlotIds.has(slot.id) ? "check" : "action"
-                      }
-                      actionLabel="Apartar"
-                      actionTone="wash"
-                      actionLoading={pendingSlotIds.has(slot.id)}
-                      actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
-                      onActionPress={() => handleBook(slot)}
-                      onPress={() => handleOpenResource(slot)}
-                      accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible hasta ${formatTime(slot.endsAt)}`}
-                    />
-                  </Animated.View>
-                ))}
-              </Group>
-            ) : null}
-
-            {!showSkeleton && laterGroup.length > 0 ? (
-              <Group header={laterHeader}>
-                {laterGroup.map((slot) => (
-                  <Row
-                    key={slot.id}
-                    title={slot.resourceName}
-                    subtitle={slot.locationName}
-                    trailing="chevron"
-                    trailingText={formatTime(slot.startsAt)}
-                    onPress={() => handleOpenResource(slot)}
-                    accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible a las ${formatTime(slot.startsAt)}`}
-                  />
-                ))}
-              </Group>
-            ) : null}
-
-            {isEmpty ? (
-              <Placeholder
-                reason={
-                  (availabilityQuery.emptyContext?.reason as
-                    | "noAvailability"
-                    | "noResults"
-                    | "filtered"
-                    | undefined) ?? "noAvailability"
-                }
-                icon={<CalendarX size={26} />}
-                title={emptyCopy.title}
-                body={emptyCopy.body}
-                primaryAction={emptyPrimary}
-                secondaryAction={emptySecondary}
-              />
-            ) : null}
-          </View>
-        </ScrollView>
-
-        <ConflictSheet
-          isOpen={!!conflictSlot}
-          onClose={() => createBooking.reset()}
-          slotId={conflictSlot?.id ?? null}
-          slotStartsAt={conflictSlot?.startsAt ?? null}
-          technicalMessage={createBooking.conflict?.message}
-          alternatives={createBooking.conflict?.alternatives ?? []}
-        />
-
-        <Toast
-          isOpen={!!toastMessage}
-          message={toastMessage ?? ""}
-          actionLabel="Ver"
-          onAction={() => {
-            useToastStore.getState().clear();
-            router.navigate("/bookings");
-          }}
-          onDismiss={() => useToastStore.getState().clear()}
+        <FilterPills
+          options={filterOptions}
+          selectedId={selectedResourceTypeId}
+          onSelect={setSelectedResourceTypeId}
+          removable={isEmpty && !!selectedResourceTypeId}
         />
       </View>
-    </ScreenFade>
+
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ gap: 20, padding: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => availabilityQuery.refetch()}
+            tintColor="transparent"
+            colors={["transparent"]}
+          />
+        }
+      >
+        <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
+          {showSkeleton ? (
+            <Group header="LIBRE AHORA MISMO">
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
+            </Group>
+          ) : null}
+
+          {!showSkeleton && nowGroup.length > 0 ? (
+            <Group header="LIBRE AHORA MISMO">
+              {nowGroup.map((slot) => (
+                <Animated.View
+                  key={slot.id}
+                  layout={LinearTransition.springify()}
+                  exiting={FadeOut}
+                >
+                  <Row
+                    title={slot.resourceName}
+                    subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
+                    meta={
+                      slot.capacityRemaining === 1
+                        ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
+                        : undefined
+                    }
+                    metaTone={slot.capacityRemaining === 1 ? "last" : "default"}
+                    trailing={
+                      confirmedSlotIds.has(slot.id) ? "check" : "action"
+                    }
+                    actionLabel="Apartar"
+                    actionTone="wash"
+                    actionLoading={pendingSlotIds.has(slot.id)}
+                    actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
+                    onActionPress={() => handleBook(slot)}
+                    onPress={() => handleOpenResource(slot)}
+                    accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible hasta ${formatTime(slot.endsAt)}`}
+                  />
+                </Animated.View>
+              ))}
+            </Group>
+          ) : null}
+
+          {!showSkeleton && laterGroup.length > 0 ? (
+            <Group header={laterHeader}>
+              {laterGroup.map((slot) => (
+                <Row
+                  key={slot.id}
+                  title={slot.resourceName}
+                  subtitle={slot.locationName}
+                  trailing="chevron"
+                  trailingText={formatTime(slot.startsAt)}
+                  onPress={() => handleOpenResource(slot)}
+                  accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible a las ${formatTime(slot.startsAt)}`}
+                />
+              ))}
+            </Group>
+          ) : null}
+
+          {isEmpty ? (
+            <Placeholder
+              reason={
+                (availabilityQuery.emptyContext?.reason as
+                  "noAvailability" | "noResults" | "filtered" | undefined) ??
+                "noAvailability"
+              }
+              icon={<CalendarX size={26} />}
+              title={emptyCopy.title}
+              body={emptyCopy.body}
+              primaryAction={emptyPrimary}
+              secondaryAction={emptySecondary}
+            />
+          ) : null}
+        </View>
+      </ScrollView>
+
+      <ConflictSheet
+        isOpen={!!conflictSlot}
+        onClose={() => createBooking.reset()}
+        slotId={conflictSlot?.id ?? null}
+        slotStartsAt={conflictSlot?.startsAt ?? null}
+        technicalMessage={createBooking.conflict?.message}
+        alternatives={createBooking.conflict?.alternatives ?? []}
+      />
+
+      <Toast
+        isOpen={!!toastMessage}
+        message={toastMessage ?? ""}
+        actionLabel="Ver"
+        onAction={() => {
+          useToastStore.getState().clear();
+          router.navigate("/bookings");
+        }}
+        onDismiss={() => useToastStore.getState().clear()}
+      />
+    </Screen>
   );
 }
 
