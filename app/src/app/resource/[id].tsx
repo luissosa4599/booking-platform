@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  // Legacy Animated (JS-driven) — animates the hero's `height`, a layout prop
+  // the native driver can't touch. Aliased so it doesn't clash with
+  // Reanimated's `Animated` (used just below for the skeleton exit).
+  Animated as RNAnimated,
+  Linking,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useColorScheme } from "nativewind";
 import Animated, { FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -94,9 +105,27 @@ function buildDayBuckets(slots: AvailabilitySlot[]): DayBucket[] {
   });
 }
 
+const HERO_EXPANDED_MAX = 460;
+
 export default function ResourceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+
+  // The hero starts at ~half the screen and shrinks to its resting height as
+  // the page scrolls (a standard collapsing header). Legacy `Animated` +
+  // `useNativeDriver: false` — it animates `height`, a layout prop, and it's
+  // the API that actually works cross-platform in this project (see CLAUDE.md).
+  const heroExpanded = Math.round(
+    Math.min(windowHeight * 0.5, HERO_EXPANDED_MAX),
+  );
+  const heroCollapsed = HERO_HEIGHT + insets.top;
+  const [scrollY] = useState(() => new RNAnimated.Value(0));
+  const heroHeight = scrollY.interpolate({
+    inputRange: [0, Math.max(1, heroExpanded - heroCollapsed)],
+    outputRange: [heroExpanded, heroCollapsed],
+    extrapolate: "clamp",
+  });
   // `name`/`location` are passed from the ExploreScreen row so the header
   // paints instantly (per handoff: "cero pantalla de carga al entrar")
   // instead of waiting on GET /resources/{id} for content already known.
@@ -199,18 +228,22 @@ export default function ResourceScreen() {
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
+  // Sized for the hero's *expanded* height — it's scaled down as it collapses.
   const mapImageUrl = hasCoords
     ? staticMapUrl(
         { lat: resource!.locationLatitude!, lng: resource!.locationLongitude! },
-        { width: 700, height: HERO_HEIGHT, dark: colorScheme === "dark" },
+        { width: 700, height: heroExpanded, dark: colorScheme === "dark" },
       )
     : null;
   const heroStockImageUrl = stockImageUrl(resourceType?.name, {
     width: 800,
-    height: HERO_HEIGHT,
+    height: heroExpanded,
   });
   const directions = hasCoords
-    ? directionsUrl({ lat: resource!.locationLatitude!, lng: resource!.locationLongitude! })
+    ? directionsUrl({
+        lat: resource!.locationLatitude!,
+        lng: resource!.locationLongitude!,
+      })
     : resource?.locationAddress
       ? directionsUrl({ address: resource.locationAddress })
       : null;
@@ -320,12 +353,20 @@ export default function ResourceScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-card">
-        <ScrollView contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}>
-          {/* The carousel extends edge-to-edge under the status bar; only the
-              back button is inset below it. */}
-          <View style={{ height: HERO_HEIGHT + insets.top }}>
+        <RNAnimated.ScrollView
+          contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}
+          scrollEventThrottle={16}
+          onScroll={RNAnimated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+        >
+          {/* Collapsing hero. In-flow (not absolute) so a vertical drag on the
+              image still scrolls the page; it shrinks from ~half-screen to its
+              resting height as you scroll. Edge-to-edge under the status bar,
+              only the back button is inset. */}
+          <RNAnimated.View style={{ height: heroHeight }}>
             <HeroCarousel
-              height={HERO_HEIGHT + insets.top}
               mapImageUrl={mapImageUrl}
               stockImageUrl={heroStockImageUrl}
               onMapPress={directions ? openDirections : undefined}
@@ -340,7 +381,7 @@ export default function ResourceScreen() {
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
-          </View>
+          </RNAnimated.View>
 
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
@@ -397,7 +438,10 @@ export default function ResourceScreen() {
                       onPress={() => setSelectedDayIndex(index)}
                       accessibilityRole="button"
                       accessibilityLabel={`${day.label}, día ${day.dayNumber}${hasSlots ? "" : ", sin horarios"}`}
-                      accessibilityState={{ selected: isSelected, disabled: !hasSlots }}
+                      accessibilityState={{
+                        selected: isSelected,
+                        disabled: !hasSlots,
+                      }}
                       className={cn(
                         "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
                         isSelected ? "bg-tint-wash" : "bg-fill",
@@ -524,7 +568,7 @@ export default function ResourceScreen() {
               {ctaButton}
             </View>
           ) : null}
-        </ScrollView>
+        </RNAnimated.ScrollView>
 
         {!isWeb ? (
           <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">

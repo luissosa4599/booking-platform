@@ -6,9 +6,8 @@ export interface SheetProps {
   children: ReactNode;
 }
 
-// Design handoff: overlay behind the sheet on every platform, rgba(11,11,12,0.38).
-// Split into color + opacity for native, where BottomSheetBackdrop animates
-// opacity separately from the backdrop's base colour. The sheet surface and
-// grabber colours are theme tokens, resolved with `useColor` in Sheet.native.
-export const SHEET_OVERLAY_COLOR_HEX = "#0B0B0C";
-export const SHEET_OVERLAY_OPACITY = 0.38;
+// Scrim behind the sheet on every platform. Colour is the `scrim` design
+// token (`useColor("scrim")` on native, `bg-scrim/70` on web) — a neutral
+// dark grey, not pure black. Opacity is animated with the sheet on native,
+// so it's a separate constant there.
+export const SHEET_OVERLAY_OPACITY = 0.7;

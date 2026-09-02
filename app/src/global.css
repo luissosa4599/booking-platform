@@ -33,6 +33,11 @@
   --color-state-last: 192 138 24; /* #C08A18 */
   --color-state-error: 192 57 43; /* #C0392B */
   --color-state-waiting: 58 118 196; /* #3A76C4 */
+
+  /* Scrim behind a sheet / modal. Sits *over* the UI, so it doesn't get a
+     dark-mode override — a neutral dark grey reads the same in both themes.
+     Used at ~0.7 alpha (SHEET_OVERLAY_OPACITY), never opaque. */
+  --color-scrim: 28 28 30; /* #1C1C1E */
 }
 
 .dark:root {

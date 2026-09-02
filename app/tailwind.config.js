@@ -49,6 +49,9 @@ module.exports = {
         "state-last": "rgb(var(--color-state-last) / <alpha-value>)",
         "state-error": "rgb(var(--color-state-error) / <alpha-value>)",
         "state-waiting": "rgb(var(--color-state-waiting) / <alpha-value>)",
+
+        // Sheet / modal backdrop scrim — used as `bg-scrim/70`.
+        scrim: "rgb(var(--color-scrim) / <alpha-value>)",
       },
 
       // Size / line-height / tracking / weight per the handoff's "Tipografía"

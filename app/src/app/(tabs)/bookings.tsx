@@ -290,7 +290,8 @@ export default function BookingsScreen() {
         <Text className="text-title-lg text-label-1">Reservas</Text>
       </View>
 
-      <View className="px-4 pt-[22px]">
+      {/* `pb-4` keeps a gap below the control while the list scrolls under it. */}
+      <View className="px-4 pb-4 pt-[22px]">
         <SegmentedControl
           options={[
             { label: "Próximas", value: "upcoming" },
@@ -303,7 +304,11 @@ export default function BookingsScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ gap: 22, padding: 16 }}
+        contentContainerStyle={{
+          gap: 22,
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+        }}
       >
         {showSkeleton ? (
           <Group>

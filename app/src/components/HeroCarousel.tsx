@@ -5,12 +5,12 @@ import {
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  StyleSheet,
   View,
 } from "react-native";
 import { Image } from "expo-image";
 
 interface HeroCarouselProps {
-  height: number;
   /** Google Static Maps URL, or null when no key / no coordinates. */
   mapImageUrl: string | null;
   /** A stock photo of the space (Unsplash). Always present. */
@@ -24,9 +24,11 @@ interface HeroCarouselProps {
  * When there's no map it's just the photo (still a single "page", no dots).
  * Everything sits on the same `bg-fill` block underneath, so a page whose
  * image fails to load degrades to grey rather than a broken image.
+ *
+ * Fills its parent (which owns the height — `resource/[id].tsx` animates it
+ * down as the screen scrolls), so this only ever measures its own width.
  */
 export function HeroCarousel({
-  height,
   mapImageUrl,
   stockImageUrl,
   onMapPress,
@@ -46,7 +48,11 @@ export function HeroCarousel({
   }
 
   return (
-    <View onLayout={onLayout} style={{ height }} className="bg-fill">
+    <View
+      onLayout={onLayout}
+      style={StyleSheet.absoluteFill}
+      className="bg-fill"
+    >
       {width > 0 ? (
         <>
           <ScrollView
@@ -65,11 +71,13 @@ export function HeroCarousel({
                 accessibilityLabel={
                   kind === "map" ? "Ver ubicación en Google Maps" : undefined
                 }
-                style={{ width, height }}
+                style={{ width, height: "100%" }}
               >
                 <Image
-                  source={{ uri: kind === "map" ? mapImageUrl! : stockImageUrl }}
-                  style={{ width, height }}
+                  source={{
+                    uri: kind === "map" ? mapImageUrl! : stockImageUrl,
+                  }}
+                  style={{ width, height: "100%" }}
                   contentFit="cover"
                   transition={150}
                   accessibilityIgnoresInvertColors

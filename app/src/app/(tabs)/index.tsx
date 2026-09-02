@@ -243,7 +243,10 @@ export default function ExploreScreen() {
 
   return (
     <Screen bg="canvas">
-      <View className="gap-5 px-4 pt-3">
+      {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
+          even while the list scrolls under it (a scrolled contentContainer
+          top-padding would disappear). */}
+      <View className="gap-5 px-4 pb-4 pt-3">
         <View className="flex-row items-end justify-between">
           <Text className="text-title-lg text-label-1">Ahora</Text>
           <Text className="text-subhead text-label-4">
@@ -274,7 +277,11 @@ export default function ExploreScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ gap: 20, padding: 16 }}
+        contentContainerStyle={{
+          gap: 20,
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
