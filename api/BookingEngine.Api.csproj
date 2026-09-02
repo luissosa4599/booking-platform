@@ -17,15 +17,25 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
-  <!-- BookingEngine.Api.Tests nests inside this project's directory; without
-       this, the default **/*.cs glob would compile its files into this
-       project too. -->
+  <ItemGroup>
+    <!-- Shared with BookingEngine.Worker (same DB, no migrations there — see
+         BookingEngine.Infrastructure's own comment). -->
+    <ProjectReference Include="BookingEngine.Domain\BookingEngine.Domain.csproj" />
+    <ProjectReference Include="BookingEngine.Infrastructure\BookingEngine.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- BookingEngine.Api.Tests, BookingEngine.Domain, BookingEngine.Infrastructure
+       and BookingEngine.Worker all nest inside this project's directory;
+       without this, the default **/*.cs glob would compile their files into
+       this project too. -->
   <ItemGroup>
     <Compile Remove="BookingEngine.Api.Tests/**/*.cs" />
+    <Compile Remove="BookingEngine.Domain/**/*.cs" />
+    <Compile Remove="BookingEngine.Infrastructure/**/*.cs" />
+    <Compile Remove="BookingEngine.Worker/**/*.cs" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { cancelBookingReminder } from "@/lib/notifications";
 import { uuid } from "@/lib/uuid";
 import { ApiError, apiFetch } from "./client";
 import type {
@@ -89,10 +88,12 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: (bookingId: string) =>
       apiFetch<void>(`/bookings/${bookingId}`, { method: "DELETE" }),
-    onSuccess: (_data, bookingId) => {
-      // The 30-min reminder was keyed by booking id when it was confirmed —
-      // drop it so a cancelled booking doesn't still buzz.
-      void cancelBookingReminder(bookingId);
+    // The 30-min reminder is now sent server-side by the notification worker
+    // (see CLAUDE.md) — no local scheduling to cancel here anymore. The
+    // worker's own dedupe (SentNotification, keyed by booking id + type) is
+    // what would need to stop a reminder from firing, and it naturally won't:
+    // ReminderService only ever looks at bookings still Confirmed.
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });

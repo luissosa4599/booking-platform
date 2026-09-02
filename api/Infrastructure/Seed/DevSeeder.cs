@@ -1,4 +1,5 @@
-using BookingEngine.Api.Domain;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

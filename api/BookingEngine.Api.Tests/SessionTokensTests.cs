@@ -1,5 +1,5 @@
 using BookingEngine.Api.Application.Auth;
-using BookingEngine.Api.Domain;
+using BookingEngine.Domain;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace BookingEngine.Api.Tests;

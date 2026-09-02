@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="BookingEngine.Domain/BookingEngine.Domain.csproj" />
+  <Project Path="BookingEngine.Infrastructure/BookingEngine.Infrastructure.csproj" />
   <Project Path="BookingEngine.Api.csproj" />
   <Project Path="BookingEngine.Api.Tests/BookingEngine.Api.Tests.csproj" />
+  <Project Path="BookingEngine.Worker/BookingEngine.Worker.csproj" />
 </Solution>

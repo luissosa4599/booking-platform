@@ -1,4 +1,4 @@
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Application.Bookings;

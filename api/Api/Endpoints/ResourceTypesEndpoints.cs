@@ -1,5 +1,5 @@
 using BookingEngine.Api.Application.ResourceTypes;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Api.Endpoints;

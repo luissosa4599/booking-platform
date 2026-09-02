@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-BookingEngine.Worker</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <!-- Pinned explicitly — without it, a lower transitive EF Core version
+         (pulled in via Npgsql.EntityFrameworkCore.PostgreSQL, only visible
+         through the BookingEngine.Infrastructure ProjectReference) wins NuGet
+         resolution and mismatches BookingEngine.Infrastructure's build-time version. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BookingEngine.Domain\BookingEngine.Domain.csproj" />
+    <ProjectReference Include="..\BookingEngine.Infrastructure\BookingEngine.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

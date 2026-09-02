@@ -2,7 +2,7 @@ using System.Threading.RateLimiting;
 using BookingEngine.Api.Api.Endpoints;
 using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
 using BookingEngine.Api.Infrastructure.Seed;
 using DotNetEnv;
@@ -113,6 +113,18 @@ try
 
     var app = builder.Build();
 
+    // Only set by docker-compose.yml — a fresh Postgres container has no
+    // schema, and there's no interactive terminal in that setup to run
+    // `dotnet ef database update` by hand. Neon dev (the normal local
+    // workflow) never sets this; migrations there stay a deliberate,
+    // manually-run step. See CLAUDE.md.
+    if (builder.Configuration.GetValue<bool>("RUN_MIGRATIONS_ON_STARTUP"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
@@ -132,6 +144,7 @@ try
     app.MapResourcesEndpoints();
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
+    app.MapDevicesEndpoints();
 
     if (app.Environment.IsDevelopment())
     {

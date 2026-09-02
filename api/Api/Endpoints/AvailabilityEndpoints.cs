@@ -1,5 +1,5 @@
 using BookingEngine.Api.Application.Availability;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Api.Endpoints;
@@ -32,7 +32,7 @@ public static class AvailabilityEndpoints
             // that started before `from` but hasn't ended yet is still
             // "ahora mismo" and must be included — filtering on StartsAt would
             // silently drop every currently-in-progress slot.
-            IQueryable<BookingEngine.Api.Domain.AvailabilitySlot> query = db.AvailabilitySlots
+            IQueryable<BookingEngine.Domain.AvailabilitySlot> query = db.AvailabilitySlots
                 .AsNoTracking()
                 .Where(s =>
                     (resourceTypeId == null || s.Resource.ResourceTypeId == resourceTypeId) &&

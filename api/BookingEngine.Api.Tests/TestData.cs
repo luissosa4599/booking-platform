@@ -1,5 +1,5 @@
-using BookingEngine.Api.Domain;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 
 namespace BookingEngine.Api.Tests;
 

@@ -6,11 +6,22 @@ Motor genérico de reservas de recursos.
 
 ```
 booking-engine/
-├── api/          → ASP.NET Core (backend)
+├── api/
+│   ├── BookingEngine.Domain/          → entidades, sin dependencias
+│   ├── BookingEngine.Infrastructure/  → EF Core: DbContext, configs, migraciones
+│   ├── BookingEngine.Api.csproj       → API HTTP (Minimal APIs)
+│   ├── BookingEngine.Worker/          → microservicio de notificaciones (push)
+│   └── BookingEngine.Api.Tests/       → xUnit
 ├── app/          → Expo (React Native + NativeWind) — iOS / Android / Web
 ├── docs/         → Handoff de diseño (tokens, componentes, pantallas)
+├── docker-compose.yml → stack local completo (Postgres + api + worker)
 └── README.md     → Overview del proyecto completo
 ```
+
+`api/BookingEngine.Api.csproj` y `api/BookingEngine.Worker/` comparten la misma base de datos vía
+`BookingEngine.Domain`/`BookingEngine.Infrastructure` (referenciadas como class libraries) — la API
+es la única que corre migraciones (`dotnet ef`, ver abajo); el worker solo lee/escribe con el mismo
+`DbContext`.
 
 ## Cómo correrlo local
 
@@ -49,6 +60,36 @@ CORS está configurado con una política nombrada `AllowWeb` que permite `http:/
 (Expo web dev server) y, en producción, el origen que se defina en la variable de entorno
 `FRONTEND_WEB_URL` (vacía por ahora — se llena cuando exista el dominio de Vercel).
 
+### Worker de notificaciones (`api/BookingEngine.Worker`)
+
+Microservicio aparte (mismo repo, DB compartida vía `BookingEngine.Infrastructure`) que manda push
+notifications: recordatorios 30 min antes de una reserva confirmada, y aviso a la siguiente persona
+en lista de espera cuando alguien cancela (patrón outbox transaccional —
+`NotificationOutbox`, escrito por la API en el mismo `SaveChanges` que la cancelación). Sin API HTTP
+propia, dos `BackgroundService` con polling (`ReminderService` cada 60s, `WaitlistPromotionService`
+cada 15s), habla con la Expo Push API directo por HTTP.
+
+```bash
+cd api
+dotnet run --project BookingEngine.Worker
+```
+
+Necesita la misma `ConnectionStrings__Default` que la API (usa el mismo `.env` si corres desde
+`api/`). No requiere `dotnet-ef` ni corre migraciones — asume que la API ya las aplicó.
+
+### Stack completo con Docker Compose
+
+Para probar API + worker + una Postgres local (no Neon) juntos:
+
+```bash
+docker compose up --build
+curl -X POST http://localhost:5190/dev/seed
+```
+
+El contenedor de la API aplica las migraciones solo al arrancar (`RUN_MIGRATIONS_ON_STARTUP=true`,
+ver `docker-compose.yml` — nunca se activa contra Neon, es exclusivo de este stack local). No hay
+despliegue real todavía; esto es solo para verificar la arquitectura de microservicio localmente.
+
 ### Frontend (`/app`)
 
 ```bash
@@ -69,12 +110,18 @@ producción, define `EXPO_PUBLIC_API_URL` en `app/.env`.
 ### Tests
 
 ```bash
-cd api && dotnet test     # xUnit + WebApplicationFactory
+cd api && dotnet test     # xUnit + WebApplicationFactory (sin --project: corre toda la .slnx)
 cd app && npm test        # Jest + jest-expo
 ```
 
-CI (`.github/workflows/ci.yml`) corre ambos en paralelo en cada push/PR a `main`: para `/api`
-restore + build + test, para `/app` install + type check (`tsc --noEmit`) + test.
+`dotnet test` sin argumento explícito descubre `api/BookingEngine.Api.slnx` (los 5 proyectos:
+Domain, Infrastructure, Api, Api.Tests, Worker) — solo `Api.Tests` tiene pruebas reales, los demás
+simplemente se compilan como parte del mismo build.
+
+CI (`.github/workflows/ci.yml`) corre tres jobs en paralelo en cada push/PR a `main`: `api`
+(restore + build + test de toda la solución), `app` (install + type check + test), y `docker`
+(`docker build` de las dos imágenes — validación de que los Dockerfiles compilan, sin push a
+ningún registry).
 
 ## Cross-platform notes
 

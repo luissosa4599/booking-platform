@@ -22,6 +22,11 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # No explicit project/solution argument — dotnet auto-discovers
+      # BookingEngine.Api.slnx, which covers all 5 projects (Domain,
+      # Infrastructure, Api, Api.Tests, Worker). The worker has no dedicated
+      # CI job of its own for exactly this reason; it's already built and
+      # test-discovered here.
       - name: dotnet restore
         run: dotnet restore
 
@@ -30,6 +35,22 @@ jobs:
 
       - name: dotnet test
         run: dotnet test --no-build --configuration Release
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Build-only validation (no push, no registry) — catches a broken
+      # Dockerfile or a missing file in the build context before it's
+      # discovered at actual deploy time. See docker-compose.yml for how
+      # these two images are meant to be run together locally.
+      - name: Build api image
+        run: docker build -f api/Dockerfile -t booking-api:ci ./api
+
+      - name: Build worker image
+        run: docker build -f api/BookingEngine.Worker/Dockerfile -t booking-worker:ci ./api
 
   app:
     name: app

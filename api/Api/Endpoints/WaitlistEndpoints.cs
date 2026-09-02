@@ -2,8 +2,8 @@ using System.Security.Claims;
 using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Validation;
 using BookingEngine.Api.Application.Waitlist;
-using BookingEngine.Api.Domain;
-using BookingEngine.Api.Infrastructure;
+using BookingEngine.Domain;
+using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingEngine.Api.Api.Endpoints;
