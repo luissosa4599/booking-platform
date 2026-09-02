@@ -367,6 +367,7 @@ export default function ResourceScreen() {
               only the back button is inset. */}
           <RNAnimated.View style={{ height: heroHeight }}>
             <HeroCarousel
+              contentHeight={heroExpanded}
               mapImageUrl={mapImageUrl}
               stockImageUrl={heroStockImageUrl}
               onMapPress={directions ? openDirections : undefined}

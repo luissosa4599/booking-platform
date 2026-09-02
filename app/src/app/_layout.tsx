@@ -6,10 +6,12 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { Toast } from "@/components/Toast";
 import { queryClient } from "@/lib/api/queryClient";
 import { useAuthStore } from "@/lib/session";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { useColor } from "@/lib/theme/useColor";
+import { useToastStore } from "@/lib/toastStore";
 
 import "@/global.css";
 
@@ -66,6 +68,31 @@ function AuthGate() {
   );
 }
 
+// The booking-success toast (lib/toastStore) is rendered here, above the
+// navigator, not inside a screen — so it survives every navigation AND can sit
+// at the true bottom of the screen instead of being lifted to clear the
+// TabBar (a tabbed screen's own toast, e.g. Reservas' undo, still passes
+// `raised`). See CLAUDE.md "Toast lives at the root".
+function GlobalToast() {
+  const router = useRouter();
+  const message = useToastStore((s) => s.message);
+  const actionLabel = useToastStore((s) => s.actionLabel);
+  const clear = useToastStore((s) => s.clear);
+
+  return (
+    <Toast
+      isOpen={!!message}
+      message={message ?? ""}
+      actionLabel={actionLabel}
+      onAction={() => {
+        clear();
+        router.navigate("/bookings");
+      }}
+      onDismiss={clear}
+    />
+  );
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
@@ -74,6 +101,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <StatusBar style="auto" />
             <AuthGate />
+            <GlobalToast />
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ThemeProvider>

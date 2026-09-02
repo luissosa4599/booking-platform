@@ -443,6 +443,7 @@ export default function BookingsScreen() {
         message="Reserva cancelada"
         actionLabel="Deshacer"
         durationMs={5000}
+        raised
         onAction={handleUndo}
         onDismiss={handleToastExpired}
       />

@@ -16,7 +16,6 @@ import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
-import { Toast } from "@/components/Toast";
 import { useAvailability } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
@@ -71,9 +70,6 @@ export default function ExploreScreen() {
   const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(
     new Set(),
   );
-  // Shared (not local) so a booking made from ResourceScreen can show its
-  // success toast here after navigating back — see lib/toastStore.ts.
-  const toastMessage = useToastStore((s) => s.message);
 
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
   const searchIconColor = useColor("label-4");
@@ -369,6 +365,8 @@ export default function ExploreScreen() {
         </View>
       </ScrollView>
 
+      {/* The success toast is rendered once at the root (_layout.tsx) so it
+          survives router.back() into here and sits at the true bottom. */}
       <ConflictSheet
         isOpen={!!conflictSlot}
         onClose={() => createBooking.reset()}
@@ -376,17 +374,6 @@ export default function ExploreScreen() {
         slotStartsAt={conflictSlot?.startsAt ?? null}
         technicalMessage={createBooking.conflict?.message}
         alternatives={createBooking.conflict?.alternatives ?? []}
-      />
-
-      <Toast
-        isOpen={!!toastMessage}
-        message={toastMessage ?? ""}
-        actionLabel="Ver"
-        onAction={() => {
-          useToastStore.getState().clear();
-          router.navigate("/bookings");
-        }}
-        onDismiss={() => useToastStore.getState().clear()}
       />
     </Screen>
   );

@@ -27,7 +27,10 @@ export function Toast({
   durationMs = 4000,
 }: ToastProps) {
   const { mounted, opacity } = useFadeTransition(isOpen, TRANSITION_MS);
-  const translateY = opacity.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const translateY = opacity.interpolate({
+    inputRange: [0, 1],
+    outputRange: [8, 0],
+  });
 
   // The parent clears `message` to "" the same render it flips `isOpen` to
   // false — keep showing the last real message through the exit transition
@@ -65,9 +68,11 @@ export function Toast({
     <Animated.View
       style={{
         position: "absolute",
-        left: 16,
-        right: 16,
+        left: 0,
+        right: 0,
         bottom: 24,
+        paddingHorizontal: 16,
+        alignItems: "center",
         opacity,
         transform: [{ translateY }],
       }}
@@ -82,7 +87,7 @@ export function Toast({
           `label-1` flips to white in dark mode, which would have put white
           text on a white toast. A toast is conventionally an always-dark
           pill regardless of the app's own light/dark mode. */}
-      <View className="flex-row items-center justify-between rounded-[14px] bg-[#1C1C1E] px-4 py-3">
+      <View className="w-full max-w-[420px] flex-row items-center justify-between rounded-[14px] bg-[#1C1C1E] px-4 py-3">
         <Text className="text-body flex-1 text-white" numberOfLines={1}>
           {displayMessage}
         </Text>

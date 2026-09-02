@@ -11,6 +11,13 @@ import {
 import { Image } from "expo-image";
 
 interface HeroCarouselProps {
+  /**
+   * The image band's fixed height — the hero's *expanded* height. This View
+   * fills its (animated, collapsing) parent and keeps the band vertically
+   * centred + clipped, so shrinking the parent reveals the middle of the
+   * image, not the top.
+   */
+  contentHeight: number;
   /** Google Static Maps URL, or null when no key / no coordinates. */
   mapImageUrl: string | null;
   /** A stock photo of the space (Unsplash). Always present. */
@@ -24,11 +31,9 @@ interface HeroCarouselProps {
  * When there's no map it's just the photo (still a single "page", no dots).
  * Everything sits on the same `bg-fill` block underneath, so a page whose
  * image fails to load degrades to grey rather than a broken image.
- *
- * Fills its parent (which owns the height — `resource/[id].tsx` animates it
- * down as the screen scrolls), so this only ever measures its own width.
  */
 export function HeroCarousel({
+  contentHeight,
   mapImageUrl,
   stockImageUrl,
   onMapPress,
@@ -50,7 +55,7 @@ export function HeroCarousel({
   return (
     <View
       onLayout={onLayout}
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, styles.clip]}
       className="bg-fill"
     >
       {width > 0 ? (
@@ -62,6 +67,9 @@ export function HeroCarousel({
             onScroll={onScroll}
             scrollEventThrottle={16}
             scrollEnabled={pages.length > 1}
+            // Fixed-height band, vertically centred by the parent's
+            // `justifyContent` — the parent clips the overflow as it collapses.
+            style={{ flexGrow: 0, height: contentHeight }}
           >
             {pages.map((kind) => (
               <Pressable
@@ -69,16 +77,17 @@ export function HeroCarousel({
                 onPress={kind === "map" ? onMapPress : undefined}
                 disabled={kind !== "map" || !onMapPress}
                 accessibilityLabel={
-                  kind === "map" ? "Ver ubicación en Google Maps" : undefined
+                  kind === "map" ? "Cómo llegar en Google Maps" : undefined
                 }
-                style={{ width, height: "100%" }}
+                style={{ width, height: contentHeight }}
               >
                 <Image
                   source={{
                     uri: kind === "map" ? mapImageUrl! : stockImageUrl,
                   }}
-                  style={{ width, height: "100%" }}
+                  style={{ width, height: contentHeight }}
                   contentFit="cover"
+                  contentPosition="center"
                   transition={150}
                   accessibilityIgnoresInvertColors
                 />
@@ -87,7 +96,7 @@ export function HeroCarousel({
           </ScrollView>
 
           {pages.length > 1 ? (
-            <View className="absolute inset-x-0 bottom-3 flex-row justify-center gap-[6px]">
+            <View style={styles.dots}>
               {pages.map((kind, i) => (
                 <View
                   key={kind}
@@ -107,3 +116,19 @@ export function HeroCarousel({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  clip: {
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+  dots: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+});

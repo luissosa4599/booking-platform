@@ -5,10 +5,12 @@ import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 
 import type { ToastProps } from "./Toast.types";
 
-// Both callers (Explore, Reservas) are tabbed screens, so the toast has to
-// clear the TabBar (h-82 + insets.bottom, see (tabs)/_layout.tsx) — at the
-// old `bottom-6` it rendered *behind* the bar and was invisible on device.
-const TAB_BAR_HEIGHT = 82;
+// A toast rendered *inside* a tabbed screen (`raised`) has to clear the TabBar
+// (h-82 + insets.bottom, see (tabs)/_layout.tsx) or it renders *behind* the
+// bar — invisible on device. The global toast renders above the navigator
+// (root `_layout`), so it just sits at the normal bottom offset.
+const TAB_BAR_CLEARANCE = 82 + 12;
+const BOTTOM_OFFSET = 12;
 
 // See Toast.web.tsx for why web doesn't use Reanimated here — that bug
 // (Animated.View misrendering as a descendant of an edge-anchored
@@ -23,6 +25,7 @@ export function Toast({
   onAction,
   onDismiss,
   durationMs = 4000,
+  raised = false,
 }: ToastProps) {
   const insets = useSafeAreaInsets();
   const onDismissRef = useRef(onDismiss);
@@ -46,7 +49,9 @@ export function Toast({
     <Animated.View
       entering={FadeInDown}
       exiting={FadeOutDown}
-      style={{ bottom: insets.bottom + TAB_BAR_HEIGHT + 12 }}
+      style={{
+        bottom: insets.bottom + (raised ? TAB_BAR_CLEARANCE : BOTTOM_OFFSET),
+      }}
       // On the app's warm accent instead of a dark pill — a booking
       // confirmation should read as a positive beat, and the dark toast blended
       // into the screen on device. `on-tint` is the paired readable-on-tint
