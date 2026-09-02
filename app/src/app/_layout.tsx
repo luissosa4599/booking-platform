@@ -1,8 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { LogBox, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider as NavThemeProvider,
+  useRouter,
+  useSegments,
+} from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "nativewind";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -37,6 +45,7 @@ function AuthGate() {
   // this re-renders in the same frame as every `Screen`, so no layer is ever
   // a stale colour mid-transition. See CLAUDE.md "Safe area + theme-flash".
   const canvas = useColor("canvas");
+  const card = useColor("card");
 
   useEffect(() => {
     hydrate();
@@ -52,6 +61,18 @@ function AuthGate() {
     }
   }, [hydrated, session, segments, router]);
 
+  const { colorScheme } = useColorScheme();
+  // The React Navigation container paints its own background behind every
+  // scene and during transitions. Its default is a hardcoded light grey
+  // (`rgb(242,242,242)`) in BOTH schemes — that's the "pantallazo blanco" on a
+  // resource → back → tabs transition, especially in dark mode. Point it at
+  // the app's `canvas` (reactive), same as the Stack `contentStyle`.
+  const navBase = colorScheme === "dark" ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...navBase,
+    colors: { ...navBase.colors, background: canvas, card },
+  };
+
   // Nothing to paint until we know whether there's a session — avoids a flash
   // of Explore before the redirect to /sign-in.
   if (!hydrated) {
@@ -59,12 +80,14 @@ function AuthGate() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: canvas },
-      }}
-    />
+    <NavThemeProvider value={navTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: canvas },
+        }}
+      />
+    </NavThemeProvider>
   );
 }
 
@@ -93,17 +116,28 @@ function GlobalToast() {
   );
 }
 
+// A persistent opaque `canvas` layer behind the whole app — the last line of
+// defence against a white flash (cold start, an unpainted frame mid-nav). In
+// Expo Go this is also the only theme-aware ground colour: `app.config.ts`'s
+// native `backgroundColor` only takes effect in a real build.
+function AppBackground({ children }: { children: ReactNode }) {
+  const canvas = useColor("canvas");
+  return <View style={{ flex: 1, backgroundColor: canvas }}>{children}</View>;
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <StatusBar style="auto" />
-            <AuthGate />
-            <GlobalToast />
-          </GestureHandlerRootView>
-        </QueryClientProvider>
+        <AppBackground>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <StatusBar style="auto" />
+              <AuthGate />
+              <GlobalToast />
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </AppBackground>
       </ThemeProvider>
     </SafeAreaProvider>
   );
