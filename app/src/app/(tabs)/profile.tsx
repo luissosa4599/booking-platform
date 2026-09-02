@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 
-import { ScreenFade } from "@/components/ScreenFade";
+import { Screen } from "@/components/Screen";
 import { User } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
 
@@ -12,8 +12,8 @@ export default function ProfileScreen() {
   const iconColor = useColor("chevron");
 
   return (
-    <ScreenFade>
-      <View className="flex-1 items-center justify-center gap-4 bg-canvas px-10">
+    <Screen bg="canvas">
+      <View className="flex-1 items-center justify-center gap-4 px-10">
         <View className="h-16 w-16 items-center justify-center rounded-[18px] bg-fill text-chevron">
           <User size={26} color={iconColor} />
         </View>
@@ -24,6 +24,6 @@ export default function ProfileScreen() {
           Tu perfil y ajustes van a vivir aquí — no está diseñado todavía.
         </Text>
       </View>
-    </ScreenFade>
+    </Screen>
   );
 }

@@ -26,6 +26,7 @@ const LIGHT = {
   "tint-soft": "#E8A883",
   "tint-wash": "#FBEFE8",
   "on-tint": "#FFFFFF",
+  scrim: "#1C1C1E",
 } as const;
 
 const DARK: Record<keyof typeof LIGHT, string> = {

@@ -9,4 +9,11 @@ export interface ToastProps {
   onAction?: () => void;
   onDismiss: () => void;
   durationMs?: number;
+  /**
+   * Native only: lift the toast to clear the TabBar. Set it when the toast is
+   * rendered *inside* a tabbed screen (e.g. the Reservas undo toast). The
+   * global success toast renders above the navigator (root `_layout`), so it
+   * sits at the normal bottom offset and leaves this off.
+   */
+  raised?: boolean;
 }

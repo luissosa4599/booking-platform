@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Animated } from "react-native";
 
-// Web-only helper for a JS-driven fade (legacy `Animated` from 'react-native',
-// not Reanimated): `Animated.View` from `react-native-reanimated` doesn't
+// JS-driven mount/unmount + fade helper (legacy `Animated` from 'react-native',
+// not Reanimated). Born web-only — where `Animated.View` from
+// `react-native-reanimated` doesn't
 // paint reliably as a descendant of an edge-anchored `position: absolute`
 // container on web (see docs/session-log.md), and Tailwind's `transition-*`/
 // `duration-*`/`scale-*` utilities aren't part of NativeWind's generated CSS
@@ -10,7 +11,8 @@ import { Animated } from "react-native";
 // className-based CSS transition silently does nothing. Legacy `Animated`
 // sidesteps both: it drives the `opacity`/`transform` style values directly
 // every frame via JS, independent of Tailwind and of Reanimated's web
-// backend.
+// backend. `Sheet.native.tsx` reuses it too (same legacy-`Animated` slide,
+// no Reanimated) — nothing here is web-specific.
 export function useFadeTransition(isOpen: boolean, durationMs: number) {
   const [mounted, setMounted] = useState(isOpen);
   // `useState`'s lazy initializer (not `useRef().current`) creates this once

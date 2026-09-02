@@ -33,8 +33,10 @@ describe("composeEmptyStateCopy", () => {
   });
 
   it("combines the occupancy note and next-available for noAvailability", () => {
+    // Noon today, not `now + 3h`: the latter crosses midnight — and flips
+    // "Hoy" → "Mañana" — whenever CI (UTC) runs after ~21:00.
     const later = new Date();
-    later.setHours(later.getHours() + 3);
+    later.setHours(12, 0, 0, 0);
 
     const copy = composeEmptyStateCopy({
       reason: "noAvailability",

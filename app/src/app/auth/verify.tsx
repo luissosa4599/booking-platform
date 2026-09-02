@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Placeholder } from "@/components/Placeholder";
-import { ScreenFade } from "@/components/ScreenFade";
+import { Screen } from "@/components/Screen";
 import { CalendarX } from "@/lib/icons";
 import { useAuthStore } from "@/lib/session";
 
@@ -25,8 +25,8 @@ export default function VerifyScreen() {
   }, [token, verify, router]);
 
   return (
-    <ScreenFade>
-      <View className="flex-1 items-center justify-center bg-card px-6">
+    <Screen bg="card">
+      <View className="flex-1 items-center justify-center px-6">
         {failed ? (
           <Placeholder
             reason="offline"
@@ -42,6 +42,6 @@ export default function VerifyScreen() {
           <Text className="text-body text-label-3">Entrando…</Text>
         )}
       </View>
-    </ScreenFade>
+    </Screen>
   );
 }

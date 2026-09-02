@@ -29,7 +29,11 @@ const DARK_STYLE = [
  */
 export function staticMapUrl(
   { lat, lng }: Coords,
-  { width, height, dark = false }: { width: number; height: number; dark?: boolean },
+  {
+    width,
+    height,
+    dark = false,
+  }: { width: number; height: number; dark?: boolean },
 ): string | null {
   if (!GOOGLE_MAPS_STATIC_KEY) return null;
 
@@ -49,15 +53,16 @@ export function staticMapUrl(
 }
 
 /**
- * A universal Google Maps link: opens the native Google Maps app on a phone,
- * the web app in a browser — same URL, no platform branching needed. Prefers
- * coordinates (exact); falls back to a text search on the address when only
- * that is available.
+ * A universal Google Maps *directions* link: opens the native Google Maps app
+ * on a phone, the web app in a browser — same URL, no platform branching.
+ * Only a `destination` is set, so Google routes from the device's current
+ * location ("Tu ubicación"). Prefers coordinates (exact); falls back to a
+ * text address when only that is available.
  */
 export function directionsUrl(input: Coords | { address: string }): string {
-  const query =
+  const destination =
     "address" in input
       ? encodeURIComponent(input.address)
       : `${input.lat},${input.lng}`;
-  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 }

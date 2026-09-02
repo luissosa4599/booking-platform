@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { Image } from "expo-image";
+import {
+  // Legacy Animated (JS-driven) — animates the hero's `height`, a layout prop
+  // the native driver can't touch. Aliased so it doesn't clash with
+  // Reanimated's `Animated` (used just below for the skeleton exit).
+  Animated as RNAnimated,
+  Linking,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useColorScheme } from "nativewind";
 import Animated, { FadeOut } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { Group } from "@/components/Group";
+import { HeroCarousel } from "@/components/HeroCarousel";
 import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
@@ -21,6 +33,7 @@ import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
 import { directionsUrl, staticMapUrl } from "@/lib/maps";
+import { stockImageUrl } from "@/lib/stockImages";
 import { useColor } from "@/lib/theme/useColor";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 
@@ -92,8 +105,37 @@ function buildDayBuckets(slots: AvailabilitySlot[]): DayBucket[] {
   });
 }
 
+const HERO_EXPANDED_MAX = 460;
+
 export default function ResourceScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+
+  // The hero starts at ~half the screen and shrinks to its resting height as
+  // the page scrolls (a standard collapsing header). Legacy `Animated` +
+  // `useNativeDriver: false` — it animates `height`, a layout prop, and it's
+  // the API that actually works cross-platform in this project (see CLAUDE.md).
+  const heroExpanded = Math.round(
+    Math.min(windowHeight * 0.5, HERO_EXPANDED_MAX),
+  );
+  const heroCollapsed = HERO_HEIGHT + insets.top;
+  const collapseDistance = Math.max(1, heroExpanded - heroCollapsed);
+  const [scrollY] = useState(() => new RNAnimated.Value(0));
+  const heroHeight = scrollY.interpolate({
+    inputRange: [0, collapseDistance],
+    outputRange: [heroExpanded, heroCollapsed],
+    extrapolate: "clamp",
+  });
+  // The hero is in-flow, so its shrinking would normally shrink the scrollable
+  // content height too — which, on a page short enough to reach the bottom
+  // mid-collapse, feeds back into the scroll offset and makes the whole page
+  // shudder. Guaranteeing the content is always at least `collapseDistance`
+  // taller than the viewport means that by the time you *can* be at the
+  // bottom, `scrollY >= collapseDistance` and the hero height is already
+  // clamped (constant) — no feedback. (The classic parallax-ScrollView
+  // "footer spacer" trick, as a minHeight.)
+  const contentMinHeight = windowHeight + collapseDistance;
   // `name`/`location` are passed from the ExploreScreen row so the header
   // paints instantly (per handoff: "cero pantalla de carga al entrar")
   // instead of waiting on GET /resources/{id} for content already known.
@@ -196,14 +238,22 @@ export default function ResourceScreen() {
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
+  // Sized for the hero's *expanded* height — it's scaled down as it collapses.
   const mapImageUrl = hasCoords
     ? staticMapUrl(
         { lat: resource!.locationLatitude!, lng: resource!.locationLongitude! },
-        { width: 700, height: HERO_HEIGHT, dark: colorScheme === "dark" },
+        { width: 700, height: heroExpanded, dark: colorScheme === "dark" },
       )
     : null;
+  const heroStockImageUrl = stockImageUrl(resourceType?.name, {
+    width: 800,
+    height: heroExpanded,
+  });
   const directions = hasCoords
-    ? directionsUrl({ lat: resource!.locationLatitude!, lng: resource!.locationLongitude! })
+    ? directionsUrl({
+        lat: resource!.locationLatitude!,
+        lng: resource!.locationLongitude!,
+      })
     : resource?.locationAddress
       ? directionsUrl({ address: resource.locationAddress })
       : null;
@@ -313,44 +363,41 @@ export default function ResourceScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-card">
-        <ScrollView contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}>
-          {/* No accessibilityRole="button" here — the back button nested inside
-              is a real button, and react-native-web renders that role as a
-              literal <button>; two nested would be invalid HTML (see
-              CLAUDE.md's Row accessibilityRole gotcha, same trap). */}
-          <Pressable
-            onPress={directions ? openDirections : undefined}
-            disabled={!directions}
-            accessibilityLabel={
-              directions ? "Ver ubicación en Google Maps" : undefined
-            }
-            style={{ height: HERO_HEIGHT }}
-            className="justify-start bg-fill p-4"
-          >
-            {mapImageUrl ? (
-              <Image
-                source={{ uri: mapImageUrl }}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                contentFit="cover"
-                accessibilityIgnoresInvertColors
-              />
-            ) : null}
+        <RNAnimated.ScrollView
+          contentContainerStyle={{
+            minHeight: contentMinHeight,
+            paddingBottom: isWeb ? 24 : 140,
+          }}
+          scrollEventThrottle={16}
+          onScroll={RNAnimated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+        >
+          {/* Collapsing hero — in-flow (first child), so a drag anywhere on it
+              still scrolls the page and the carousel stays a nested horizontal
+              pager. It shrinks from ~half the screen to its resting height over
+              the first `collapseDistance` px of scroll; `contentMinHeight`
+              keeps that from shuddering at the bottom. Edge-to-edge under the
+              status bar; only the back button is inset. */}
+          <RNAnimated.View style={{ height: heroHeight }}>
+            <HeroCarousel
+              contentHeight={heroExpanded}
+              mapImageUrl={mapImageUrl}
+              stockImageUrl={heroStockImageUrl}
+              onMapPress={directions ? openDirections : undefined}
+            />
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Volver"
-              className="h-9 w-9 items-center justify-center rounded-full bg-card/90 text-label-1"
+              style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
-          </Pressable>
+          </RNAnimated.View>
 
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
@@ -407,7 +454,10 @@ export default function ResourceScreen() {
                       onPress={() => setSelectedDayIndex(index)}
                       accessibilityRole="button"
                       accessibilityLabel={`${day.label}, día ${day.dayNumber}${hasSlots ? "" : ", sin horarios"}`}
-                      accessibilityState={{ selected: isSelected, disabled: !hasSlots }}
+                      accessibilityState={{
+                        selected: isSelected,
+                        disabled: !hasSlots,
+                      }}
                       className={cn(
                         "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
                         isSelected ? "bg-tint-wash" : "bg-fill",
@@ -534,7 +584,7 @@ export default function ResourceScreen() {
               {ctaButton}
             </View>
           ) : null}
-        </ScrollView>
+        </RNAnimated.ScrollView>
 
         {!isWeb ? (
           <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">
