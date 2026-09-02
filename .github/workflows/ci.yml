@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+  # No branch filter — the filter matches the PR's *base*, so restricting to
+  # `main` skips CI on stacked PRs (one feature branch targeting another). Run
+  # on every PR regardless of target.
   pull_request:
-    branches: [main]
 
 jobs:
   api:
