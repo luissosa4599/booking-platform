@@ -8,6 +8,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
@@ -197,6 +198,7 @@ function CancelableRow({
 export default function BookingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const [scope, setScope] = useState<BookingScope>("upcoming");
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [shakeId, setShakeId] = useState<string | null>(null);
@@ -282,7 +284,7 @@ export default function BookingsScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-canvas">
-        <View className="px-4 pt-3">
+        <View className="px-4 pt-3" style={{ paddingTop: insets.top + 12 }}>
           <Text className="text-title-lg text-label-1">Reservas</Text>
         </View>
 

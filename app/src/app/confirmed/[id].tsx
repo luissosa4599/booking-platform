@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
@@ -81,6 +82,7 @@ function SummaryRow({
 
 export default function ConfirmedScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     code = "",
     name = "Tu reserva",
@@ -167,7 +169,10 @@ export default function ConfirmedScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-card">
-        <View className="flex-1 justify-center gap-8 px-6">
+        <View
+          className="flex-1 justify-center gap-8 px-6"
+          style={{ paddingTop: insets.top }}
+        >
           <View className="items-center gap-8">
             <SuccessCheckmark />
             <View className="items-center gap-2">
@@ -224,7 +229,10 @@ export default function ConfirmedScreen() {
           </View>
         </View>
 
-        <View className="gap-2 px-6 pb-[34px]">
+        <View
+          className="gap-2 px-6 pb-[34px]"
+          style={{ paddingBottom: insets.bottom + 16 }}
+        >
           <Button
             variant="filled"
             loading={calBusy}
@@ -232,6 +240,12 @@ export default function ConfirmedScreen() {
             onPress={handleCalendar}
           >
             {calLabel}
+          </Button>
+          <Button
+            variant="gray"
+            onPress={() => router.replace("/bookings")}
+          >
+            Ver reservación
           </Button>
           <Button variant="plain" onPress={() => router.replace("/")}>
             Listo

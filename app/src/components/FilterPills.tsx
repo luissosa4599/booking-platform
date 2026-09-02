@@ -42,8 +42,12 @@ export function FilterPills({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+      contentContainerStyle={{ paddingHorizontal: 16 }}
     >
+      {/* `gap` on a horizontal ScrollView's contentContainerStyle doesn't
+          render on Android — put the pills in a plain row View, where `gap`
+          works reliably. */}
+      <View style={{ flexDirection: "row", gap: 8 }}>
       {options.map((option) => {
         const active = option.id === selectedId;
         const showRemove = removable && active && option.id !== null;
@@ -93,6 +97,7 @@ export function FilterPills({
           </Pressable>
         );
       })}
+      </View>
     </ScrollView>
   );
 }

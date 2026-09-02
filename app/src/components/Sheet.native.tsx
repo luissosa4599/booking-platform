@@ -3,19 +3,24 @@ import BottomSheet, {
   type BottomSheetBackdropProps,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useColor } from "@/lib/theme/useColor";
 import type { SheetProps } from "./Sheet.types";
 import {
-  SHEET_CARD_COLOR_HEX,
-  SHEET_GRABBER_COLOR_HEX,
   SHEET_OVERLAY_COLOR_HEX,
   SHEET_OVERLAY_OPACITY,
 } from "./Sheet.types";
 
 export function Sheet({ isOpen, onClose, children }: SheetProps) {
   const sheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["50%"], []);
+  const insets = useSafeAreaInsets();
+  // `card` and `chevron` ARE theme tokens (near-black card + a lighter grabber
+  // in dark mode) — the sheet was hardcoded to white, which showed as a white
+  // slab behind the UI on a dark device.
+  const cardColor = useColor("card");
+  const grabberColor = useColor("chevron");
 
   useEffect(() => {
     if (isOpen) {
@@ -43,22 +48,28 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
     <BottomSheet
       ref={sheetRef}
       index={-1}
-      snapPoints={snapPoints}
+      // No fixed snap point — size to the content. A hardcoded "50%" cut off
+      // taller content (the 409 "alternatives" list) and left dead white space
+      // for shorter content.
+      enableDynamicSizing
       enablePanDownToClose
       onClose={onClose}
       backdropComponent={renderBackdrop}
       backgroundStyle={{
-        backgroundColor: SHEET_CARD_COLOR_HEX,
+        backgroundColor: cardColor,
         borderTopLeftRadius: 30,
         borderTopRightRadius: 30,
       }}
       handleIndicatorStyle={{
-        backgroundColor: SHEET_GRABBER_COLOR_HEX,
+        backgroundColor: grabberColor,
         width: 40,
         height: 5,
       }}
     >
-      <BottomSheetView className="gap-[22px] px-5 pb-[34px] pt-[10px]">
+      <BottomSheetView
+        className="gap-[22px] px-5 pt-[10px]"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 18 }}
+      >
         {children}
       </BottomSheetView>
     </BottomSheet>

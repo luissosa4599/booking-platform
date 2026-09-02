@@ -2,11 +2,14 @@ import { useEffect } from "react";
 import { LogBox, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "@/lib/api/queryClient";
 import { useAuthStore } from "@/lib/session";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { useColor } from "@/lib/theme/useColor";
 
 import "@/global.css";
 
@@ -27,6 +30,11 @@ function AuthGate() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const session = useAuthStore((s) => s.session);
   const hydrate = useAuthStore((s) => s.hydrate);
+  // The native stack paints white behind a screen mid-transition unless the
+  // scene has an explicit background — very visible on Android, especially
+  // going resource/[id] → back → tabs. `canvas` is the app's ground colour
+  // (near-black in dark mode), so the flash reads as "the app" not "a gap".
+  const canvas = useColor("canvas");
 
   useEffect(() => {
     hydrate();
@@ -48,17 +56,27 @@ function AuthGate() {
     return <View className="flex-1 bg-canvas" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: canvas },
+      }}
+    />
+  );
 }
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthGate />
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar style="auto" />
+            <AuthGate />
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
@@ -56,6 +57,7 @@ function withoutId(set: Set<string>, id: string) {
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<
     string | null
   >(null);
@@ -243,7 +245,10 @@ export default function ExploreScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-canvas">
-        <View className="gap-5 px-4 pt-3">
+        <View
+          className="gap-5 px-4 pt-3"
+          style={{ paddingTop: insets.top + 12 }}
+        >
           <View className="flex-row items-end justify-between">
             <Text className="text-title-lg text-label-1">Ahora</Text>
             <Text className="text-subhead text-label-4">
@@ -298,7 +303,7 @@ export default function ExploreScreen() {
 
             {!showSkeleton && nowGroup.length > 0 ? (
               <Group header="LIBRE AHORA MISMO">
-                {nowGroup.map((slot, index) => (
+                {nowGroup.map((slot) => (
                   <Animated.View
                     key={slot.id}
                     layout={LinearTransition.springify()}
@@ -319,7 +324,7 @@ export default function ExploreScreen() {
                         confirmedSlotIds.has(slot.id) ? "check" : "action"
                       }
                       actionLabel="Apartar"
-                      actionTone={index === 0 ? "filled" : "wash"}
+                      actionTone="wash"
                       actionLoading={pendingSlotIds.has(slot.id)}
                       actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
                       onActionPress={() => handleBook(slot)}

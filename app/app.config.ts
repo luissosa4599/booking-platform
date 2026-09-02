@@ -47,6 +47,18 @@ const config: ExpoConfig = {
     // Persists the signed-in user id on native (web falls back to localStorage
     // in lib/session.ts).
     "expo-secure-store",
+    // "Añadir al calendario" on the ConfirmedScreen. Without the plugin the
+    // native calendar-permission string is missing / defaults to English even
+    // on a Spanish device. NOTE: config-plugin permission strings only take
+    // effect in a real dev-build / production build — in Expo Go the dialog
+    // is whatever Expo Go itself ships.
+    [
+      "expo-calendar",
+      {
+        calendarPermission:
+          "Tempo necesita acceso a tu calendario para agregar tus reservas.",
+      },
+    ],
   ],
   experiments: {
     reactCompiler: false,

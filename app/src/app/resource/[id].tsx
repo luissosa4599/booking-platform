@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { Image } from "expo-image";
 import { useColorScheme } from "nativewind";
 import Animated, { FadeOut } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { Group } from "@/components/Group";
+import { HeroCarousel } from "@/components/HeroCarousel";
 import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
 import { directionsUrl, staticMapUrl } from "@/lib/maps";
+import { stockImageUrl } from "@/lib/stockImages";
 import { useColor } from "@/lib/theme/useColor";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 
@@ -94,6 +96,7 @@ function buildDayBuckets(slots: AvailabilitySlot[]): DayBucket[] {
 
 export default function ResourceScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   // `name`/`location` are passed from the ExploreScreen row so the header
   // paints instantly (per handoff: "cero pantalla de carga al entrar")
   // instead of waiting on GET /resources/{id} for content already known.
@@ -202,6 +205,10 @@ export default function ResourceScreen() {
         { width: 700, height: HERO_HEIGHT, dark: colorScheme === "dark" },
       )
     : null;
+  const heroStockImageUrl = stockImageUrl(resourceType?.name, {
+    width: 800,
+    height: HERO_HEIGHT,
+  });
   const directions = hasCoords
     ? directionsUrl({ lat: resource!.locationLatitude!, lng: resource!.locationLongitude! })
     : resource?.locationAddress
@@ -314,43 +321,26 @@ export default function ResourceScreen() {
     <ScreenFade>
       <View className="flex-1 bg-card">
         <ScrollView contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}>
-          {/* No accessibilityRole="button" here — the back button nested inside
-              is a real button, and react-native-web renders that role as a
-              literal <button>; two nested would be invalid HTML (see
-              CLAUDE.md's Row accessibilityRole gotcha, same trap). */}
-          <Pressable
-            onPress={directions ? openDirections : undefined}
-            disabled={!directions}
-            accessibilityLabel={
-              directions ? "Ver ubicación en Google Maps" : undefined
-            }
-            style={{ height: HERO_HEIGHT }}
-            className="justify-start bg-fill p-4"
-          >
-            {mapImageUrl ? (
-              <Image
-                source={{ uri: mapImageUrl }}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                contentFit="cover"
-                accessibilityIgnoresInvertColors
-              />
-            ) : null}
+          {/* The carousel extends edge-to-edge under the status bar; only the
+              back button is inset below it. */}
+          <View style={{ height: HERO_HEIGHT + insets.top }}>
+            <HeroCarousel
+              height={HERO_HEIGHT + insets.top}
+              mapImageUrl={mapImageUrl}
+              stockImageUrl={heroStockImageUrl}
+              onMapPress={directions ? openDirections : undefined}
+            />
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Volver"
-              className="h-9 w-9 items-center justify-center rounded-full bg-card/90 text-label-1"
+              style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
-          </Pressable>
+          </View>
 
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">

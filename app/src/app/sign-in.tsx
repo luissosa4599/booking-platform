@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
@@ -13,6 +14,7 @@ const googleReady = isGoogleAuthConfigured();
 
 export default function SignInScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const requestLink = useAuthStore((s) => s.requestLink);
   const verify = useAuthStore((s) => s.verify);
 
@@ -41,7 +43,10 @@ export default function SignInScreen() {
   return (
     <ScreenFade>
       <View className="flex-1 bg-card">
-        <View className="flex-1 justify-center gap-10 px-6">
+        <View
+          className="flex-1 justify-center gap-10 px-6"
+          style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+        >
           <View className="h-[60px] w-[60px] items-center justify-center rounded-logo bg-tint">
             <View className="h-[22px] w-[22px] rounded-[7px] bg-on-tint" />
           </View>
