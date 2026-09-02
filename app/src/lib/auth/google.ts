@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Platform } from "react-native";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 
@@ -11,11 +12,20 @@ const clientIds = {
   androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
 };
 
-/** True when at least one Google OAuth client id is configured for this platform. */
+/**
+ * True only when the OAuth client id for the *current* platform is set —
+ * `Google.useIdTokenAuthRequest` throws synchronously during render if the
+ * id for `Platform.OS` is missing (it does NOT fall back to another
+ * platform's id), so this has to be per-platform, not "is any id set".
+ */
 export function isGoogleAuthConfigured(): boolean {
-  return Boolean(
-    clientIds.webClientId || clientIds.iosClientId || clientIds.androidClientId,
-  );
+  const idForPlatform =
+    Platform.OS === "ios"
+      ? clientIds.iosClientId
+      : Platform.OS === "android"
+        ? clientIds.androidClientId
+        : clientIds.webClientId;
+  return Boolean(idForPlatform);
 }
 
 export interface GoogleAuth {
