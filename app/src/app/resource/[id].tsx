@@ -120,12 +120,22 @@ export default function ResourceScreen() {
     Math.min(windowHeight * 0.5, HERO_EXPANDED_MAX),
   );
   const heroCollapsed = HERO_HEIGHT + insets.top;
+  const collapseDistance = Math.max(1, heroExpanded - heroCollapsed);
   const [scrollY] = useState(() => new RNAnimated.Value(0));
   const heroHeight = scrollY.interpolate({
-    inputRange: [0, Math.max(1, heroExpanded - heroCollapsed)],
+    inputRange: [0, collapseDistance],
     outputRange: [heroExpanded, heroCollapsed],
     extrapolate: "clamp",
   });
+  // The hero is in-flow, so its shrinking would normally shrink the scrollable
+  // content height too — which, on a page short enough to reach the bottom
+  // mid-collapse, feeds back into the scroll offset and makes the whole page
+  // shudder. Guaranteeing the content is always at least `collapseDistance`
+  // taller than the viewport means that by the time you *can* be at the
+  // bottom, `scrollY >= collapseDistance` and the hero height is already
+  // clamped (constant) — no feedback. (The classic parallax-ScrollView
+  // "footer spacer" trick, as a minHeight.)
+  const contentMinHeight = windowHeight + collapseDistance;
   // `name`/`location` are passed from the ExploreScreen row so the header
   // paints instantly (per handoff: "cero pantalla de carga al entrar")
   // instead of waiting on GET /resources/{id} for content already known.
@@ -355,13 +365,7 @@ export default function ResourceScreen() {
       <View className="flex-1 bg-card">
         <RNAnimated.ScrollView
           contentContainerStyle={{
-            // Reserve the *expanded* hero height as a constant — the hero
-            // itself is absolutely positioned (below), so its collapsing
-            // doesn't change the scrollable content height. An in-flow
-            // collapsing hero does (content height depends on scroll offset),
-            // which feeds back into the scroll near the bottom edge and makes
-            // the whole page shudder.
-            paddingTop: heroExpanded,
+            minHeight: contentMinHeight,
             paddingBottom: isWeb ? 24 : 140,
           }}
           scrollEventThrottle={16}
@@ -370,6 +374,31 @@ export default function ResourceScreen() {
             { useNativeDriver: false },
           )}
         >
+          {/* Collapsing hero — in-flow (first child), so a drag anywhere on it
+              still scrolls the page and the carousel stays a nested horizontal
+              pager. It shrinks from ~half the screen to its resting height over
+              the first `collapseDistance` px of scroll; `contentMinHeight`
+              keeps that from shuddering at the bottom. Edge-to-edge under the
+              status bar; only the back button is inset. */}
+          <RNAnimated.View style={{ height: heroHeight }}>
+            <HeroCarousel
+              contentHeight={heroExpanded}
+              mapImageUrl={mapImageUrl}
+              stockImageUrl={heroStockImageUrl}
+              onMapPress={directions ? openDirections : undefined}
+            />
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
+              style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
+            >
+              <ArrowLeft size={17} color={backIconColor} />
+            </Pressable>
+          </RNAnimated.View>
+
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
               <Text className="text-title-md text-label-1">{displayName}</Text>
@@ -556,38 +585,6 @@ export default function ResourceScreen() {
             </View>
           ) : null}
         </RNAnimated.ScrollView>
-
-        {/* Collapsing hero — absolutely positioned over the scroll view (which
-            reserves `heroExpanded` of top padding). `box-none` so a drag on the
-            image doesn't get captured here, but the map page + back button
-            still take taps. Edge-to-edge under the status bar. */}
-        <RNAnimated.View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: heroHeight,
-          }}
-        >
-          <HeroCarousel
-            contentHeight={heroExpanded}
-            mapImageUrl={mapImageUrl}
-            stockImageUrl={heroStockImageUrl}
-            onMapPress={directions ? openDirections : undefined}
-          />
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Volver"
-            style={{ position: "absolute", top: insets.top + 12, left: 16 }}
-            className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
-          >
-            <ArrowLeft size={17} color={backIconColor} />
-          </Pressable>
-        </RNAnimated.View>
 
         {!isWeb ? (
           <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">
