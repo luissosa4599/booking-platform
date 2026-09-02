@@ -18,7 +18,6 @@ const config: ExpoConfig = {
   // flip on light/dark alone.
   backgroundColor: "#F7F7F8",
   ios: {
-    icon: "./assets/expo.icon",
     // Must match the "iOS" OAuth client's bundle id in Google Cloud Console —
     // expo-auth-session derives the native redirect scheme from it.
     bundleIdentifier: "mx.tempo.app",
@@ -26,9 +25,11 @@ const config: ExpoConfig = {
   android: {
     backgroundColor: "#F7F7F8",
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
+      // Solid brand terracotta — the handoff's adaptive spec ("Fondo del
+      // adaptive: color sólido #C2571F, sin degradado"). The foreground mark
+      // is kept inside the 66dp / 61% safe zone.
+      backgroundColor: "#C2571F",
       foregroundImage: "./assets/images/android-icon-foreground.png",
-      backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: false,
@@ -45,9 +46,12 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#208AEF",
-        image: "./assets/images/splash-icon.png",
-        imageWidth: 76,
+        // Brand wash / ink — no image on purpose. The mark *assembles* in
+        // `components/AnimatedSplash.tsx` (the handoff's "ensamble seco"), so
+        // the native splash is just the ground colour that covers the pre-JS
+        // gap; a static mark here would double-draw and fight the animation.
+        backgroundColor: "#FBEFE8",
+        dark: { backgroundColor: "#17110D" },
       },
     ],
     // Push notifications (booking reminders, waitlist openings — both sent

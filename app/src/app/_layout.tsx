@@ -1,6 +1,11 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { LogBox, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_700Bold,
+  useFonts,
+} from "@expo-google-fonts/space-grotesk";
 import {
   DarkTheme,
   DefaultTheme,
@@ -9,11 +14,13 @@ import {
   useRouter,
   useSegments,
 } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { Toast } from "@/components/Toast";
 import { queryClient } from "@/lib/api/queryClient";
 import { useAuthStore } from "@/lib/session";
@@ -22,6 +29,11 @@ import { useColor } from "@/lib/theme/useColor";
 import { useToastStore } from "@/lib/toastStore";
 
 import "@/global.css";
+
+// The native splash (image-less — just the brand colour) stays up until
+// `AnimatedSplash` mounts and calls `hideAsync`, so there's no gap before the
+// "ensamble" plays.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Dev-tooling noise, not app bugs: the HMR client warns loudly when it can't
 // reach Metro (common when testing on a phone over LAN/VPN — the app itself
@@ -126,6 +138,13 @@ function AppBackground({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_700Bold,
+  });
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
@@ -135,6 +154,12 @@ export default function RootLayout() {
               <StatusBar style="auto" />
               <AuthGate />
               <GlobalToast />
+              {!splashDone ? (
+                <AnimatedSplash
+                  appReady={fontsLoaded && hydrated}
+                  onFinish={() => setSplashDone(true)}
+                />
+              ) : null}
             </GestureHandlerRootView>
           </QueryClientProvider>
         </AppBackground>
