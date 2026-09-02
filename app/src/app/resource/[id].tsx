@@ -354,36 +354,22 @@ export default function ResourceScreen() {
     <ScreenFade>
       <View className="flex-1 bg-card">
         <RNAnimated.ScrollView
-          contentContainerStyle={{ paddingBottom: isWeb ? 24 : 140 }}
+          contentContainerStyle={{
+            // Reserve the *expanded* hero height as a constant — the hero
+            // itself is absolutely positioned (below), so its collapsing
+            // doesn't change the scrollable content height. An in-flow
+            // collapsing hero does (content height depends on scroll offset),
+            // which feeds back into the scroll near the bottom edge and makes
+            // the whole page shudder.
+            paddingTop: heroExpanded,
+            paddingBottom: isWeb ? 24 : 140,
+          }}
           scrollEventThrottle={16}
           onScroll={RNAnimated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             { useNativeDriver: false },
           )}
         >
-          {/* Collapsing hero. In-flow (not absolute) so a vertical drag on the
-              image still scrolls the page; it shrinks from ~half-screen to its
-              resting height as you scroll. Edge-to-edge under the status bar,
-              only the back button is inset. */}
-          <RNAnimated.View style={{ height: heroHeight }}>
-            <HeroCarousel
-              contentHeight={heroExpanded}
-              mapImageUrl={mapImageUrl}
-              stockImageUrl={heroStockImageUrl}
-              onMapPress={directions ? openDirections : undefined}
-            />
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Volver"
-              style={{ position: "absolute", top: insets.top + 12, left: 16 }}
-              className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
-            >
-              <ArrowLeft size={17} color={backIconColor} />
-            </Pressable>
-          </RNAnimated.View>
-
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
               <Text className="text-title-md text-label-1">{displayName}</Text>
@@ -570,6 +556,38 @@ export default function ResourceScreen() {
             </View>
           ) : null}
         </RNAnimated.ScrollView>
+
+        {/* Collapsing hero — absolutely positioned over the scroll view (which
+            reserves `heroExpanded` of top padding). `box-none` so a drag on the
+            image doesn't get captured here, but the map page + back button
+            still take taps. Edge-to-edge under the status bar. */}
+        <RNAnimated.View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: heroHeight,
+          }}
+        >
+          <HeroCarousel
+            contentHeight={heroExpanded}
+            mapImageUrl={mapImageUrl}
+            stockImageUrl={heroStockImageUrl}
+            onMapPress={directions ? openDirections : undefined}
+          />
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+            className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
+          >
+            <ArrowLeft size={17} color={backIconColor} />
+          </Pressable>
+        </RNAnimated.View>
 
         {!isWeb ? (
           <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">

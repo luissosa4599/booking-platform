@@ -7,7 +7,11 @@ import { Group } from "@/components/Group";
 import { Screen } from "@/components/Screen";
 import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { useBookingStreak } from "@/lib/api/bookings";
-import { addBookingToCalendar, copyBookingDetails } from "@/lib/calendar";
+import {
+  addBookingToCalendar,
+  copyBookingDetails,
+  openCalendarEvent,
+} from "@/lib/calendar";
 import { haptics } from "@/lib/haptics";
 import { MapPin } from "@/lib/icons";
 import { directionsUrl } from "@/lib/maps";
@@ -135,6 +139,9 @@ export default function ConfirmedScreen() {
   const [calMode, setCalMode] = useState<"add" | "copy">("add");
   const [calDone, setCalDone] = useState(false);
   const [calBusy, setCalBusy] = useState(false);
+  // Set once the event lands in the OS calendar — swaps "Ver reservación" for
+  // "Ver en el calendario", which opens Google Calendar on that event.
+  const [calEventId, setCalEventId] = useState<string | null>(null);
 
   const calendarEvent = {
     title: name,
@@ -146,7 +153,7 @@ export default function ConfirmedScreen() {
 
   async function handleCalendar() {
     setCalBusy(true);
-    const outcome =
+    const { outcome, eventId } =
       calMode === "add"
         ? await addBookingToCalendar(calendarEvent)
         : await copyBookingDetails(calendarEvent);
@@ -154,6 +161,7 @@ export default function ConfirmedScreen() {
 
     if (outcome === "added") {
       setCalDone(true);
+      setCalEventId(eventId ?? null);
     } else if (outcome === "copied") {
       setCalMode("copy");
       setCalDone(true);
@@ -236,9 +244,15 @@ export default function ConfirmedScreen() {
         >
           {calLabel}
         </Button>
-        <Button variant="gray" onPress={() => router.replace("/bookings")}>
-          Ver reservación
-        </Button>
+        {calEventId ? (
+          <Button variant="gray" onPress={() => openCalendarEvent(calEventId)}>
+            Ver en el calendario
+          </Button>
+        ) : (
+          <Button variant="gray" onPress={() => router.replace("/bookings")}>
+            Ver reservación
+          </Button>
+        )}
         <Button variant="plain" onPress={() => router.replace("/")}>
           Listo
         </Button>

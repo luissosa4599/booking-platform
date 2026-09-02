@@ -7,6 +7,15 @@ import { Platform } from "react-native";
 
 export type CalendarOutcome = "added" | "copied" | "failed";
 
+export interface CalendarResult {
+  outcome: CalendarOutcome;
+  /**
+   * Set only when `outcome === "added"` — the OS calendar event id, so the
+   * ConfirmedScreen can offer "Ver en el calendario" (`openCalendarEvent`).
+   */
+  eventId?: string;
+}
+
 export interface BookingEventInput {
   title: string;
   startsAt: string;
@@ -33,9 +42,13 @@ async function findWritableCalendarId(): Promise<string | null> {
     const def = await Calendar.getDefaultCalendarAsync();
     return def?.id ?? null;
   }
-  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const calendars = await Calendar.getCalendarsAsync(
+    Calendar.EntityTypes.EVENT,
+  );
   const owned = calendars.find(
-    (c) => c.allowsModifications && c.accessLevel === Calendar.CalendarAccessLevel.OWNER,
+    (c) =>
+      c.allowsModifications &&
+      c.accessLevel === Calendar.CalendarAccessLevel.OWNER,
   );
   return (owned ?? calendars.find((c) => c.allowsModifications))?.id ?? null;
 }
@@ -48,21 +61,21 @@ async function findWritableCalendarId(): Promise<string | null> {
  */
 export async function addBookingToCalendar(
   event: BookingEventInput,
-): Promise<CalendarOutcome> {
+): Promise<CalendarResult> {
   if (Platform.OS !== "web") {
     try {
       const { granted } = await Calendar.requestCalendarPermissionsAsync();
       if (granted) {
         const calendarId = await findWritableCalendarId();
         if (calendarId) {
-          await Calendar.createEventAsync(calendarId, {
+          const eventId = await Calendar.createEventAsync(calendarId, {
             title: event.title,
             startDate: new Date(event.startsAt),
             endDate: new Date(event.endsAt),
             location: event.location,
             notes: event.notes,
           });
-          return "added";
+          return { outcome: "added", eventId };
         }
       }
     } catch {
@@ -74,7 +87,7 @@ export async function addBookingToCalendar(
 
 export async function copyBookingDetails(
   event: BookingEventInput,
-): Promise<CalendarOutcome> {
+): Promise<CalendarResult> {
   try {
     const text = [
       event.title,
@@ -85,8 +98,21 @@ export async function copyBookingDetails(
       .filter(Boolean)
       .join("\n");
     await Clipboard.setStringAsync(text);
-    return "copied";
+    return { outcome: "copied" };
   } catch {
-    return "failed";
+    return { outcome: "failed" };
+  }
+}
+
+/**
+ * Opens the OS calendar UI on the given event (Google Calendar on most Android
+ * phones). Best-effort — never throws (unavailable in Expo Go on some
+ * platforms, denied permission, etc.).
+ */
+export async function openCalendarEvent(eventId: string): Promise<void> {
+  try {
+    await Calendar.openEventInCalendarAsync({ id: eventId });
+  } catch {
+    // no-op
   }
 }
