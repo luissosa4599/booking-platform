@@ -73,16 +73,41 @@ public static class DevSeeder
             AllowsWaitlist = true,
         };
 
-        var location = new Location
+        // Three campus locations with real-ish coordinates (Mexico City) so the
+        // resource-detail map preview + "Cómo llegar" link actually vary per
+        // resource — a single seeded location made that feature impossible to
+        // demo. All share the same IANA time zone (slot generation assumes one).
+        var bibliotecaCentral = new Location
         {
             Id = Guid.NewGuid(),
             Name = "Biblioteca Central",
             Address = "Circuito Escolar s/n, Ciudad Universitaria",
             TimeZone = "America/Mexico_City",
-            // Real coordinates (UNAM CU) for the map preview + directions link.
             Latitude = 19.4195,
             Longitude = -99.1810,
         };
+
+        var vasconcelos = new Location
+        {
+            Id = Guid.NewGuid(),
+            Name = "Biblioteca Vasconcelos",
+            Address = "Eje 1 Norte s/n, Buenavista, Cuauhtemoc",
+            TimeZone = "America/Mexico_City",
+            Latitude = 19.4470,
+            Longitude = -99.1523,
+        };
+
+        var centroCultural = new Location
+        {
+            Id = Guid.NewGuid(),
+            Name = "Centro Cultural Universitario",
+            Address = "Insurgentes Sur 3000, Ciudad Universitaria",
+            TimeZone = "America/Mexico_City",
+            Latitude = 19.3175,
+            Longitude = -99.1856,
+        };
+
+        var locations = new List<Location> { bibliotecaCentral, vasconcelos, centroCultural };
 
         var resources = new List<Resource>
         {
@@ -90,7 +115,7 @@ public static class DevSeeder
             {
                 Id = Guid.NewGuid(),
                 ResourceType = studyRoomType,
-                Location = location,
+                Location = bibliotecaCentral,
                 Name = "Sala Boreal 204",
                 Capacity = 8,
                 Description = "Piso 2 · pizarrón y pantalla",
@@ -99,7 +124,7 @@ public static class DevSeeder
             {
                 Id = Guid.NewGuid(),
                 ResourceType = studyRoomType,
-                Location = location,
+                Location = bibliotecaCentral,
                 Name = "Sala Austral 118",
                 Capacity = 6,
                 Description = "Piso 1",
@@ -108,7 +133,7 @@ public static class DevSeeder
             {
                 Id = Guid.NewGuid(),
                 ResourceType = studyRoomType,
-                Location = location,
+                Location = vasconcelos,
                 Name = "Sala Meridiano 301",
                 Capacity = 10,
                 Description = "Piso 3 · pizarrón",
@@ -117,7 +142,7 @@ public static class DevSeeder
             {
                 Id = Guid.NewGuid(),
                 ResourceType = soloSpaceType,
-                Location = location,
+                Location = vasconcelos,
                 Name = "Escritorio flex 12B",
                 Capacity = 1,
                 Description = "Piso 2",
@@ -126,26 +151,26 @@ public static class DevSeeder
             {
                 Id = Guid.NewGuid(),
                 ResourceType = soloSpaceType,
-                Location = location,
+                Location = centroCultural,
                 Name = "Cabina de audio 3",
                 Capacity = 1,
-                Description = "Piso 1",
+                Description = "Planta baja",
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 ResourceType = soloSpaceType,
-                Location = location,
+                Location = centroCultural,
                 Name = "Escritorio flex 8A",
                 Capacity = 1,
                 Description = "Piso 1",
             },
         };
 
-        var slots = GenerateSlots(resources, location.TimeZone);
+        var slots = GenerateSlots(resources, bibliotecaCentral.TimeZone);
 
         db.ResourceTypes.AddRange(studyRoomType, soloSpaceType);
-        db.Locations.Add(location);
+        db.Locations.AddRange(locations);
         db.Resources.AddRange(resources);
         db.AvailabilitySlots.AddRange(slots);
 
@@ -155,11 +180,11 @@ public static class DevSeeder
             "Dev seed: created {Types} resource types, {Locations} locations, {Resources} resources, " +
             "{Slots} availability slots",
             2,
-            1,
+            locations.Count,
             resources.Count,
             slots.Count);
 
-        return new SeedResult(2, 1, resources.Count, slots.Count);
+        return new SeedResult(2, locations.Count, resources.Count, slots.Count);
     }
 
     private static List<AvailabilitySlot> GenerateSlots(IReadOnlyList<Resource> resources, string timeZoneId)
