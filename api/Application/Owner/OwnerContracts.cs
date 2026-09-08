@@ -44,6 +44,8 @@ public record OwnerSpaceDetailResponse(
     Guid LocationId,
     string LocationName,
     string? LocationAddress,
+    double? LocationLatitude,
+    double? LocationLongitude,
     string TimeZone,
     WeeklyScheduleResponse? Schedule,
     IReadOnlyList<OwnerSlotResponse> UpcomingSlots);
@@ -57,13 +59,17 @@ public record CreateSpaceRequest(
     Guid ResourceTypeId,
     string LocationName,
     string? Address,
-    string TimeZone);
+    string TimeZone,
+    double? LocationLatitude = null,
+    double? LocationLongitude = null);
 
 public record UpdateSpaceRequest(
     string Name,
     string? Description,
     int Capacity,
-    string? Address);
+    string? Address,
+    double? LocationLatitude = null,
+    double? LocationLongitude = null);
 
 public record ScheduleDayInput(
     string Weekday,

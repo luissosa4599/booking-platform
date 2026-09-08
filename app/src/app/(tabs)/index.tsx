@@ -17,7 +17,8 @@ import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
-import { useAvailability } from "@/lib/api/availability";
+import { SortControl } from "@/components/SortControl";
+import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
@@ -26,6 +27,8 @@ import { cn } from "@/lib/cn";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
 import { CalendarX, Heart, Search } from "@/lib/icons";
+import { requestAndGetPosition } from "@/lib/location";
+import type { Coords } from "@/lib/maps";
 import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
@@ -36,6 +39,13 @@ function formatTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDistance(meters: number | null | undefined): string | null {
+  if (meters == null) return null;
+  return meters < 950
+    ? `${Math.round(meters / 10) * 10} m`
+    : `${(meters / 1000).toFixed(1)} km`;
 }
 
 function endOfDay(date: Date) {
@@ -63,6 +73,9 @@ export default function ExploreScreen() {
   >(null);
   const [searchInput, setSearchInput] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sort, setSort] = useState<AvailabilitySort>("soonest");
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [locating, setLocating] = useState(false);
   // Set from the empty state's primary action ("Ver disponibilidad") — extends
   // the query window past today so `emptyContext.nextAvailableAt` actually
   // shows up in the list.
@@ -90,6 +103,9 @@ export default function ExploreScreen() {
     from: now,
     to,
     q: debouncedSearch || undefined,
+    sort,
+    lat: coords?.lat,
+    lng: coords?.lng,
   });
   const createBooking = useCreateBooking();
   const { ids: favoriteIds } = useFavorites();
@@ -136,11 +152,18 @@ export default function ExploreScreen() {
   const nowGroup = availableSlots.filter(
     (slot) => new Date(slot.startsAt).getTime() <= nowGroupCutoffMs,
   );
-  const laterGroup = availableSlots
-    .filter((slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs)
-    .sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-    );
+  const laterGroupUnsorted = availableSlots.filter(
+    (slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs,
+  );
+  // The server already ordered the flat list for the chosen sort; only re-sort
+  // by time when we're on the default "soonest".
+  const laterGroup =
+    sort === "soonest"
+      ? [...laterGroupUnsorted].sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        )
+      : laterGroupUnsorted;
 
   const laterHeader = horizon ? "PRÓXIMAMENTE" : "MÁS TARDE HOY";
 
@@ -181,6 +204,33 @@ export default function ExploreScreen() {
         },
       },
     );
+  }
+
+  async function enableNearest() {
+    if (coords) {
+      setSort("nearest");
+      return;
+    }
+    setLocating(true);
+    const pos = await requestAndGetPosition();
+    setLocating(false);
+    if (pos) {
+      setCoords(pos);
+      setSort("nearest");
+    } else {
+      // Denied / unavailable — stay on the current sort, don't nag.
+      useToastStore
+        .getState()
+        .show("Activa la ubicación para ordenar por cercanía");
+    }
+  }
+
+  function handleSortChange(next: AvailabilitySort) {
+    if (next === "nearest") {
+      void enableNearest();
+    } else {
+      setSort(next);
+    }
   }
 
   function handleToggleFavorite(slot: AvailabilitySlot) {
@@ -277,7 +327,11 @@ export default function ExploreScreen() {
         <View className="flex-row items-end justify-between">
           <Text className="text-title-lg text-label-1">Ahora</Text>
           <Text className="text-subhead text-label-4">
-            {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
+            {locating
+              ? "Ubicando…"
+              : isRefreshing
+                ? "Actualizando…"
+                : formatHeaderDate(now)}
           </Text>
         </View>
 
@@ -294,15 +348,15 @@ export default function ExploreScreen() {
           />
         </View>
 
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1">
-            <FilterPills
-              options={filterOptions}
-              selectedId={selectedResourceTypeId}
-              onSelect={setSelectedResourceTypeId}
-              removable={isEmpty && !!selectedResourceTypeId}
-            />
-          </View>
+        <FilterPills
+          options={filterOptions}
+          selectedId={selectedResourceTypeId}
+          onSelect={setSelectedResourceTypeId}
+          removable={isEmpty && !!selectedResourceTypeId}
+        />
+
+        <View className="flex-row items-center justify-between">
+          <SortControl value={sort} onChange={handleSortChange} />
           <Pressable
             onPress={() => {
               haptics.selection();
@@ -402,7 +456,11 @@ export default function ExploreScreen() {
                 <Row
                   key={slot.id}
                   title={slot.resourceName}
-                  subtitle={slot.locationName}
+                  subtitle={
+                    formatDistance(slot.distanceMeters)
+                      ? `${slot.locationName} · ${formatDistance(slot.distanceMeters)}`
+                      : slot.locationName
+                  }
                   trailing="chevron"
                   trailingText={formatTime(slot.startsAt)}
                   favorite={favoriteIds.has(slot.resourceId)}

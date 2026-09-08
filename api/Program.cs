@@ -4,6 +4,7 @@ using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
+using BookingEngine.Api.Infrastructure.Geocoding;
 using BookingEngine.Api.Infrastructure.Seed;
 using DotNetEnv;
 using FluentValidation;
@@ -52,6 +53,11 @@ try
     builder.Services.AddSingleton<SessionTokens>();
     builder.Services.AddSingleton<SessionIssuer>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+
+    // Server-side reverse-geocoding proxy for the owner map picker (see
+    // GeocodingClient — the Geocoding web-service key can't be referrer-locked).
+    builder.Services.AddHttpClient<GeocodingClient>(c =>
+        c.BaseAddress = new Uri("https://maps.googleapis.com"));
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -150,6 +156,7 @@ try
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
     app.MapFavoritesEndpoints();
+    app.MapGeocodeEndpoints();
     app.MapOwnerEndpoints();
     app.MapCheckinsEndpoints();
 

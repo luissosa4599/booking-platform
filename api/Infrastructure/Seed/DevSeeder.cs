@@ -219,6 +219,8 @@ public static class DevSeeder
             Id = Guid.NewGuid(),
             Name = "Piso creativo",
             Address = "Av. Reforma 222, Juarez",
+            Latitude = 19.4270,
+            Longitude = -99.1677,
             TimeZone = "America/Mexico_City",
             OwnerUserId = hostId,
         };

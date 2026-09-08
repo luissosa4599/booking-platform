@@ -14,6 +14,9 @@ public static class AvailabilityEndpoints
             DateTimeOffset to,
             string? q,
             int? minCapacity,
+            double? lat,
+            double? lng,
+            string? sort,
             BookingEngineDbContext db) =>
         {
             if (to < from)
@@ -22,6 +25,23 @@ public static class AvailabilityEndpoints
             }
 
             var search = string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+
+            // "soonest" (the default) = the historical behaviour. "nearest" only
+            // engages when the caller passed both coordinates.
+            var sortMode = sort switch
+            {
+                "nearest" when lat is not null && lng is not null => "nearest",
+                "name" => "name",
+                "capacity" => "capacity",
+                _ => "soonest",
+            };
+            var originLat = lat ?? 0;
+            var originLng = lng ?? 0;
+            // Longitude degrees shrink toward the poles — scale them by cos(lat)
+            // so the planar comparison below is roughly isotropic. Computed C#-side
+            // so only +/-/* on mapped columns reach SQL (no trig → no acos domain
+            // errors, no fragile SQL over a nullable column).
+            var cosLat = Math.Cos(originLat * Math.PI / 180.0);
 
             // resourceTypeId is optional — the UI's default "Cualquiera" filter
             // has no type to scope by, so omitting it means "all types".
@@ -48,19 +68,56 @@ public static class AvailabilityEndpoints
                     EF.Functions.ILike(s.Resource.Location.Name, $"%{search}%"));
             }
 
-            var slots = await query
-                .OrderBy(s => s.StartsAt)
-                .Select(s => new AvailabilitySlotResponse(
+            query = sortMode switch
+            {
+                "nearest" => query
+                    .OrderBy(s => s.Resource.Location.Latitude == null
+                        || s.Resource.Location.Longitude == null ? 1 : 0)
+                    .ThenBy(s =>
+                        ((s.Resource.Location.Longitude!.Value - originLng) * cosLat)
+                            * ((s.Resource.Location.Longitude!.Value - originLng) * cosLat)
+                        + (s.Resource.Location.Latitude!.Value - originLat)
+                            * (s.Resource.Location.Latitude!.Value - originLat))
+                    .ThenBy(s => s.StartsAt),
+                "name" => query.OrderBy(s => s.Resource.Name).ThenBy(s => s.StartsAt),
+                "capacity" => query
+                    .OrderByDescending(s => s.Resource.Capacity)
+                    .ThenBy(s => s.StartsAt),
+                _ => query.OrderBy(s => s.StartsAt),
+            };
+
+            var rows = await query
+                .Select(s => new
+                {
                     s.Id,
                     s.ResourceId,
-                    s.Resource.Name,
+                    ResourceName = s.Resource.Name,
                     s.Resource.ResourceTypeId,
-                    s.Resource.Location.Name,
+                    LocationName = s.Resource.Location.Name,
                     s.StartsAt,
                     s.EndsAt,
                     s.CapacityRemaining,
-                    s.RowVersion))
+                    s.RowVersion,
+                    Lat = s.Resource.Location.Latitude,
+                    Lng = s.Resource.Location.Longitude,
+                })
                 .ToListAsync();
+
+            var slots = rows
+                .Select(r => new AvailabilitySlotResponse(
+                    r.Id,
+                    r.ResourceId,
+                    r.ResourceName,
+                    r.ResourceTypeId,
+                    r.LocationName,
+                    r.StartsAt,
+                    r.EndsAt,
+                    r.CapacityRemaining,
+                    r.RowVersion,
+                    sortMode == "nearest" && r.Lat is not null && r.Lng is not null
+                        ? HaversineMeters(originLat, originLng, r.Lat.Value, r.Lng.Value)
+                        : null))
+                .ToList();
 
             EmptyContextResponse? emptyContext = slots.Count > 0
                 ? null
@@ -69,6 +126,18 @@ public static class AvailabilityEndpoints
             return Results.Ok(new AvailabilityResponse(slots, emptyContext));
         })
         .WithName("GetAvailability");
+    }
+
+    // Accurate great-circle distance, computed in memory (not SQL) so there's no
+    // trig for Npgsql to translate and no acos() domain risk on identical points.
+    private static double HaversineMeters(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadiusMeters = 6_371_000;
+        var p = Math.PI / 180.0;
+        var a = 0.5
+            - Math.Cos((lat2 - lat1) * p) / 2
+            + Math.Cos(lat1 * p) * Math.Cos(lat2 * p) * (1 - Math.Cos((lon2 - lon1) * p)) / 2;
+        return 2 * earthRadiusMeters * Math.Asin(Math.Sqrt(a));
     }
 
     private static async Task<EmptyContextResponse> BuildEmptyContextAsync(

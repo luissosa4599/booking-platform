@@ -73,6 +73,8 @@ public static class OwnerEndpoints
                 Id = Guid.NewGuid(),
                 Name = request.LocationName.Trim(),
                 Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
+                Latitude = request.LocationLatitude,
+                Longitude = request.LocationLongitude,
                 TimeZone = request.TimeZone,
                 OwnerUserId = userId,
             };
@@ -111,6 +113,8 @@ public static class OwnerEndpoints
             resource.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description!.Trim();
             resource.Capacity = type.AllowsMultipleSeats ? request.Capacity : 1;
             resource.Location.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address!.Trim();
+            resource.Location.Latitude = request.LocationLatitude;
+            resource.Location.Longitude = request.LocationLongitude;
 
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToDetail(resource));
@@ -410,6 +414,8 @@ public static class OwnerEndpoints
             r.LocationId,
             r.Location.Name,
             r.Location.Address,
+            r.Location.Latitude,
+            r.Location.Longitude,
             r.Location.TimeZone,
             schedule,
             slots);

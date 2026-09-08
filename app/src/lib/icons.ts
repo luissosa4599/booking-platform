@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   ArrowLeft as LArrowLeft,
+  ArrowUpDown as LArrowUpDown,
   Ban as LBan,
   Calendar as LCalendar,
   CalendarClock as LCalendarClock,
@@ -43,6 +44,7 @@ export interface IconProps {
 const typed = <T,>(icon: T) => icon as ComponentType<IconProps>;
 
 export const ArrowLeft = typed(LArrowLeft);
+export const ArrowUpDown = typed(LArrowUpDown);
 export const Ban = typed(LBan);
 export const Calendar = typed(LCalendar);
 export const CalendarClock = typed(LCalendarClock);

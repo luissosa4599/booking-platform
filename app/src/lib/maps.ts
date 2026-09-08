@@ -1,6 +1,6 @@
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 
-interface Coords {
+export interface Coords {
   lat: number;
   lng: number;
 }
@@ -65,4 +65,71 @@ export function directionsUrl(input: Coords | { address: string }): string {
       ? encodeURIComponent(input.address)
       : `${input.lat},${input.lng}`;
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+}
+
+// --- Web Mercator px <-> lat/lng ------------------------------------------
+// Matches the projection `staticMapUrl` renders with (256-px tile, the given
+// `zoom`, logical/CSS pixels — the scale=2 image is 2x the pixels but the same
+// geographic span, so pass the logical width/height and `locationX/Y`).
+
+const TILE_SIZE = 256;
+const MAX_LAT = 85.05112878;
+
+const clampLat = (lat: number) => Math.max(Math.min(lat, MAX_LAT), -MAX_LAT);
+
+/** lat/lng -> world pixel coordinates at zoom 0 (each axis 0..256). */
+export function project(lat: number, lng: number): { x: number; y: number } {
+  const siny = Math.min(
+    Math.max(Math.sin((clampLat(lat) * Math.PI) / 180), -0.9999),
+    0.9999,
+  );
+  return {
+    x: TILE_SIZE * (0.5 + lng / 360),
+    y: TILE_SIZE * (0.5 - Math.log((1 + siny) / (1 - siny)) / (4 * Math.PI)),
+  };
+}
+
+/** Inverse of {@link project}. */
+export function unproject(x: number, y: number): Coords {
+  const lng = (x / TILE_SIZE - 0.5) * 360;
+  const n = Math.PI * (1 - (2 * y) / TILE_SIZE);
+  const lat = (2 * Math.atan(Math.exp(n)) - Math.PI / 2) * (180 / Math.PI);
+  return { lat, lng };
+}
+
+/**
+ * A tap at pixel (px, py) from the map image's top-left corner -> lat/lng,
+ * given the map's center, zoom and logical size.
+ */
+export function pxToLatLng(
+  px: number,
+  py: number,
+  center: Coords,
+  zoom: number,
+  width: number,
+  height: number,
+): Coords {
+  const scale = 2 ** zoom;
+  const c = project(center.lat, center.lng);
+  const worldX = c.x + (px - width / 2) / scale;
+  const worldY = c.y + (py - height / 2) / scale;
+  return unproject(worldX, worldY);
+}
+
+/**
+ * Cheaper linear approximation: a pixel *delta* -> a lat/lng delta. Fine for
+ * small nudges / lower zooms; {@link pxToLatLng} is exact.
+ */
+export function pxDeltaToLatLng(
+  dx: number,
+  dy: number,
+  lat: number,
+  zoom: number,
+): { dLat: number; dLng: number } {
+  const metersPerPx =
+    (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** zoom;
+  return {
+    dLat: -(dy * metersPerPx) / 111_320,
+    dLng: (dx * metersPerPx) / (111_320 * Math.cos((lat * Math.PI) / 180)),
+  };
 }

@@ -28,6 +28,8 @@ export interface AvailabilitySlot {
   endsAt: string;
   capacityRemaining: number;
   rowVersion: number;
+  /** Straight-line metres from the device — only when sort=nearest. */
+  distanceMeters?: number | null;
 }
 
 export interface Booking {
