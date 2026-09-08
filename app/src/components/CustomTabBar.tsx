@@ -18,10 +18,18 @@ export interface TabConfig {
 // runtime theme value) here. Rendered by hand + shared between the guest and
 // host tab groups so the CLAUDE.md gotchas (bg-glass not bg-card/92, BlurView
 // ignores className, every icon needs an explicit color) only live in one place.
-export function CustomTabBar(
-  { state, descriptors, navigation, insets }: BottomTabBarProps,
-  tabs: Record<string, TabConfig>,
-) {
+//
+// Must be rendered as a real element (`<CustomTabBar {...props} tabs={TABS} />`),
+// not called as a function — it uses hooks.
+type CustomTabBarProps = BottomTabBarProps & { tabs: Record<string, TabConfig> };
+
+export function CustomTabBar({
+  state,
+  descriptors,
+  navigation,
+  insets,
+  tabs,
+}: CustomTabBarProps) {
   const { colorScheme } = useColorScheme();
   const activeColor = useColor("tint");
   const inactiveColor = useColor("label-4");

@@ -13,7 +13,7 @@ const TABS: Record<string, TabConfig> = {
 export default function TabsLayout() {
   return (
     <Tabs
-      tabBar={(props) => CustomTabBar(props, TABS)}
+      tabBar={(props) => <CustomTabBar {...props} tabs={TABS} />}
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="index" options={{ title: "Explorar" }} />
