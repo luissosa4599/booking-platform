@@ -58,3 +58,13 @@ public class SetScheduleRequestValidator : AbstractValidator<SetScheduleRequest>
     private static bool BeTime(string value) =>
         TimeOnly.TryParse(value, CultureInfo.InvariantCulture, out _);
 }
+
+public class AddSlotRequestValidator : AbstractValidator<AddSlotRequest>
+{
+    public AddSlotRequestValidator()
+    {
+        RuleFor(x => x.EndsAt).GreaterThan(x => x.StartsAt)
+            .WithMessage("End time must be after start time.");
+        RuleFor(x => x.Capacity).GreaterThan(0).LessThanOrEqualTo(60);
+    }
+}

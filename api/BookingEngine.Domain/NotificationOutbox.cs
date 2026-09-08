@@ -3,6 +3,9 @@ namespace BookingEngine.Domain;
 public static class NotificationType
 {
     public const string WaitlistSlotOpened = "waitlist_slot_opened";
+
+    /// <summary>A host force-blocked a slot, cancelling every confirmed booking on it.</summary>
+    public const string BookingCancelledByHost = "booking_cancelled_by_host";
 }
 
 /// <summary>

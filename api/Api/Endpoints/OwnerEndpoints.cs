@@ -163,7 +163,138 @@ public static class OwnerEndpoints
         })
         .AddEndpointFilter<ValidationFilter<SetScheduleRequest>>()
         .WithName("SetOwnerSchedule");
+
+        // --- Ad-hoc slots + blocking (PR B2) --------------------------------
+
+        group.MapPost("/spaces/{id:guid}/slots", async (
+            Guid id, AddSlotRequest request, ClaimsPrincipal principal, BookingEngineDbContext db, CancellationToken ct) =>
+        {
+            var resource = await db.Resources
+                .FirstOrDefaultAsync(r => r.Id == id && r.OwnerUserId == principal.UserId(), ct);
+            if (resource is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (request.StartsAt <= DateTimeOffset.UtcNow)
+            {
+                return Results.BadRequest(new { message = "Start time must be in the future." });
+            }
+
+            var duplicate = await db.AvailabilitySlots.AnyAsync(
+                s => s.ResourceId == id && s.StartsAt == request.StartsAt, ct);
+            if (duplicate)
+            {
+                return Results.Conflict(new { message = "A slot already starts at that time." });
+            }
+
+            db.AvailabilitySlots.Add(new AvailabilitySlot
+            {
+                Id = Guid.NewGuid(),
+                ResourceId = id,
+                StartsAt = request.StartsAt,
+                EndsAt = request.EndsAt,
+                CapacityRemaining = request.Capacity,
+                Origin = SlotOrigin.Adhoc,
+                IsBlocked = false,
+            });
+            await db.SaveChangesAsync(ct);
+
+            var refreshed = await LoadOwnedAsync(db, id, principal.UserId(), ct);
+            return Results.Ok(ToDetail(refreshed!));
+        })
+        .AddEndpointFilter<ValidationFilter<AddSlotRequest>>()
+        .WithName("AddOwnerSlot");
+
+        group.MapDelete("/spaces/{id:guid}/slots/{slotId:guid}", async (
+            Guid id, Guid slotId, ClaimsPrincipal principal, BookingEngineDbContext db, CancellationToken ct) =>
+        {
+            var slot = await LoadOwnedSlotAsync(db, id, slotId, principal.UserId(), ct);
+            if (slot is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (slot.Bookings.Any(b => b.Status == BookingStatus.Confirmed))
+            {
+                return Results.Conflict(new { message = "This slot has active bookings." });
+            }
+
+            db.AvailabilitySlots.Remove(slot);
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        })
+        .WithName("DeleteOwnerSlot");
+
+        group.MapPost("/spaces/{id:guid}/slots/{slotId:guid}/block", async (
+            Guid id, Guid slotId, BlockSlotRequest request, ClaimsPrincipal principal,
+            BookingEngineDbContext db, ILogger<Program> logger, CancellationToken ct) =>
+        {
+            var slot = await LoadOwnedSlotAsync(db, id, slotId, principal.UserId(), ct);
+            if (slot is null)
+            {
+                return Results.NotFound();
+            }
+
+            var confirmed = slot.Bookings.Where(b => b.Status == BookingStatus.Confirmed).ToList();
+            if (confirmed.Count > 0 && !request.Force)
+            {
+                return Results.Conflict(new { bookings = confirmed.Count });
+            }
+
+            slot.IsBlocked = true;
+            foreach (var booking in confirmed)
+            {
+                booking.Status = BookingStatus.Cancelled;
+                slot.CapacityRemaining += booking.Seats;
+            }
+
+            if (confirmed.Count > 0)
+            {
+                // One outbox row per slot; the worker fans out to every booker
+                // whose booking was just cancelled and isn't already notified.
+                db.NotificationOutbox.Add(new NotificationOutbox
+                {
+                    Id = Guid.NewGuid(),
+                    Type = NotificationType.BookingCancelledByHost,
+                    AvailabilitySlotId = slot.Id,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation(
+                "Slot {SlotId} blocked by {UserId}, cancelled {Count} booking(s)",
+                slot.Id, principal.UserId(), confirmed.Count);
+            return Results.NoContent();
+        })
+        .WithName("BlockOwnerSlot");
+
+        group.MapPost("/spaces/{id:guid}/slots/{slotId:guid}/unblock", async (
+            Guid id, Guid slotId, ClaimsPrincipal principal, BookingEngineDbContext db, CancellationToken ct) =>
+        {
+            var slot = await LoadOwnedSlotAsync(db, id, slotId, principal.UserId(), ct);
+            if (slot is null)
+            {
+                return Results.NotFound();
+            }
+
+            slot.IsBlocked = false;
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        })
+        .WithName("UnblockOwnerSlot");
     }
+
+    private static Task<AvailabilitySlot?> LoadOwnedSlotAsync(
+        BookingEngineDbContext db, Guid resourceId, Guid slotId, string userId, CancellationToken ct) =>
+        db.AvailabilitySlots
+            .Include(s => s.Bookings)
+            .FirstOrDefaultAsync(
+                s => s.Id == slotId
+                    && s.ResourceId == resourceId
+                    && s.Resource.OwnerUserId == userId,
+                ct);
 
     // Regenerates the schedule window for one resource: adds missing slots and
     // deletes now-orphaned schedule slots that have no bookings. Shared shape

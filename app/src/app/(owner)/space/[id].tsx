@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -6,8 +6,15 @@ import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
-import { useOwnerSpace } from "@/lib/api/owner";
-import type { WeeklySchedule } from "@/lib/api/types";
+import { Sheet } from "@/components/Sheet";
+import { SlotSheet, type NewSlotInput } from "@/components/SlotSheet";
+import {
+  useAddSlot,
+  useBlockSlot,
+  useOwnerSpace,
+  useUnblockSlot,
+} from "@/lib/api/owner";
+import type { OwnerSlot, WeeklySchedule } from "@/lib/api/types";
 import { ArrowLeft } from "@/lib/icons";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
@@ -26,9 +33,32 @@ const DAY_ES: Record<string, string> = {
 export default function HostSpaceScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const spaceId = id ?? "";
   const userId = useUserId();
   const backColor = useColor("label-1");
-  const { data: space, isLoading } = useOwnerSpace(id ?? "", userId);
+  const { data: space, isLoading } = useOwnerSpace(spaceId, userId);
+
+  const addSlot = useAddSlot(spaceId);
+  const blockSlot = useBlockSlot(spaceId);
+  const unblockSlot = useUnblockSlot(spaceId);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [blockConfirm, setBlockConfirm] = useState<{ slotId: string; bookings: number } | null>(null);
+
+  function tryBlock(slotId: string) {
+    blockSlot.mutate(
+      { slotId },
+      {
+        onError: (err) => {
+          const n =
+            err && typeof err === "object" && "body" in err
+              ? ((err as { body?: { bookings?: number } }).body?.bookings ?? 0)
+              : 0;
+          if (n > 0) setBlockConfirm({ slotId, bookings: n });
+        },
+      },
+    );
+  }
 
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
@@ -43,7 +73,7 @@ export default function HostSpaceScreen() {
             <ArrowLeft size={18} color={backColor} />
           </Pressable>
           <Pressable
-            onPress={() => router.push(`/(owner)/space/${id}/edit`)}
+            onPress={() => router.push(`/(owner)/space/${spaceId}/edit`)}
             accessibilityRole="button"
           >
             <Text className="text-body text-tint">Editar espacio</Text>
@@ -73,7 +103,7 @@ export default function HostSpaceScreen() {
                   Horario semanal
                 </Text>
                 <Pressable
-                  onPress={() => router.push(`/(owner)/space/${id}/schedule`)}
+                  onPress={() => router.push(`/(owner)/space/${spaceId}/schedule`)}
                   accessibilityRole="button"
                 >
                   <Text className="text-subhead text-tint">Editar</Text>
@@ -87,48 +117,127 @@ export default function HostSpaceScreen() {
               <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
                 Próximos horarios
               </Text>
-              {space.upcomingSlots.length === 0 ? (
-                <Group>
-                  <Row
-                    title="Aún no hay horarios"
-                    subtitle="Edita el horario semanal para generarlos"
+              <Group>
+                {space.upcomingSlots.slice(0, 20).map((slot) => (
+                  <SlotRow
+                    key={slot.id}
+                    slot={slot}
+                    busy={
+                      (blockSlot.isPending && blockSlot.variables?.slotId === slot.id) ||
+                      (unblockSlot.isPending && unblockSlot.variables === slot.id)
+                    }
+                    onBlock={() => tryBlock(slot.id)}
+                    onUnblock={() => unblockSlot.mutate(slot.id)}
                   />
-                </Group>
-              ) : (
-                <Group>
-                  {space.upcomingSlots.slice(0, 20).map((slot) => {
-                    const start = new Date(slot.startsAt);
-                    const full = slot.booked >= slot.capacity;
-                    return (
-                      <Row
-                        key={slot.id}
-                        title={formatSlot(start)}
-                        tabularTitle
-                        meta={
-                          full
-                            ? "Lleno"
-                            : `${slot.capacity - slot.booked}/${slot.capacity} lugares`
-                        }
-                        metaTone={full ? "last" : "default"}
-                      />
-                    );
-                  })}
-                </Group>
-              )}
+                ))}
+                <Row
+                  title="Agregar horario puntual"
+                  trailing="chevron"
+                  onPress={() => setAddOpen(true)}
+                />
+              </Group>
             </View>
 
             <View className="pt-2">
-              <Button
-                variant="filled"
-                onPress={() => router.replace("/spaces")}
-              >
+              <Button variant="filled" onPress={() => router.replace("/(owner)/(tabs)")}>
                 Ver mis espacios
               </Button>
             </View>
           </View>
         )}
       </ScrollView>
+
+      <SlotSheet
+        isOpen={addOpen}
+        onClose={() => setAddOpen(false)}
+        busy={addSlot.isPending}
+        defaultCapacity={space?.capacity ?? 4}
+        onAdd={(input: NewSlotInput) =>
+          addSlot.mutate(input, { onSuccess: () => setAddOpen(false) })
+        }
+      />
+
+      <Sheet isOpen={!!blockConfirm} onClose={() => setBlockConfirm(null)}>
+        <View className="gap-5">
+          <View className="gap-2">
+            <Text className="text-title-sm text-label-1">Bloquear este horario</Text>
+            <Text className="text-body text-label-3">
+              Nadie podrá reservarlo. Puedes abrirlo de nuevo cuando quieras.
+            </Text>
+          </View>
+          <View className="rounded-[14px] bg-tint-wash px-4 py-3">
+            <Text className="text-subhead text-label-2">
+              Ya hay {blockConfirm?.bookings ?? 0} reservas en este horario. Se
+              cancelarán y avisaremos a cada persona.
+            </Text>
+          </View>
+          <View className="gap-2">
+            <Button
+              variant="filled"
+              className="bg-state-error"
+              loading={blockSlot.isPending}
+              onPress={() => {
+                if (!blockConfirm) return;
+                blockSlot.mutate(
+                  { slotId: blockConfirm.slotId, force: true },
+                  { onSuccess: () => setBlockConfirm(null) },
+                );
+              }}
+            >
+              Bloquear y cancelar {blockConfirm?.bookings ?? 0}
+            </Button>
+            <Button variant="plain" onPress={() => setBlockConfirm(null)}>
+              Mejor no
+            </Button>
+          </View>
+        </View>
+      </Sheet>
     </Screen>
+  );
+}
+
+function SlotRow({
+  slot,
+  busy,
+  onBlock,
+  onUnblock,
+}: {
+  slot: OwnerSlot;
+  busy: boolean;
+  onBlock: () => void;
+  onUnblock: () => void;
+}) {
+  const start = new Date(slot.startsAt);
+  const full = slot.booked >= slot.capacity;
+
+  if (slot.isBlocked) {
+    return (
+      <Row
+        title={formatSlot(start)}
+        tabularTitle
+        meta="Bloqueado"
+        metaTone="default"
+        trailing="action"
+        actionLabel="Abrir"
+        actionTone="wash"
+        actionLoading={busy}
+        onActionPress={onUnblock}
+      />
+    );
+  }
+
+  return (
+    <Row
+      title={formatSlot(start)}
+      tabularTitle
+      meta={full ? "Lleno" : `${slot.capacity - slot.booked}/${slot.capacity} lugares`}
+      metaTone={full ? "last" : "default"}
+      trailing="action"
+      actionLabel="Bloquear"
+      actionTone="filled"
+      actionLoading={busy}
+      onActionPress={onBlock}
+    />
   );
 }
 

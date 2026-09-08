@@ -75,3 +75,7 @@ public record SetScheduleRequest(
     int SlotDurationMinutes,
     int Capacity,
     IReadOnlyList<ScheduleDayInput> Days);
+
+public record AddSlotRequest(DateTimeOffset StartsAt, DateTimeOffset EndsAt, int Capacity);
+
+public record BlockSlotRequest(bool Force = false);

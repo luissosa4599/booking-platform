@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiFetch } from "./client";
+import { ApiError, apiFetch } from "./client";
 import type {
   CreateSpaceInput,
   OwnerSpaceDetail,
@@ -59,6 +59,51 @@ export function useSetSchedule(id: string) {
   return useMutation({
     mutationFn: (input: SetScheduleInput) =>
       apiFetch<OwnerSpaceDetail>(`/owner/spaces/${id}/schedule`, { method: "PUT", body: input }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useAddSlot(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (input: { startsAt: string; endsAt: string; capacity: number }) =>
+      apiFetch<OwnerSpaceDetail>(`/owner/spaces/${id}/slots`, { method: "POST", body: input }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useDeleteSlot(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (slotId: string) =>
+      apiFetch<void>(`/owner/spaces/${id}/slots/${slotId}`, { method: "DELETE" }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useBlockSlot(id: string) {
+  const invalidate = useOwnerInvalidation();
+  const mutation = useMutation({
+    mutationFn: (input: { slotId: string; force?: boolean }) =>
+      apiFetch<void>(`/owner/spaces/${id}/slots/${input.slotId}/block`, {
+        method: "POST",
+        body: { force: input.force ?? false },
+      }),
+    onSuccess: () => invalidate(id),
+  });
+  // A 409 carries { bookings: N } — the count to confirm before force-blocking.
+  const conflictBookings =
+    mutation.error instanceof ApiError && mutation.error.status === 409
+      ? ((mutation.error.body as { bookings?: number }).bookings ?? 0)
+      : null;
+  return { ...mutation, conflictBookings };
+}
+
+export function useUnblockSlot(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (slotId: string) =>
+      apiFetch<void>(`/owner/spaces/${id}/slots/${slotId}/unblock`, { method: "POST" }),
     onSuccess: () => invalidate(id),
   });
 }
