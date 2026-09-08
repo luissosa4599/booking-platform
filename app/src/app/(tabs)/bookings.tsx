@@ -436,6 +436,7 @@ export default function BookingsScreen() {
             ? formatSchedule(passBooking.startsAt, passBooking.endsAt)
             : null
         }
+        checkedInAt={passBooking?.checkedInAt ?? null}
       />
 
       <Toast

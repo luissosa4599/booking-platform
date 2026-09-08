@@ -42,4 +42,5 @@ public record MyBookingResponse(
     DateTimeOffset EndsAt,
     int Seats,
     string Status,
-    string Code);
+    string Code,
+    DateTimeOffset? CheckedInAt);

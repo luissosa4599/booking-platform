@@ -76,6 +76,15 @@ const config: ExpoConfig = {
     // Native date/time pickers for the host's weekly-schedule + ad-hoc-slot
     // editors. Ships in Expo Go; the plugin only matters for a real build.
     "@react-native-community/datetimepicker",
+    // QR scanner on the host "Escanear" tab. The permission string only lands
+    // in a real build — Expo Go shows its own.
+    [
+      "expo-camera",
+      {
+        cameraPermission:
+          "Tempo usa la cámara solo para leer el QR de las reservaciones. Nada se guarda.",
+      },
+    ],
   ],
   experiments: {
     reactCompiler: false,

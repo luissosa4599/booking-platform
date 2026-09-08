@@ -106,6 +106,27 @@ export interface MyBooking {
   seats: number;
   status: string;
   code: string;
+  /** Set once a host confirmed the visit. */
+  checkedInAt: string | null;
+}
+
+/**
+ * POST /checkins — one shape for every outcome. `status`:
+ * confirmed | already_confirmed | queued (offline) | unknown_code | wrong_space | out_of_window
+ */
+export interface CheckinResult {
+  status: string;
+  bookingId?: string | null;
+  code?: string | null;
+  visitorName?: string | null;
+  spaceName?: string | null;
+  locationName?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  seats?: number | null;
+  confirmedAt?: string | null;
+  /** "future" | "past" for out_of_window */
+  direction?: string | null;
 }
 
 /**

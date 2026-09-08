@@ -150,6 +150,7 @@ try
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
     app.MapOwnerEndpoints();
+    app.MapCheckinsEndpoints();
 
     if (app.Environment.IsDevelopment())
     {

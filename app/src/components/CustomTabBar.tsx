@@ -34,6 +34,12 @@ export function CustomTabBar({
   const activeColor = useColor("tint");
   const inactiveColor = useColor("label-4");
 
+  // The scanner is immersive — the bar hides while it's the active tab and the
+  // screen itself carries a close affordance (handoff § I).
+  if (state.routes[state.index]?.name === "scan") {
+    return null;
+  }
+
   return (
     <View className="bg-canvas">
       <View

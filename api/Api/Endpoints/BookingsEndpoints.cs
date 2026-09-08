@@ -51,7 +51,8 @@ public static class BookingsEndpoints
                     b.AvailabilitySlot.EndsAt,
                     b.Seats,
                     b.Status.ToString(),
-                    b.Code))
+                    b.Code,
+                    b.CheckedInAt))
                 .ToListAsync();
 
             return Results.Ok(bookings);

@@ -29,6 +29,8 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.Property(b => b.CreatedAt).IsRequired();
 
+        builder.Property(b => b.CheckedInByUserId).HasMaxLength(200);
+
         builder.HasOne(b => b.AvailabilitySlot)
             .WithMany(s => s.Bookings)
             .HasForeignKey(b => b.AvailabilitySlotId)
