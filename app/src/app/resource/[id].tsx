@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { Group } from "@/components/Group";
+import { HeartButton } from "@/components/HeartButton";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
@@ -25,6 +26,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { Stepper } from "@/components/Stepper";
 import { Button } from "@/components/Button";
 import { useCreateBooking } from "@/lib/api/bookings";
+import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
 import { useResource } from "@/lib/api/resources";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import { useJoinWaitlist } from "@/lib/api/waitlist";
@@ -169,8 +171,25 @@ export default function ResourceScreen() {
   const resourceTypesQuery = useResourceTypes();
   const createBooking = useCreateBooking();
   const joinWaitlist = useJoinWaitlist();
+  const { ids: favoriteIds } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
 
   const resource = resourceQuery.data;
+  const isFavorite = favoriteIds.has(id);
+
+  function handleToggleFavorite() {
+    toggleFavorite.mutate({
+      resourceId: id,
+      next: !isFavorite,
+      summary: {
+        resourceId: id,
+        name: resource?.name ?? passedName ?? "",
+        locationName: resource?.locationName ?? passedLocation ?? "",
+        locationAddress: resource?.locationAddress ?? null,
+        resourceTypeId: resource?.resourceTypeId ?? "",
+      },
+    });
+  }
   // Not returned by GET /resources/{id} (only by GET /resource-types) —
   // cross-referenced from the resource-types cache instead of adding fields
   // to the detail endpoint, since ExploreScreen already warms that cache.
@@ -397,6 +416,9 @@ export default function ResourceScreen() {
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
+            <View style={{ position: "absolute", top: insets.top + 12, right: 16 }}>
+              <HeartButton active={isFavorite} onToggle={handleToggleFavorite} />
+            </View>
           </RNAnimated.View>
 
           <View className="gap-6 px-4 pt-6">

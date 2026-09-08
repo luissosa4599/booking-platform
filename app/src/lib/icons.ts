@@ -10,6 +10,7 @@ import {
   ChevronRight as LChevronRight,
   Clock as LClock,
   Compass as LCompass,
+  Heart as LHeart,
   LogOut as LLogOut,
   MapPin as LMapPin,
   Minus as LMinus,
@@ -34,6 +35,9 @@ export interface IconProps {
    * native (see lib/theme/palette.ts). Resolve it with `useColor()`.
    */
   color?: string;
+  /** Fill color — used for the filled/active state of an outline icon (e.g. a
+   * favorited Heart). lucide forwards it to the underlying `<svg>`. */
+  fill?: string;
 }
 
 const typed = <T,>(icon: T) => icon as ComponentType<IconProps>;
@@ -48,6 +52,7 @@ export const Check = typed(LCheck);
 export const ChevronRight = typed(LChevronRight);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
+export const Heart = typed(LHeart);
 export const LogOut = typed(LLogOut);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);

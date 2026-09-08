@@ -149,6 +149,7 @@ try
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
+    app.MapFavoritesEndpoints();
     app.MapOwnerEndpoints();
     app.MapCheckinsEndpoints();
 
