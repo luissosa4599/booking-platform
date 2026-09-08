@@ -6,6 +6,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 
+import { useThemeStore } from "./themeStore";
+
 /**
  * Only the 4 "themeable" tokens from docs/design-handoff.md live here —
  * everything else (labels, canvas/card/fill/hairline, state colors,
@@ -54,49 +56,62 @@ interface ThemeProviderProps {
 }
 
 /**
- * Mounts the theme's CSS variables for everything below it in the tree.
- * Follows the OS light/dark setting automatically (`useColorScheme()`'s
- * default mode is "system" — no manual toggle built yet, matching what was
- * asked for: automatic, not a user-facing control). A future client-theme
- * selector only needs to change which pair of `vars()` objects this picks
- * between.
+ * Mounts the theme's CSS variables for everything below it in the tree, and
+ * drives light/dark from the user's preference (`themeStore`): "system" follows
+ * the OS, "light"/"dark" are explicit overrides set from the profile's AJUSTES
+ * switch. A future client-theme selector only changes which pair of `vars()`
+ * objects this picks between.
  */
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { colorScheme } = useColorScheme();
+  const preference = useThemeStore((s) => s.preference);
+  const hydrateThemePreference = useThemeStore((s) => s.hydrate);
   const theme = colorScheme === "dark" ? appleThemeDark : appleTheme;
 
-  // Web-only: NativeWind's automatic system-scheme tracking is backed by
-  // React Native Web's `Appearance.getColorScheme()`, which doesn't actually
-  // react to the OS preference on web the way it does natively — confirmed
-  // empirically (Playwright's `prefers-color-scheme: dark` emulation left
-  // `colorScheme` at "light"). So on web this reads `matchMedia` directly
-  // and pushes it into NativeWind itself via `colorScheme.set(...)`.
-  //
-  // That still only fixes the 4 *themeable* tokens above (mounted via
-  // `vars()`, which react to `colorScheme` on any platform). The *static*
-  // tokens in src/global.css are a different mechanism — plain CSS behind a
-  // `.dark:root` selector — which on web needs an actual `dark` class on the
-  // real document root; nothing else adds it. So this same effect also
-  // toggles that class. Native doesn't have a DOM, and doesn't need this at
-  // all: NativeWind resolves `:root`/`.dark:root` there by reading
-  // `colorScheme` directly (and that part of the pipeline does track the
-  // system there), no class to toggle.
   useEffect(() => {
+    void hydrateThemePreference();
+  }, [hydrateThemePreference]);
+
+  // Two mechanisms have to agree:
+  //  - the 4 themeable tokens (mounted via `vars()`) react to NativeWind's
+  //    `colorScheme`, so we push the resolved scheme into it;
+  //  - the static tokens in src/global.css sit behind a `.dark:root` selector,
+  //    which on web needs a real `dark` class on the document root (nothing
+  //    else adds it). Native has no DOM and resolves `:root`/`.dark:root` from
+  //    `colorScheme` directly, so there the class toggle is a no-op guard.
+  //
+  // Web also can't rely on NativeWind's own system tracking (RN-Web's
+  // `Appearance` doesn't follow `prefers-color-scheme` live — verified with
+  // Playwright), so for "system" we listen to `matchMedia` ourselves.
+  useEffect(() => {
+    const applyClass = (isDark: boolean) => {
+      if (Platform.OS === "web") {
+        document.documentElement.classList.toggle("dark", isDark);
+      }
+    };
+
+    if (preference !== "system") {
+      nativewindColorScheme.set(preference);
+      applyClass(preference === "dark");
+      return;
+    }
+
+    // "system"
     if (Platform.OS !== "web") {
+      nativewindColorScheme.set("system");
       return;
     }
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = (isDark: boolean) => {
       nativewindColorScheme.set(isDark ? "dark" : "light");
-      document.documentElement.classList.toggle("dark", isDark);
+      applyClass(isDark);
     };
-
     apply(media.matches);
     const listener = (e: MediaQueryListEvent) => apply(e.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
-  }, []);
+  }, [preference]);
 
   return <View style={[{ flex: 1 }, theme]}>{children}</View>;
 }

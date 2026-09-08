@@ -4,7 +4,7 @@ import { ProfileContent } from "@/components/ProfileContent";
 export default function OwnerProfileScreen() {
   return (
     <Screen bg="canvas">
-      <ProfileContent side="host" />
+      <ProfileContent />
     </Screen>
   );
 }

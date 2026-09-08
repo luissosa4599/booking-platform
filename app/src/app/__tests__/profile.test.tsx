@@ -46,11 +46,11 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-function renderProfile(side: "guest" | "host" = "guest") {
+function renderProfile() {
   return render(
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
       <QueryClientProvider client={queryClient}>
-        <ProfileContent side={side} />
+        <ProfileContent />
       </QueryClientProvider>
     </SafeAreaProvider>,
   );

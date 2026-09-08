@@ -6,7 +6,7 @@ import { ProfileContent } from "@/components/ProfileContent";
 export default function ProfileScreen() {
   return (
     <Screen bg="canvas">
-      <ProfileContent side="guest" />
+      <ProfileContent />
     </Screen>
   );
 }

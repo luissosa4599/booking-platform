@@ -12,3 +12,9 @@ export function useColor(token: ColorToken): string {
   const { colorScheme } = useColorScheme();
   return palette(colorScheme === "dark" ? "dark" : "light")[token];
 }
+
+/** The effective scheme after the user's theme preference is applied. */
+export function useIsDark(): boolean {
+  const { colorScheme } = useColorScheme();
+  return colorScheme === "dark";
+}

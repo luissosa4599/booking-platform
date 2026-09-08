@@ -25,6 +25,7 @@ import { Toast } from "@/components/Toast";
 import { queryClient } from "@/lib/api/queryClient";
 import { useAuthStore } from "@/lib/session";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { useThemeStore } from "@/lib/theme/themeStore";
 import { useColor } from "@/lib/theme/useColor";
 import { useToastStore } from "@/lib/toastStore";
 
@@ -158,6 +159,7 @@ export default function RootLayout() {
     SpaceGrotesk_700Bold,
   });
   const hydrated = useAuthStore((s) => s.hydrated);
+  const themeHydrated = useThemeStore((s) => s.hydrated);
   const [splashDone, setSplashDone] = useState(false);
 
   return (
@@ -171,7 +173,7 @@ export default function RootLayout() {
               <GlobalToast />
               {!splashDone ? (
                 <AnimatedSplash
-                  appReady={fontsLoaded && hydrated}
+                  appReady={fontsLoaded && hydrated && themeHydrated}
                   onFinish={() => setSplashDone(true)}
                 />
               ) : null}

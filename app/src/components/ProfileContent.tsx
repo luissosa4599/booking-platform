@@ -7,20 +7,27 @@ import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
 import { Row } from "@/components/Row";
 import { Sheet } from "@/components/Sheet";
+import { Toggle } from "@/components/Toggle";
 import { useMe } from "@/lib/api/me";
-import { useAuthStore, useRole, useUserId } from "@/lib/session";
+import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
+import { useThemeStore } from "@/lib/theme/themeStore";
+import { useIsDark } from "@/lib/theme/useColor";
 
 // The "Tú" screen body — shared by the guest tab (`(tabs)/profile`) and the
-// host tab (`(owner)/(tabs)/profile`). `side` says which nav group is rendering
-// it, which only changes the one action row (become host / switch modes).
-export function ProfileContent({ side }: { side: "guest" | "host" }) {
+// host tab (`(owner)/(tabs)/profile`). Identical on both sides; the "Modo
+// anfitrión" switch is what moves a host between the two nav groups.
+export function ProfileContent() {
   const router = useRouter();
   const userId = useUserId();
   const role = useRole();
+  const viewMode = useViewMode();
   const session = useAuthStore((s) => s.session);
   const setViewMode = useAuthStore((s) => s.setViewMode);
   const signOut = useAuthStore((s) => s.signOut);
   const { data: me, isLoading } = useMe(userId);
+
+  const isDark = useIsDark();
+  const setThemePreference = useThemeStore((s) => s.setPreference);
 
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
@@ -90,25 +97,32 @@ export function ProfileContent({ side }: { side: "guest" | "host" }) {
                 trailing="chevron"
                 onPress={() => router.push("/become-host")}
               />
-            ) : side === "guest" ? (
-              <Row
-                title="Ir a mis espacios"
-                subtitle="Administra tus horarios y visitas"
-                trailing="chevron"
-                onPress={() => setViewMode("host")}
-              />
             ) : (
-              <Row
-                title="Cambiar a modo visitante"
-                subtitle="Explora y reserva espacios como cualquier persona"
-                trailing="chevron"
-                onPress={() => setViewMode("guest")}
+              <ToggleRow
+                title="Modo anfitrión"
+                subtitle="Publica espacios, define horarios y confirma visitas"
+                value={viewMode === "host"}
+                onValueChange={(v) => setViewMode(v ? "host" : "guest")}
               />
             )}
             <Row
               title="Cerrar sesión"
               accessibilityLabel="Cerrar sesión"
               onPress={() => setConfirmSignOut(true)}
+            />
+          </Group>
+        </View>
+
+        {/* Settings */}
+        <View className="mt-6 gap-2">
+          <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+            Ajustes
+          </Text>
+          <Group>
+            <ToggleRow
+              title="Tema oscuro"
+              value={isDark}
+              onValueChange={(v) => setThemePreference(v ? "dark" : "light")}
             />
           </Group>
         </View>
@@ -139,6 +153,36 @@ export function ProfileContent({ side }: { side: "guest" | "host" }) {
         </View>
       </Sheet>
     </>
+  );
+}
+
+// A Row-shaped item with a Toggle on the trailing edge instead of a chevron.
+// The Row component's `trailing` prop doesn't cover this case.
+function ToggleRow({
+  title,
+  subtitle,
+  value,
+  onValueChange,
+}: {
+  title: string;
+  subtitle?: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  return (
+    <View className="min-h-[56px] flex-row items-center gap-3 px-4 py-3">
+      <View className="flex-1 gap-[3px]">
+        <Text className="text-body-emph text-label-1">{title}</Text>
+        {subtitle ? (
+          <Text className="text-subhead text-label-3">{subtitle}</Text>
+        ) : null}
+      </View>
+      <Toggle
+        value={value}
+        onChange={onValueChange}
+        accessibilityLabel={title}
+      />
+    </View>
   );
 }
 
