@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { LogBox, View } from "react-native";
+import { Animated, Easing, LogBox, StyleSheet, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   SpaceGrotesk_500Medium,
@@ -24,6 +24,7 @@ import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { Toast } from "@/components/Toast";
 import { queryClient } from "@/lib/api/queryClient";
 import { useAuthStore } from "@/lib/session";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { useThemeStore } from "@/lib/theme/themeStore";
 import { useColor } from "@/lib/theme/useColor";
@@ -165,6 +166,56 @@ function AppBackground({ children }: { children: ReactNode }) {
   return <View style={{ flex: 1, backgroundColor: canvas }}>{children}</View>;
 }
 
+// Handoff: switching between the guest and host nav groups is a 240ms cross-fade,
+// not a hard cut. `Stack`'s own `animation` option is Android-only (CLAUDE.md),
+// so this does it by hand: a canvas-coloured layer flashes opaque over the swap
+// (in 100ms, out 140ms) whenever the route crosses into or out of `(owner)` —
+// covers the "Modo anfitrión" toggle and become-host -> "Ir a Mis espacios".
+function GroupTransition() {
+  const inOwner = (useSegments()[0] ?? "") === "(owner)";
+  const canvas = useColor("canvas");
+  const reduceMotion = useReduceMotion();
+  const [cover] = useState(() => new Animated.Value(0));
+  const settled = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (settled.current === null) {
+      settled.current = inOwner;
+      return;
+    }
+    if (settled.current === inOwner) return;
+    settled.current = inOwner;
+    if (reduceMotion) return;
+
+    cover.setValue(0);
+    Animated.sequence([
+      Animated.timing(cover, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(cover, {
+        toValue: 0,
+        duration: 140,
+        delay: 20,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [inOwner, cover, reduceMotion]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: canvas, opacity: cover, zIndex: 40 },
+      ]}
+    />
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_500Medium,
@@ -182,6 +233,7 @@ export default function RootLayout() {
             <GestureHandlerRootView style={{ flex: 1 }}>
               <StatusBar style="auto" />
               <AuthGate />
+              <GroupTransition />
               <GlobalToast />
               {!splashDone ? (
                 <AnimatedSplash
