@@ -42,6 +42,10 @@ public class WaitlistPromotionService(
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
 
+        // Host-cancellation notices are a separate outbox type — process them
+        // every tick, independent of whether there are waitlist openings.
+        await NotifyHostCancellationsAsync(db, ct);
+
         var events = await db.NotificationOutbox
             .Where(o => o.Type == NotificationType.WaitlistSlotOpened && o.ProcessedAt == null)
             .OrderBy(o => o.CreatedAt)
@@ -133,8 +137,6 @@ public class WaitlistPromotionService(
         }
 
         await db.SaveChangesAsync(ct);
-
-        await NotifyHostCancellationsAsync(db, ct);
     }
 
     // Host force-blocked a slot -> every confirmed booking on it was cancelled.
