@@ -7,6 +7,7 @@ import { Field } from "@/components/Field";
 import { Group } from "@/components/Group";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
+import { PhotoManager } from "@/components/PhotoManager";
 import { Screen } from "@/components/Screen";
 import { Stepper } from "@/components/Stepper";
 import { useOwnerSpace, useUpdateSpace } from "@/lib/api/owner";
@@ -87,7 +88,7 @@ export default function EditSpaceScreen() {
             className="overflow-hidden rounded-group"
           >
             <PhotoCarousel
-              photos={space?.photos ?? []}
+              photos={space?.images.map((i) => i.url) ?? []}
               contentHeight={HERO_HEIGHT}
               fallbackUrl={stockImageUrl(space?.resourceTypeName, {
                 width: 800,
@@ -95,6 +96,10 @@ export default function EditSpaceScreen() {
               })}
             />
           </View>
+
+          {space ? (
+            <PhotoManager spaceId={space.id} images={space.images} />
+          ) : null}
 
           <Field label="NOMBRE">
             <Group>

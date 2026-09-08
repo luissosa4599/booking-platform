@@ -70,7 +70,7 @@ export default function HostSpaceScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <View style={{ height: HERO_HEIGHT }}>
           <PhotoCarousel
-            photos={space?.photos ?? []}
+            photos={space?.images.map((i) => i.url) ?? []}
             contentHeight={HERO_HEIGHT}
             fallbackUrl={stockImageUrl(space?.resourceTypeName, {
               width: 800,

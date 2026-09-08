@@ -206,8 +206,8 @@ export interface OwnerSpaceDetail {
   locationLatitude: number | null;
   locationLongitude: number | null;
   timeZone: string;
-  /** Ordered host-uploaded photo URLs (empty until PR3b lands uploads). */
-  photos?: string[];
+  /** Ordered host-uploaded photos (with ids, for reorder/delete). */
+  images: ResourceImage[];
   schedule: WeeklySchedule | null;
   upcomingSlots: OwnerSlot[];
 }
@@ -237,6 +237,13 @@ export interface SetScheduleInput {
   slotDurationMinutes: number;
   capacity: number;
   days: WeeklyScheduleDay[];
+}
+
+/** One row of GET/POST/DELETE/PUT /owner/spaces/{id}/images. */
+export interface ResourceImage {
+  id: string;
+  url: string;
+  position: number;
 }
 
 /** GET /me — the signed-in account plus the two counters the profile shows. */

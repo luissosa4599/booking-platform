@@ -32,6 +32,7 @@ public static class DevSeeder
         var deletedBookings = await db.Bookings.ExecuteDeleteAsync(cancellationToken);
         var deletedWaitlist = await db.WaitlistEntries.ExecuteDeleteAsync(cancellationToken);
         var deletedSlots = await db.AvailabilitySlots.ExecuteDeleteAsync(cancellationToken);
+        await db.ResourceImages.ExecuteDeleteAsync(cancellationToken);
         var deletedResources = await db.Resources.ExecuteDeleteAsync(cancellationToken);
         var deletedLocations = await db.Locations.ExecuteDeleteAsync(cancellationToken);
         var deletedTypes = await db.ResourceTypes.ExecuteDeleteAsync(cancellationToken);
@@ -172,10 +173,28 @@ public static class DevSeeder
 
         var slots = GenerateSlots(resources, bibliotecaCentral.TimeZone);
 
+        // A couple of photos on the first resource so PhotoCarousel shows a
+        // multi-photo state without needing GCS configured. (Added directly,
+        // not via the endpoint — OwnsUrl would reject a non-bucket URL.)
+        var now2 = DateTimeOffset.UtcNow;
+        var seededImages = new[]
+        {
+            "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1000&q=70",
+            "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=70",
+        }.Select((url, i) => new ResourceImage
+        {
+            Id = Guid.NewGuid(),
+            ResourceId = resources[0].Id,
+            Url = url,
+            Position = i,
+            CreatedAt = now2,
+        });
+
         db.ResourceTypes.AddRange(studyRoomType, soloSpaceType);
         db.Locations.AddRange(locations);
         db.Resources.AddRange(resources);
         db.AvailabilitySlots.AddRange(slots);
+        db.ResourceImages.AddRange(seededImages);
 
         await db.SaveChangesAsync(cancellationToken);
 

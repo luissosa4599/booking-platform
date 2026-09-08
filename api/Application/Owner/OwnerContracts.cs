@@ -47,6 +47,7 @@ public record OwnerSpaceDetailResponse(
     double? LocationLatitude,
     double? LocationLongitude,
     string TimeZone,
+    IReadOnlyList<ResourceImageResponse> Images,
     WeeklyScheduleResponse? Schedule,
     IReadOnlyList<OwnerSlotResponse> UpcomingSlots);
 

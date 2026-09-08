@@ -95,6 +95,15 @@ const config: ExpoConfig = {
           "Tempo usa tu ubicación para ordenar los espacios por cercanía.",
       },
     ],
+    // Photo library access for the host to add photos of their space. Build-only
+    // permission string; library picking works in Expo Go and on web.
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Tempo accede a tus fotos para que publiques imágenes de tu espacio.",
+      },
+    ],
   ],
   experiments: {
     reactCompiler: false,

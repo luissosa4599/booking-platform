@@ -6,6 +6,7 @@ using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
 using BookingEngine.Api.Infrastructure.Geocoding;
 using BookingEngine.Api.Infrastructure.Seed;
+using BookingEngine.Api.Infrastructure.Storage;
 using DotNetEnv;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -58,6 +59,10 @@ try
     // GeocodingClient — the Geocoding web-service key can't be referrer-locked).
     builder.Services.AddHttpClient<GeocodingClient>(c =>
         c.BaseAddress = new Uri("https://maps.googleapis.com"));
+
+    // Space-photo uploads: issues GCS V4 signed PUT URLs. A no-op (endpoints
+    // 503) until GCS_BUCKET + GCS_CREDENTIALS_JSON are configured.
+    builder.Services.AddSingleton<IImageStorage, GcsImageStorage>();
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

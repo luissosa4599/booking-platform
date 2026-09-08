@@ -4,6 +4,7 @@ using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Owner;
 using BookingEngine.Api.Application.ResourceTypes;
 using BookingEngine.Api.Application.Validation;
+using BookingEngine.Api.Infrastructure.Storage;
 using BookingEngine.Domain;
 using BookingEngine.Infrastructure;
 using BookingEngine.Infrastructure.Availability;
@@ -308,7 +309,145 @@ public static class OwnerEndpoints
             return Results.NoContent();
         })
         .WithName("UnblockOwnerSlot");
+
+        // --- Photos (PR3b) -------------------------------------------------
+
+        group.MapPost("/spaces/{id:guid}/images/upload-url", async (
+            Guid id, UploadUrlRequest request, ClaimsPrincipal principal,
+            BookingEngineDbContext db, IImageStorage storage, CancellationToken ct) =>
+        {
+            var owns = await db.Resources.AnyAsync(
+                r => r.Id == id && r.OwnerUserId == principal.UserId(), ct);
+            if (!owns)
+            {
+                return Results.NotFound();
+            }
+
+            if (!storage.Enabled)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    detail: "Image storage is not configured.");
+            }
+
+            var (uploadUrl, publicUrl) = storage.CreateUploadUrl(id, request.ContentType);
+            return Results.Ok(new UploadUrlResponse(uploadUrl, publicUrl));
+        })
+        .AddEndpointFilter<ValidationFilter<UploadUrlRequest>>()
+        .WithName("CreateOwnerImageUploadUrl");
+
+        group.MapPost("/spaces/{id:guid}/images", async (
+            Guid id, AddImageRequest request, ClaimsPrincipal principal,
+            BookingEngineDbContext db, IImageStorage storage, CancellationToken ct) =>
+        {
+            var resource = await LoadOwnedWithImagesAsync(db, id, principal.UserId(), ct);
+            if (resource is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (!storage.OwnsUrl(id, request.Url))
+            {
+                return Results.BadRequest(new { message = "That URL is not an upload for this space." });
+            }
+
+            var nextPosition = resource.Images.Count == 0
+                ? 0
+                : resource.Images.Max(i => i.Position) + 1;
+
+            db.ResourceImages.Add(new ResourceImage
+            {
+                Id = Guid.NewGuid(),
+                ResourceId = id,
+                Url = request.Url,
+                Position = nextPosition,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok(await ImageListAsync(db, id, ct));
+        })
+        .AddEndpointFilter<ValidationFilter<AddImageRequest>>()
+        .WithName("AddOwnerImage");
+
+        group.MapDelete("/spaces/{id:guid}/images/{imageId:guid}", async (
+            Guid id, Guid imageId, ClaimsPrincipal principal,
+            BookingEngineDbContext db, CancellationToken ct) =>
+        {
+            var resource = await LoadOwnedWithImagesAsync(db, id, principal.UserId(), ct);
+            if (resource is null)
+            {
+                return Results.NotFound();
+            }
+
+            var image = resource.Images.FirstOrDefault(i => i.Id == imageId);
+            if (image is not null)
+            {
+                db.ResourceImages.Remove(image);
+                // Re-pack positions contiguously.
+                var remaining = resource.Images
+                    .Where(i => i.Id != imageId)
+                    .OrderBy(i => i.Position)
+                    .ToList();
+                for (var p = 0; p < remaining.Count; p++)
+                {
+                    remaining[p].Position = p;
+                }
+                await db.SaveChangesAsync(ct);
+            }
+
+            return Results.Ok(await ImageListAsync(db, id, ct));
+        })
+        .WithName("DeleteOwnerImage");
+
+        group.MapPut("/spaces/{id:guid}/images/order", async (
+            Guid id, ReorderImagesRequest request, ClaimsPrincipal principal,
+            BookingEngineDbContext db, CancellationToken ct) =>
+        {
+            var resource = await LoadOwnedWithImagesAsync(db, id, principal.UserId(), ct);
+            if (resource is null)
+            {
+                return Results.NotFound();
+            }
+
+            var byId = resource.Images.ToDictionary(i => i.Id);
+            var position = 0;
+            foreach (var imageId in request.ImageIds)
+            {
+                if (byId.TryGetValue(imageId, out var image))
+                {
+                    image.Position = position++;
+                }
+            }
+            // Anything the request didn't mention keeps a stable relative order after.
+            foreach (var image in resource.Images
+                .Where(i => !request.ImageIds.Contains(i.Id))
+                .OrderBy(i => i.Position))
+            {
+                image.Position = position++;
+            }
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok(await ImageListAsync(db, id, ct));
+        })
+        .AddEndpointFilter<ValidationFilter<ReorderImagesRequest>>()
+        .WithName("ReorderOwnerImages");
     }
+
+    private static Task<Resource?> LoadOwnedWithImagesAsync(
+        BookingEngineDbContext db, Guid id, string userId, CancellationToken ct) =>
+        db.Resources
+            .Include(r => r.Images)
+            .FirstOrDefaultAsync(r => r.Id == id && r.OwnerUserId == userId, ct);
+
+    private static async Task<List<ResourceImageResponse>> ImageListAsync(
+        BookingEngineDbContext db, Guid resourceId, CancellationToken ct) =>
+        await db.ResourceImages
+            .AsNoTracking()
+            .Where(i => i.ResourceId == resourceId)
+            .OrderBy(i => i.Position)
+            .Select(i => new ResourceImageResponse(i.Id, i.Url, i.Position))
+            .ToListAsync(ct);
 
     private static Task<AvailabilitySlot?> LoadOwnedSlotAsync(
         BookingEngineDbContext db, Guid resourceId, Guid slotId, string userId, CancellationToken ct) =>
@@ -364,6 +503,7 @@ public static class OwnerEndpoints
         db.Resources
             .Include(r => r.ResourceType)
             .Include(r => r.Location)
+            .Include(r => r.Images)
             .Include(r => r.WeeklySchedule!)
                 .ThenInclude(w => w.Days)
             .Include(r => r.AvailabilitySlots.Where(s => s.EndsAt >= DateTimeOffset.UtcNow))
@@ -398,6 +538,11 @@ public static class OwnerEndpoints
                         d.Enabled))
                     .ToList());
 
+        var images = r.Images
+            .OrderBy(i => i.Position)
+            .Select(i => new ResourceImageResponse(i.Id, i.Url, i.Position))
+            .ToList();
+
         return new OwnerSpaceDetailResponse(
             r.Id,
             r.Name,
@@ -417,6 +562,7 @@ public static class OwnerEndpoints
             r.Location.Latitude,
             r.Location.Longitude,
             r.Location.TimeZone,
+            images,
             schedule,
             slots);
     }

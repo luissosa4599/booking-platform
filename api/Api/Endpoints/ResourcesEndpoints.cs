@@ -32,6 +32,7 @@ public static class ResourcesEndpoints
                     r.Name,
                     r.Capacity,
                     r.Description,
+                    r.Images.OrderBy(i => i.Position).Select(i => i.Url).ToList(),
                     r.AvailabilitySlots
                         .Where(s => s.EndsAt > DateTimeOffset.UtcNow && !s.IsBlocked)
                         .OrderBy(s => s.StartsAt)
