@@ -75,20 +75,19 @@ function AuthGate() {
     const inOwner = seg0 === "(owner)";
     const hostView = session?.role === "host" && viewMode === "host";
 
-    // Both (tabs)/index and (owner)/(tabs)/index have the URL path "/", so a
-    // bare router.replace("/") from inside (owner) resolves to the SAME screen
-    // and the redirect never fires — the app freezes. Target the groups
-    // explicitly.
+    // Host home = "/spaces" (owner group), guest home = "/". These are distinct
+    // URLs — an earlier version pointed both at "/", which is ambiguous from
+    // inside (owner) and froze the app on a mode switch.
     if (!session && !onPublic) {
       router.replace("/sign-in");
     } else if (session && onPublic) {
-      router.replace(hostView ? "/(owner)" : "/(tabs)");
+      router.replace(hostView ? "/spaces" : "/");
     } else if (session && !ROLE_NEUTRAL_SEGMENTS.has(seg0)) {
       // Keep a host in their own nav group and a guest out of it.
       if (hostView && !inOwner) {
-        router.replace("/(owner)");
+        router.replace("/spaces");
       } else if (!hostView && inOwner) {
-        router.replace("/(tabs)");
+        router.replace("/");
       }
     }
   }, [hydrated, session, viewMode, segments, router]);

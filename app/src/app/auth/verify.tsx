@@ -20,7 +20,7 @@ export default function VerifyScreen() {
   useEffect(() => {
     if (!token) return;
     verify(token)
-      .then(() => router.replace("/(tabs)"))
+      .then(() => router.replace("/"))
       .catch(() => setVerifyFailed(true));
   }, [token, verify, router]);
 

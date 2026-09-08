@@ -120,7 +120,7 @@ export default function HostSpaceScreen() {
             <View className="pt-2">
               <Button
                 variant="filled"
-                onPress={() => router.replace("/(owner)/(tabs)")}
+                onPress={() => router.replace("/spaces")}
               >
                 Ver mis espacios
               </Button>

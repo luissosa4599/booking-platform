@@ -30,7 +30,7 @@ export default function SignInScreen() {
     try {
       const { token } = await requestLink(address);
       await verify(token);
-      router.replace("/(tabs)");
+      router.replace("/");
     } catch {
       setError("No pudimos entrar. Intenta de nuevo.");
     } finally {

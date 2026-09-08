@@ -131,7 +131,7 @@ export default function BecomeHostScreen() {
         }}
         onGoToSpaces={() => {
           setUpgraded(false);
-          router.replace("/(owner)");
+          router.replace("/spaces");
         }}
       />
     </Screen>
