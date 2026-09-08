@@ -6,12 +6,20 @@ import { apiFetch, setAuthHandlers } from "@/lib/api/client";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
 const STORAGE_KEY = "tempo.session.v1";
+// Which side of the app a host is currently looking at. Persisted SEPARATELY
+// from the session blob: `refresh()` rebuilds the session from the server every
+// ~30 min and would otherwise wipe this. Only meaningful when role === "host".
+const VIEW_MODE_KEY = "tempo.viewmode.v1";
+
+export type AccountRole = "guest" | "host";
+export type ViewMode = "guest" | "host";
 
 export interface Session {
   userId: string;
   email: string;
   displayName?: string | null;
   avatarUrl?: string | null;
+  role: AccountRole;
   accessToken: string;
   refreshToken: string;
 }
@@ -26,45 +34,50 @@ interface SessionResponse {
     email: string;
     displayName?: string | null;
     avatarUrl?: string | null;
+    role?: string | null;
   };
 }
 
 // expo-secure-store has no web implementation — fall back to localStorage there
 // (a demo auth, not real secrets).
 const storage = {
-  async get(): Promise<string | null> {
+  async get(key: string): Promise<string | null> {
     if (Platform.OS === "web") {
       try {
-        return window.localStorage.getItem(STORAGE_KEY);
+        return window.localStorage.getItem(key);
       } catch {
         return null;
       }
     }
-    return SecureStore.getItemAsync(STORAGE_KEY);
+    return SecureStore.getItemAsync(key);
   },
-  async set(value: string): Promise<void> {
+  async set(key: string, value: string): Promise<void> {
     if (Platform.OS === "web") {
       try {
-        window.localStorage.setItem(STORAGE_KEY, value);
+        window.localStorage.setItem(key, value);
       } catch {
-        /* private mode / storage blocked — session just won't persist */
+        /* private mode / storage blocked — just won't persist */
       }
       return;
     }
-    await SecureStore.setItemAsync(STORAGE_KEY, value);
+    await SecureStore.setItemAsync(key, value);
   },
-  async remove(): Promise<void> {
+  async remove(key: string): Promise<void> {
     if (Platform.OS === "web") {
       try {
-        window.localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(key);
       } catch {
         /* ignore */
       }
       return;
     }
-    await SecureStore.deleteItemAsync(STORAGE_KEY);
+    await SecureStore.deleteItemAsync(key);
   },
 };
+
+function toRole(role?: string | null): AccountRole {
+  return role === "host" ? "host" : "guest";
+}
 
 function toSession(res: SessionResponse): Session {
   return {
@@ -72,6 +85,7 @@ function toSession(res: SessionResponse): Session {
     email: res.user.email,
     displayName: res.user.displayName ?? null,
     avatarUrl: res.user.avatarUrl ?? null,
+    role: toRole(res.user.role),
     accessToken: res.accessToken,
     refreshToken: res.refreshToken,
   };
@@ -86,6 +100,8 @@ interface AuthState {
   /** false until the persisted session has been read once at startup. */
   hydrated: boolean;
   session: Session | null;
+  /** "guest" | "host" — which UI a host is in. Ignored while role === "guest". */
+  viewMode: ViewMode;
   hydrate: () => Promise<void>;
   /** Real Google OAuth2 — pass the Google ID token from expo-auth-session. */
   signInWithGoogle: (idToken: string) => Promise<void>;
@@ -94,11 +110,15 @@ interface AuthState {
   verify: (token: string) => Promise<void>;
   /** Rotate the refresh token for a fresh access token. Throws on failure. */
   refresh: () => Promise<void>;
+  /** Self-upgrade to host. Server re-issues the session so the new token carries role=host. */
+  becomeHost: () => Promise<void>;
+  /** Switch a host between their own UI and the guest UI. Persisted. */
+  setViewMode: (mode: ViewMode) => void;
   signOut: () => Promise<void>;
 }
 
 async function persist(set: (partial: Partial<AuthState>) => void, session: Session) {
-  await storage.set(JSON.stringify(session));
+  await storage.set(STORAGE_KEY, JSON.stringify(session));
   set({ session });
 }
 
@@ -110,18 +130,28 @@ let refreshInFlight: Promise<void> | null = null;
 export const useAuthStore = create<AuthState>((set, get) => ({
   hydrated: false,
   session: null,
+  viewMode: "host",
 
   hydrate: async () => {
-    const raw = await storage.get();
+    const [rawSession, rawViewMode] = await Promise.all([
+      storage.get(STORAGE_KEY),
+      storage.get(VIEW_MODE_KEY),
+    ]);
     let session: Session | null = null;
-    if (raw) {
+    if (rawSession) {
       try {
-        session = JSON.parse(raw) as Session;
+        const parsed = JSON.parse(rawSession) as Partial<Session>;
+        // Older persisted sessions have no `role` — default to guest.
+        session = { ...(parsed as Session), role: toRole(parsed.role) };
       } catch {
         session = null;
       }
     }
-    set({ hydrated: true, session });
+    set({
+      hydrated: true,
+      session,
+      viewMode: rawViewMode === "guest" ? "guest" : "host",
+    });
   },
 
   signInWithGoogle: async (idToken) => {
@@ -166,6 +196,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return refreshInFlight;
   },
 
+  becomeHost: async () => {
+    const res = await apiFetch<SessionResponse>("/me/become-host", {
+      method: "POST",
+    });
+    await persist(set, toSession(res));
+    get().setViewMode("host");
+  },
+
+  setViewMode: (mode) => {
+    void storage.set(VIEW_MODE_KEY, mode);
+    set({ viewMode: mode });
+  },
+
   signOut: async () => {
     const current = get().session;
     if (current) {
@@ -175,8 +218,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: { refreshToken: current.refreshToken },
       }).catch(() => {});
     }
-    await storage.remove();
-    set({ session: null });
+    await Promise.all([storage.remove(STORAGE_KEY), storage.remove(VIEW_MODE_KEY)]);
+    set({ session: null, viewMode: "host" });
   },
 }));
 
@@ -186,8 +229,9 @@ setAuthHandlers({
   getAccessToken: () => useAuthStore.getState().session?.accessToken ?? null,
   refresh: () => useAuthStore.getState().refresh(),
   onAuthLost: () => {
-    void storage.remove();
-    useAuthStore.setState({ session: null });
+    void storage.remove(STORAGE_KEY);
+    void storage.remove(VIEW_MODE_KEY);
+    useAuthStore.setState({ session: null, viewMode: "host" });
   },
 });
 
@@ -199,4 +243,17 @@ export function useUserId(): string {
 /** Non-reactive user id for event handlers. */
 export function getUserId(): string {
   return useAuthStore.getState().session?.userId ?? "";
+}
+
+export function useRole(): AccountRole {
+  return useAuthStore((s) => s.session?.role ?? "guest");
+}
+
+export function useViewMode(): ViewMode {
+  return useAuthStore((s) => s.viewMode);
+}
+
+/** True when a host account is currently looking at the host UI. */
+export function useIsHostView(): boolean {
+  return useAuthStore((s) => s.session?.role === "host" && s.viewMode === "host");
 }

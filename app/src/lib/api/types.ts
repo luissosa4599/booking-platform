@@ -128,3 +128,16 @@ export interface EmptyContext {
 export interface BookingStreak {
   weeks: number;
 }
+
+/** GET /me — the signed-in account plus the two counters the profile shows. */
+export interface Me {
+  id: string;
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  /** "guest" | "host" */
+  role: string;
+  bookingCount: number;
+  streakWeeks: number;
+  createdAt: string;
+}

@@ -1,15 +1,23 @@
 import type { ComponentType } from "react";
 import {
   ArrowLeft as LArrowLeft,
+  Ban as LBan,
   Calendar as LCalendar,
+  CalendarClock as LCalendarClock,
   CalendarX as LCalendarX,
+  Camera as LCamera,
   Check as LCheck,
   ChevronRight as LChevronRight,
+  Clock as LClock,
   Compass as LCompass,
+  LogOut as LLogOut,
   MapPin as LMapPin,
   Minus as LMinus,
   Plus as LPlus,
+  QrCode as LQrCode,
   Search as LSearch,
+  Store as LStore,
+  Trash2 as LTrash2,
   User as LUser,
   X as LX,
 } from "lucide-react-native";
@@ -31,15 +39,23 @@ export interface IconProps {
 const typed = <T,>(icon: T) => icon as ComponentType<IconProps>;
 
 export const ArrowLeft = typed(LArrowLeft);
+export const Ban = typed(LBan);
 export const Calendar = typed(LCalendar);
+export const CalendarClock = typed(LCalendarClock);
 export const CalendarX = typed(LCalendarX);
+export const Camera = typed(LCamera);
 export const Check = typed(LCheck);
 export const ChevronRight = typed(LChevronRight);
+export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
+export const LogOut = typed(LLogOut);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
 export const Plus = typed(LPlus);
+export const QrCode = typed(LQrCode);
 export const Search = typed(LSearch);
+export const Store = typed(LStore);
+export const Trash2 = typed(LTrash2);
 export const User = typed(LUser);
 export const X = typed(LX);
 
