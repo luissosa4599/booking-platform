@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LogBox, View } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -64,6 +64,10 @@ function AuthGate() {
   const canvas = useColor("canvas");
   const card = useColor("card");
 
+  // Never issue the same redirect twice in a row — a belt-and-braces guard
+  // against a redirect loop if a target ever fails to change `segments`.
+  const lastRedirect = useRef<string | null>(null);
+
   useEffect(() => {
     hydrate();
   }, [hydrate]);
@@ -78,18 +82,23 @@ function AuthGate() {
     // Host home = "/spaces" (owner group), guest home = "/". These are distinct
     // URLs — an earlier version pointed both at "/", which is ambiguous from
     // inside (owner) and froze the app on a mode switch.
+    let target: "/sign-in" | "/spaces" | "/" | null = null;
     if (!session && !onPublic) {
-      router.replace("/sign-in");
+      target = "/sign-in";
     } else if (session && onPublic) {
-      router.replace(hostView ? "/spaces" : "/");
+      target = hostView ? "/spaces" : "/";
     } else if (session && !ROLE_NEUTRAL_SEGMENTS.has(seg0)) {
-      // Keep a host in their own nav group and a guest out of it.
-      if (hostView && !inOwner) {
-        router.replace("/spaces");
-      } else if (!hostView && inOwner) {
-        router.replace("/");
-      }
+      if (hostView && !inOwner) target = "/spaces";
+      else if (!hostView && inOwner) target = "/";
     }
+
+    if (!target) {
+      lastRedirect.current = null;
+      return;
+    }
+    if (lastRedirect.current === target + seg0) return;
+    lastRedirect.current = target + seg0;
+    router.replace(target);
   }, [hydrated, session, viewMode, segments, router]);
 
   const { colorScheme } = useColorScheme();
