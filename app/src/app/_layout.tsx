@@ -42,12 +42,16 @@ LogBox.ignoreLogs(["Cannot connect to Expo CLI", /Cannot connect to Metro/]);
 
 // Routes reachable without a session.
 const PUBLIC_SEGMENTS = new Set(["sign-in", "auth"]);
+// A signed-in host may sit here without being bounced into their own nav group
+// (the become-host success sheet lives on this screen).
+const ROLE_NEUTRAL_SEGMENTS = new Set(["become-host"]);
 
 function AuthGate() {
   const router = useRouter();
   const segments = useSegments();
   const hydrated = useAuthStore((s) => s.hydrated);
   const session = useAuthStore((s) => s.session);
+  const viewMode = useAuthStore((s) => s.viewMode);
   const hydrate = useAuthStore((s) => s.hydrate);
   // The native stack paints white behind a screen mid-transition unless the
   // scene has an explicit background — very visible on Android, especially
@@ -65,13 +69,24 @@ function AuthGate() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const onPublic = PUBLIC_SEGMENTS.has(segments[0] ?? "");
+    const seg0 = segments[0] ?? "";
+    const onPublic = PUBLIC_SEGMENTS.has(seg0);
+    const inOwner = seg0 === "(owner)";
+    const hostView = session?.role === "host" && viewMode === "host";
+
     if (!session && !onPublic) {
       router.replace("/sign-in");
     } else if (session && onPublic) {
-      router.replace("/");
+      router.replace(hostView ? "/(owner)" : "/");
+    } else if (session && !ROLE_NEUTRAL_SEGMENTS.has(seg0)) {
+      // Keep a host in their own nav group and a guest out of it.
+      if (hostView && !inOwner) {
+        router.replace("/(owner)");
+      } else if (!hostView && inOwner) {
+        router.replace("/");
+      }
     }
-  }, [hydrated, session, segments, router]);
+  }, [hydrated, session, viewMode, segments, router]);
 
   const { colorScheme } = useColorScheme();
   // The React Navigation container paints its own background behind every

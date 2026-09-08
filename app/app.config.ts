@@ -73,6 +73,9 @@ const config: ExpoConfig = {
           "Tempo necesita acceso a tu calendario para agregar tus reservas.",
       },
     ],
+    // Native date/time pickers for the host's weekly-schedule + ad-hoc-slot
+    // editors. Ships in Expo Go; the plugin only matters for a real build.
+    "@react-native-community/datetimepicker",
   ],
   experiments: {
     reactCompiler: false,
