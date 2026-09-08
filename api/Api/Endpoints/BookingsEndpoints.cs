@@ -115,6 +115,16 @@ public static class BookingsEndpoints
                 return Results.NotFound(new { message = "Availability slot not found." });
             }
 
+            // A blocked slot is invisible to guests already — this is the
+            // defence in depth for a stale client that still has it.
+            if (slot.IsBlocked)
+            {
+                return Results.Conflict(new BookingConflictResponse(
+                    "This slot is no longer available.",
+                    slot.Id,
+                    await BookingAlternativesFinder.FindAsync(db, slot.Id, request.Seats)));
+            }
+
             // Optional stale-read guard: the client tells us which version of
             // the slot it acted on; if the slot moved on since, reject before
             // writing rather than letting the xmin check fire mid-transaction.

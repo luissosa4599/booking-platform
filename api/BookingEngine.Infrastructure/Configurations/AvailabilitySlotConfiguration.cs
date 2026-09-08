@@ -14,6 +14,14 @@ public class AvailabilitySlotConfiguration : IEntityTypeConfiguration<Availabili
         builder.Property(s => s.EndsAt).IsRequired();
         builder.Property(s => s.CapacityRemaining).IsRequired();
 
+        builder.Property(s => s.IsBlocked).IsRequired().HasDefaultValue(false);
+
+        builder.Property(s => s.Origin)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(SlotOrigin.Adhoc);
+
         // Npgsql-specific optimistic concurrency: maps a uint property to
         // PostgreSQL's `xmin` system column instead of a real column. EF
         // throws DbUpdateConcurrencyException on SaveChanges if the row

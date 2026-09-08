@@ -32,6 +32,7 @@ try
 
     builder.Services.AddHostedService<ReminderService>();
     builder.Services.AddHostedService<WaitlistPromotionService>();
+    builder.Services.AddHostedService<ScheduleExpansionService>();
 
     var host = builder.Build();
     host.Run();

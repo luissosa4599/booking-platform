@@ -18,6 +18,10 @@ public class BookingEngineDbContext : DbContext
 
     public DbSet<AvailabilitySlot> AvailabilitySlots => Set<AvailabilitySlot>();
 
+    public DbSet<WeeklySchedule> WeeklySchedules => Set<WeeklySchedule>();
+
+    public DbSet<WeeklyScheduleDay> WeeklyScheduleDays => Set<WeeklyScheduleDay>();
+
     public DbSet<Booking> Bookings => Set<Booking>();
 
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
