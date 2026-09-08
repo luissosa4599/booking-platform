@@ -20,5 +20,8 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(l => l.TimeZone)
             .IsRequired()
             .HasMaxLength(100);
+
+        builder.Property(l => l.OwnerUserId).HasMaxLength(200);
+        builder.HasIndex(l => l.OwnerUserId);
     }
 }

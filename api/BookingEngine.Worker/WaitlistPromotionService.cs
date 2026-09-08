@@ -42,6 +42,10 @@ public class WaitlistPromotionService(
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
 
+        // Host-cancellation notices are a separate outbox type — process them
+        // every tick, independent of whether there are waitlist openings.
+        await NotifyHostCancellationsAsync(db, ct);
+
         var events = await db.NotificationOutbox
             .Where(o => o.Type == NotificationType.WaitlistSlotOpened && o.ProcessedAt == null)
             .OrderBy(o => o.CreatedAt)
@@ -130,6 +134,88 @@ public class WaitlistPromotionService(
         if (promoted > 0)
         {
             logger.LogInformation("WaitlistPromotionService promoted {Count} waitlist entry(s)", promoted);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    // Host force-blocked a slot -> every confirmed booking on it was cancelled.
+    // One outbox row per slot; here we fan out to each affected booker.
+    private async Task NotifyHostCancellationsAsync(BookingEngineDbContext db, CancellationToken ct)
+    {
+        var events = await db.NotificationOutbox
+            .Where(o => o.Type == NotificationType.BookingCancelledByHost && o.ProcessedAt == null)
+            .OrderBy(o => o.CreatedAt)
+            .Take(BatchSize)
+            .ToListAsync(ct);
+
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        var notified = 0;
+        foreach (var evt in events)
+        {
+            evt.ProcessedAt = DateTimeOffset.UtcNow;
+            evt.Attempts++;
+
+            var slot = await db.AvailabilitySlots
+                .Include(s => s.Resource)
+                .FirstOrDefaultAsync(s => s.Id == evt.AvailabilitySlotId, ct);
+            if (slot is null)
+            {
+                continue;
+            }
+
+            var cancelled = await db.Bookings
+                .Where(b => b.AvailabilitySlotId == evt.AvailabilitySlotId && b.Status == BookingStatus.Cancelled)
+                .ToListAsync(ct);
+
+            foreach (var booking in cancelled)
+            {
+                var already = await db.SentNotifications.AnyAsync(
+                    s => s.UserId == booking.UserId
+                        && s.Type == SentNotificationType.BookingCancelledByHost
+                        && s.BookingId == booking.Id,
+                    ct);
+                if (already)
+                {
+                    continue;
+                }
+
+                var tokens = await db.PushTokens
+                    .Where(t => t.UserId == booking.UserId)
+                    .ToListAsync(ct);
+                foreach (var token in tokens)
+                {
+                    var outcome = await pushClient.SendAsync(
+                        token.ExpoPushToken,
+                        slot.Resource.Name,
+                        "El anfitrion cerro este horario. Busca otro disponible.",
+                        ct);
+                    if (outcome == PushOutcome.TokenInvalid)
+                    {
+                        db.PushTokens.Remove(token);
+                    }
+                }
+
+                db.SentNotifications.Add(new SentNotification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = booking.UserId,
+                    Type = SentNotificationType.BookingCancelledByHost,
+                    BookingId = booking.Id,
+                    AvailabilitySlotId = evt.AvailabilitySlotId,
+                    SentAt = DateTimeOffset.UtcNow,
+                });
+                notified++;
+            }
+        }
+
+        if (notified > 0)
+        {
+            logger.LogInformation("Notified {Count} booker(s) of a host cancellation", notified);
         }
 
         await db.SaveChangesAsync(ct);

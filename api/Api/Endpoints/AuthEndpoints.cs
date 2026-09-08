@@ -14,8 +14,7 @@ public static class AuthEndpoints
         app.MapPost("/auth/google", async (
             GoogleSignInRequest request,
             IGoogleIdTokenValidator googleValidator,
-            SessionTokens tokens,
-            AuthOptions authOptions,
+            SessionIssuer issuer,
             BookingEngineDbContext db,
             ILogger<Program> logger,
             CancellationToken ct) =>
@@ -28,7 +27,7 @@ public static class AuthEndpoints
 
             var now = DateTimeOffset.UtcNow;
             var user = await UpsertGoogleUserAsync(db, identity, now, ct);
-            var session = await IssueSessionAsync(db, user, tokens, authOptions, now, ct);
+            var session = await issuer.IssueAsync(db, user, now, ct);
 
             logger.LogInformation("Google sign-in for {Email} ({UserId})", user.Email, user.Id);
             return Results.Ok(session);
@@ -85,7 +84,7 @@ public static class AuthEndpoints
                 access,
                 rawNext,
                 now.Add(authOptions.AccessTokenLifetime),
-                ToAuthUser(stored.User)));
+                SessionIssuer.ToAuthUser(stored.User)));
         })
         .WithName("RefreshSession");
 
@@ -141,7 +140,7 @@ public static class AuthEndpoints
         app.MapPost("/auth/verify", async (
             VerifyRequest request,
             AuthOptions authOptions,
-            SessionTokens tokens,
+            SessionIssuer issuer,
             BookingEngineDbContext db,
             CancellationToken ct) =>
         {
@@ -152,7 +151,7 @@ public static class AuthEndpoints
 
             var now = DateTimeOffset.UtcNow;
             var user = await UpsertMagicLinkUserAsync(db, email, now, ct);
-            var session = await IssueSessionAsync(db, user, tokens, authOptions, now, ct);
+            var session = await issuer.IssueAsync(db, user, now, ct);
             return Results.Ok(session);
         })
         .WithName("VerifyMagicLink");
@@ -195,33 +194,4 @@ public static class AuthEndpoints
         return user;
     }
 
-    private static async Task<SessionResponse> IssueSessionAsync(
-        BookingEngineDbContext db,
-        User user,
-        SessionTokens tokens,
-        AuthOptions authOptions,
-        DateTimeOffset now,
-        CancellationToken ct)
-    {
-        var (raw, hash) = SessionTokens.NewRefreshToken();
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            TokenHash = hash,
-            CreatedAt = now,
-            ExpiresAt = now.Add(authOptions.RefreshTokenLifetime),
-        });
-        await db.SaveChangesAsync(ct);
-
-        var access = tokens.IssueAccessToken(user, now);
-        return new SessionResponse(
-            access,
-            raw,
-            now.Add(authOptions.AccessTokenLifetime),
-            ToAuthUser(user));
-    }
-
-    private static AuthUser ToAuthUser(User user) =>
-        new(user.Id, user.Email, user.DisplayName, user.AvatarUrl);
 }

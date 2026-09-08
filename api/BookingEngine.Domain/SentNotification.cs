@@ -4,6 +4,7 @@ public static class SentNotificationType
 {
     public const string Reminder = "reminder";
     public const string WaitlistSlotOpened = "waitlist_slot_opened";
+    public const string BookingCancelledByHost = "booking_cancelled_by_host";
 }
 
 /// <summary>

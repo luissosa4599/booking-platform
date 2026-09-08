@@ -34,6 +34,18 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("EndsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsBlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Adhoc");
+
                     b.Property<Guid>("ResourceId")
                         .HasColumnType("uuid");
 
@@ -61,6 +73,13 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.Property<Guid>("AvailabilitySlotId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CheckedInByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -124,12 +143,18 @@ namespace BookingEngine.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("TimeZone")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
 
                     b.ToTable("Locations");
                 });
@@ -256,12 +281,18 @@ namespace BookingEngine.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<Guid>("ResourceTypeId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("LocationId");
+
+                    b.HasIndex("OwnerUserId");
 
                     b.HasIndex("ResourceTypeId");
 
@@ -353,6 +384,13 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Guest");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
@@ -389,6 +427,63 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("AvailabilitySlotId", "CreatedAt");
 
                     b.ToTable("WaitlistEntries");
+                });
+
+            modelBuilder.Entity("BookingEngine.Domain.WeeklySchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SlotDurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResourceId")
+                        .IsUnique();
+
+                    b.ToTable("WeeklySchedules");
+                });
+
+            modelBuilder.Entity("BookingEngine.Domain.WeeklyScheduleDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("CloseTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeOnly>("OpenTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Weekday")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<Guid>("WeeklyScheduleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeeklyScheduleId", "Weekday")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyScheduleDays");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.AvailabilitySlot", b =>
@@ -493,6 +588,28 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.Navigation("AvailabilitySlot");
                 });
 
+            modelBuilder.Entity("BookingEngine.Domain.WeeklySchedule", b =>
+                {
+                    b.HasOne("BookingEngine.Domain.Resource", "Resource")
+                        .WithOne("WeeklySchedule")
+                        .HasForeignKey("BookingEngine.Domain.WeeklySchedule", "ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("BookingEngine.Domain.WeeklyScheduleDay", b =>
+                {
+                    b.HasOne("BookingEngine.Domain.WeeklySchedule", "WeeklySchedule")
+                        .WithMany("Days")
+                        .HasForeignKey("WeeklyScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WeeklySchedule");
+                });
+
             modelBuilder.Entity("BookingEngine.Domain.AvailabilitySlot", b =>
                 {
                     b.Navigation("Bookings");
@@ -508,6 +625,8 @@ namespace BookingEngine.Infrastructure.Migrations
             modelBuilder.Entity("BookingEngine.Domain.Resource", b =>
                 {
                     b.Navigation("AvailabilitySlots");
+
+                    b.Navigation("WeeklySchedule");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.ResourceType", b =>
@@ -518,6 +637,11 @@ namespace BookingEngine.Infrastructure.Migrations
             modelBuilder.Entity("BookingEngine.Domain.User", b =>
                 {
                     b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("BookingEngine.Domain.WeeklySchedule", b =>
+                {
+                    b.Navigation("Days");
                 });
 #pragma warning restore 612, 618
         }

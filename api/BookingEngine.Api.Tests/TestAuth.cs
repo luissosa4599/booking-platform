@@ -16,16 +16,20 @@ public static class TestAuth
     public static HttpClient CreateAuthenticatedClient(
         this ApiTestFixture fixture,
         string userId,
-        string email = "test@tempo.demo")
+        string email = "test@tempo.demo",
+        AccountRole role = AccountRole.Guest)
     {
         var client = fixture.Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", TokenFor(userId, email));
+            new AuthenticationHeaderValue("Bearer", TokenFor(userId, email, role));
         return client;
     }
 
-    public static string TokenFor(string userId, string email = "test@tempo.demo") =>
+    public static string TokenFor(
+        string userId,
+        string email = "test@tempo.demo",
+        AccountRole role = AccountRole.Guest) =>
         Tokens.IssueAccessToken(
-            new User { Id = userId, Email = email },
+            new User { Id = userId, Email = email, Role = role },
             DateTimeOffset.UtcNow);
 }

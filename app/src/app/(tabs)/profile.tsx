@@ -1,29 +1,12 @@
-import { Text, View } from "react-native";
-
 import { Screen } from "@/components/Screen";
-import { User } from "@/lib/icons";
-import { useColor } from "@/lib/theme/useColor";
+import { ProfileContent } from "@/components/ProfileContent";
 
-// The handoff names this tab ("Tú") as one of the 3 required by the TabBar
-// spec but never designs its content — no SignInScreen-adjacent profile
-// screen exists in this handoff at all. Honest placeholder rather than
-// invented content: enough to make the tab a real destination, nothing more.
+// "Tú" — the guest-side account screen. Shared body with the host tab; see
+// ProfileContent. Replaces the old "Próximamente" placeholder.
 export default function ProfileScreen() {
-  const iconColor = useColor("chevron");
-
   return (
     <Screen bg="canvas">
-      <View className="flex-1 items-center justify-center gap-4 px-10">
-        <View className="h-16 w-16 items-center justify-center rounded-[18px] bg-fill text-chevron">
-          <User size={26} color={iconColor} />
-        </View>
-        <Text className="text-title-sm text-center text-label-1">
-          Próximamente
-        </Text>
-        <Text className="text-body text-center text-label-3">
-          Tu perfil y ajustes van a vivir aquí — no está diseñado todavía.
-        </Text>
-      </View>
+      <ProfileContent />
     </Screen>
   );
 }

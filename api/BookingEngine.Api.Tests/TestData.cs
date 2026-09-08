@@ -60,6 +60,54 @@ public static class TestData
         return slot;
     }
 
+    /// <summary>A resource type row (multi-seat by default). For owner/schedule tests.</summary>
+    public static async Task<ResourceType> CreateResourceTypeAsync(
+        BookingEngineDbContext db, bool allowsMultipleSeats = true)
+    {
+        var type = new ResourceType
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Test type {Guid.NewGuid():N}",
+            Labels = new ResourceLabels
+            {
+                Singular = "espacio",
+                Plural = "espacios",
+                CapacityUnit = allowsMultipleSeats ? "personas" : "persona",
+                ActionVerb = "Apartar",
+            },
+            AllowsMultipleSeats = allowsMultipleSeats,
+            AllowsWaitlist = true,
+        };
+        db.ResourceTypes.Add(type);
+        await db.SaveChangesAsync();
+        return type;
+    }
+
+    /// <summary>A resource owned by <paramref name="ownerUserId"/>, with its own location.</summary>
+    public static async Task<Resource> CreateOwnedResourceAsync(
+        BookingEngineDbContext db, string ownerUserId, ResourceType type, int capacity = 8)
+    {
+        var location = new Location
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Owned location {Guid.NewGuid():N}",
+            TimeZone = "America/Mexico_City",
+            OwnerUserId = ownerUserId,
+        };
+        var resource = new Resource
+        {
+            Id = Guid.NewGuid(),
+            ResourceType = type,
+            Location = location,
+            Name = $"Owned resource {Guid.NewGuid():N}",
+            Capacity = capacity,
+            OwnerUserId = ownerUserId,
+        };
+        db.Resources.Add(resource);
+        await db.SaveChangesAsync();
+        return resource;
+    }
+
     /// <summary>Adds another slot to an existing slot's resource — for testing "same resource" alternatives.</summary>
     public static async Task<AvailabilitySlot> AddSlotToResourceAsync(
         BookingEngineDbContext db,

@@ -21,7 +21,7 @@ public record RefreshRequest(string RefreshToken);
 
 public record LogoutRequest(string RefreshToken);
 
-public record AuthUser(string Id, string Email, string? DisplayName, string? AvatarUrl);
+public record AuthUser(string Id, string Email, string? DisplayName, string? AvatarUrl, string Role);
 
 /// <summary>
 /// The session payload returned by <c>/auth/google</c>, <c>/auth/refresh</c>

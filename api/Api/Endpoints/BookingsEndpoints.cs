@@ -51,7 +51,8 @@ public static class BookingsEndpoints
                     b.AvailabilitySlot.EndsAt,
                     b.Seats,
                     b.Status.ToString(),
-                    b.Code))
+                    b.Code,
+                    b.CheckedInAt))
                 .ToListAsync();
 
             return Results.Ok(bookings);
@@ -113,6 +114,16 @@ public static class BookingsEndpoints
             if (slot is null)
             {
                 return Results.NotFound(new { message = "Availability slot not found." });
+            }
+
+            // A blocked slot is invisible to guests already — this is the
+            // defence in depth for a stale client that still has it.
+            if (slot.IsBlocked)
+            {
+                return Results.Conflict(new BookingConflictResponse(
+                    "This slot is no longer available.",
+                    slot.Id,
+                    await BookingAlternativesFinder.FindAsync(db, slot.Id, request.Seats)));
             }
 
             // Optional stale-read guard: the client tells us which version of

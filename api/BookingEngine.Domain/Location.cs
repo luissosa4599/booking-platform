@@ -16,5 +16,8 @@ public class Location
 
     public double? Longitude { get; set; }
 
+    /// <summary>The host who created this location. Null for seeded/legacy rows.</summary>
+    public string? OwnerUserId { get; set; }
+
     public ICollection<Resource> Resources { get; set; } = new List<Resource>();
 }

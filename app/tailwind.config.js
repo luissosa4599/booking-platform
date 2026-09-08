@@ -31,6 +31,7 @@ module.exports = {
         "tint-soft": "rgb(var(--color-tint-soft) / <alpha-value>)",
         "tint-wash": "rgb(var(--color-tint-wash) / <alpha-value>)",
         "on-tint": "rgb(var(--color-on-tint) / <alpha-value>)",
+        "on-tint-sub": "rgb(var(--color-on-tint-sub) / <alpha-value>)",
 
         // Static — variables come from global.css, never themeable.
         "label-1": "rgb(var(--color-label-1) / <alpha-value>)",
@@ -42,6 +43,11 @@ module.exports = {
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         fill: "rgb(var(--color-fill) / <alpha-value>)",
         hairline: "rgb(var(--color-hairline) / <alpha-value>)",
+        "hairline-inset": "rgb(var(--color-hairline-inset) / <alpha-value>)",
+        sheet: "rgb(var(--color-sheet) / <alpha-value>)",
+        // TabBar / sticky-footer frost. Fixed alpha baked into --glass, so no
+        // `/opacity` modifier — used bare as `bg-glass`.
+        glass: "var(--glass)",
         chevron: "rgb(var(--color-chevron) / <alpha-value>)",
         "disabled-label": "rgb(var(--color-disabled-label) / <alpha-value>)",
 

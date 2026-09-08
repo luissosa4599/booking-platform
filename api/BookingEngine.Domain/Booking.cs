@@ -26,4 +26,10 @@ public class Booking
     public string IdempotencyKey { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>When the host scanned the QR / typed the code to confirm the visit. Null = not checked in.</summary>
+    public DateTimeOffset? CheckedInAt { get; set; }
+
+    /// <summary>The host user who confirmed the visit. Auditable — force check-ins are still attributed.</summary>
+    public string? CheckedInByUserId { get; set; }
 }

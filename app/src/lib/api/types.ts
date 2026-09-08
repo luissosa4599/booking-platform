@@ -106,6 +106,27 @@ export interface MyBooking {
   seats: number;
   status: string;
   code: string;
+  /** Set once a host confirmed the visit. */
+  checkedInAt: string | null;
+}
+
+/**
+ * POST /checkins — one shape for every outcome. `status`:
+ * confirmed | already_confirmed | queued (offline) | unknown_code | wrong_space | out_of_window
+ */
+export interface CheckinResult {
+  status: string;
+  bookingId?: string | null;
+  code?: string | null;
+  visitorName?: string | null;
+  spaceName?: string | null;
+  locationName?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  seats?: number | null;
+  confirmedAt?: string | null;
+  /** "future" | "past" for out_of_window */
+  direction?: string | null;
 }
 
 /**
@@ -127,4 +148,94 @@ export interface EmptyContext {
 
 export interface BookingStreak {
   weeks: number;
+}
+
+// --- Host / owner ---------------------------------------------------------
+
+export interface OwnerSpaceSummary {
+  id: string;
+  name: string;
+  locationName: string;
+  locationAddress: string | null;
+  upcomingSlotCount: number;
+  hasSchedule: boolean;
+}
+
+export interface OwnerSlot {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  booked: number;
+  isBlocked: boolean;
+  /** "Schedule" | "Adhoc" */
+  origin: string;
+}
+
+export interface WeeklyScheduleDay {
+  /** "Monday" … "Sunday" */
+  weekday: string;
+  /** "HH:mm" */
+  openTime: string;
+  closeTime: string;
+  enabled: boolean;
+}
+
+export interface WeeklySchedule {
+  slotDurationMinutes: number;
+  capacity: number;
+  days: WeeklyScheduleDay[];
+}
+
+export interface OwnerSpaceDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  capacity: number;
+  resourceTypeId: string;
+  resourceTypeName: string;
+  labels: ResourceLabels;
+  allowsMultipleSeats: boolean;
+  locationId: string;
+  locationName: string;
+  locationAddress: string | null;
+  timeZone: string;
+  schedule: WeeklySchedule | null;
+  upcomingSlots: OwnerSlot[];
+}
+
+export interface CreateSpaceInput {
+  name: string;
+  description?: string | null;
+  capacity: number;
+  resourceTypeId: string;
+  locationName: string;
+  address?: string | null;
+  timeZone: string;
+}
+
+export interface UpdateSpaceInput {
+  name: string;
+  description?: string | null;
+  capacity: number;
+  address?: string | null;
+}
+
+export interface SetScheduleInput {
+  slotDurationMinutes: number;
+  capacity: number;
+  days: WeeklyScheduleDay[];
+}
+
+/** GET /me — the signed-in account plus the two counters the profile shows. */
+export interface Me {
+  id: string;
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  /** "guest" | "host" */
+  role: string;
+  bookingCount: number;
+  streakWeeks: number;
+  createdAt: string;
 }

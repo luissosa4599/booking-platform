@@ -27,6 +27,14 @@ public class ResourceConfiguration : IEntityTypeConfiguration<Resource>
             .HasForeignKey(r => r.LocationId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(r => r.OwnerUserId).HasMaxLength(200);
+        builder.HasIndex(r => r.OwnerUserId);
+
+        builder.HasOne(r => r.WeeklySchedule)
+            .WithOne(w => w.Resource)
+            .HasForeignKey<WeeklySchedule>(w => w.ResourceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(r => r.ResourceTypeId);
         builder.HasIndex(r => r.LocationId);
     }

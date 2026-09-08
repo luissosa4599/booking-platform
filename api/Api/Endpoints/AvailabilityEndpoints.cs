@@ -35,6 +35,7 @@ public static class AvailabilityEndpoints
             IQueryable<BookingEngine.Domain.AvailabilitySlot> query = db.AvailabilitySlots
                 .AsNoTracking()
                 .Where(s =>
+                    !s.IsBlocked &&
                     (resourceTypeId == null || s.Resource.ResourceTypeId == resourceTypeId) &&
                     (minCapacity == null || s.Resource.Capacity >= minCapacity) &&
                     s.EndsAt >= from &&
@@ -87,6 +88,7 @@ public static class AvailabilityEndpoints
         var nextAvailableAt = await db.AvailabilitySlots
             .AsNoTracking()
             .Where(s =>
+                !s.IsBlocked &&
                 (resourceTypeId == null || s.Resource.ResourceTypeId == resourceTypeId) &&
                 (minCapacity == null || s.Resource.Capacity >= minCapacity) &&
                 s.CapacityRemaining > 0 &&

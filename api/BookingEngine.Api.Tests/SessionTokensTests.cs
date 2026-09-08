@@ -22,6 +22,25 @@ public class SessionTokensTests
         Assert.True(result.IsValid);
         Assert.Equal("user-42", result.ClaimsIdentity.FindFirst(JwtRegisteredClaimNames.Sub)!.Value);
         Assert.Equal("luis@uni.mx", result.ClaimsIdentity.FindFirst(JwtRegisteredClaimNames.Email)!.Value);
+        // Default role — the token always carries one so the "Host" policy has something to check.
+        Assert.Equal("guest", result.ClaimsIdentity.FindFirst("role")!.Value);
+    }
+
+    [Theory]
+    [InlineData(AccountRole.Guest, "guest")]
+    [InlineData(AccountRole.Host, "host")]
+    public async Task AccessToken_CarriesLowercaseRoleClaim(AccountRole role, string expected)
+    {
+        var user = new User { Id = "u", Email = "e@e.co", Role = role };
+        var jwt = _tokens.IssueAccessToken(user, DateTimeOffset.UtcNow);
+
+        var result = await new JsonWebTokenHandler
+        {
+            MapInboundClaims = false,
+        }.ValidateTokenAsync(jwt, _tokens.ValidationParameters());
+
+        Assert.True(result.IsValid);
+        Assert.Equal(expected, result.ClaimsIdentity.FindFirst("role")!.Value);
     }
 
     [Fact]

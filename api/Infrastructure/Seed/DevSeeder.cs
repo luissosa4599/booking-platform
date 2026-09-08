@@ -1,5 +1,7 @@
+using BookingEngine.Api.Application.Auth;
 using BookingEngine.Domain;
 using BookingEngine.Infrastructure;
+using BookingEngine.Infrastructure.Availability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -177,15 +179,101 @@ public static class DevSeeder
 
         await db.SaveChangesAsync(cancellationToken);
 
+        var hostSlots = await SeedHostAsync(db, studyRoomType, cancellationToken);
+
         logger.LogInformation(
             "Dev seed: created {Types} resource types, {Locations} locations, {Resources} resources, " +
-            "{Slots} availability slots",
+            "{Slots} availability slots (incl. {HostSlots} for the demo host)",
             2,
-            locations.Count,
-            resources.Count,
-            slots.Count);
+            locations.Count + 1,
+            resources.Count + 2,
+            slots.Count + hostSlots,
+            hostSlots);
 
-        return new SeedResult(2, locations.Count, resources.Count, slots.Count);
+        return new SeedResult(2, locations.Count + 1, resources.Count + 2, slots.Count + hostSlots);
+    }
+
+    // A ready-made host account so the (owner) flow has something to show
+    // without publishing a space by hand. Sign in with host@tempo.demo (dev
+    // magic link) — the account is already role=Host and owns "Piso creativo".
+    private static async Task<int> SeedHostAsync(
+        BookingEngineDbContext db,
+        ResourceType type,
+        CancellationToken ct)
+    {
+        const string email = "host@tempo.demo";
+        var hostId = MagicLinkTokens.UserIdFor(email);
+        var now = DateTimeOffset.UtcNow;
+
+        var host = await db.Users.FirstOrDefaultAsync(u => u.Id == hostId, ct);
+        if (host is null)
+        {
+            host = new User { Id = hostId, Email = email, DisplayName = "Anfitrion Demo", CreatedAt = now };
+            db.Users.Add(host);
+        }
+        host.Role = AccountRole.Host;
+        host.LastSeenAt = now;
+
+        var location = new Location
+        {
+            Id = Guid.NewGuid(),
+            Name = "Piso creativo",
+            Address = "Av. Reforma 222, Juarez",
+            TimeZone = "America/Mexico_City",
+            OwnerUserId = hostId,
+        };
+        var salaGrande = new Resource
+        {
+            Id = Guid.NewGuid(),
+            ResourceType = type,
+            Location = location,
+            Name = "Sala grande",
+            Capacity = 10,
+            Description = "Piso 4 - pizarron y pantalla",
+            OwnerUserId = hostId,
+        };
+        var cabina = new Resource
+        {
+            Id = Guid.NewGuid(),
+            ResourceType = type,
+            Location = location,
+            Name = "Cabina 2",
+            Capacity = 4,
+            Description = "Piso 4",
+            OwnerUserId = hostId,
+        };
+
+        var schedule = new WeeklySchedule
+        {
+            Id = Guid.NewGuid(),
+            Resource = salaGrande,
+            SlotDurationMinutes = 90,
+            Capacity = 8,
+            UpdatedAt = now,
+            Days = Enum.GetValues<DayOfWeek>()
+                .Where(d => d is >= DayOfWeek.Monday and <= DayOfWeek.Friday)
+                .Select(d => new WeeklyScheduleDay
+                {
+                    Id = Guid.NewGuid(),
+                    Weekday = d,
+                    OpenTime = new TimeOnly(9, 0),
+                    CloseTime = new TimeOnly(19, 0),
+                    Enabled = true,
+                })
+                .ToList(),
+        };
+
+        db.Locations.Add(location);
+        db.Resources.AddRange(salaGrande, cabina);
+        db.WeeklySchedules.Add(schedule);
+        await db.SaveChangesAsync(ct);
+
+        var generated = SlotWindowExpander.Expand(
+            salaGrande.Id, location.TimeZone, schedule, [], now);
+        db.AvailabilitySlots.AddRange(generated);
+        await db.SaveChangesAsync(ct);
+
+        return generated.Count;
     }
 
     private static List<AvailabilitySlot> GenerateSlots(IReadOnlyList<Resource> resources, string timeZoneId)

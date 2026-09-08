@@ -44,6 +44,7 @@ public static class BookingAlternativesFinder
             .AsNoTracking()
             .Where(s =>
                 s.Id != conflictedSlotId &&
+                !s.IsBlocked &&
                 s.CapacityRemaining >= seats &&
                 s.EndsAt >= now &&
                 s.StartsAt >= earliest &&

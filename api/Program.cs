@@ -50,6 +50,7 @@ try
     };
     builder.Services.AddSingleton(authOptions);
     builder.Services.AddSingleton<SessionTokens>();
+    builder.Services.AddSingleton<SessionIssuer>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
     builder.Services
@@ -60,7 +61,9 @@ try
             options.TokenValidationParameters =
                 new SessionTokens(authOptions).ValidationParameters();
         });
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(options =>
+        options.AddPolicy("Host", policy =>
+            policy.RequireClaim(BookingEngine.Api.Application.Auth.ClaimsPrincipalExtensions.RoleClaim, "host")));
 
     const string AllowWebPolicy = "AllowWeb";
     builder.Services.AddCors(options =>
@@ -139,12 +142,15 @@ try
         .WithName("HealthCheck");
 
     app.MapAuthEndpoints();
+    app.MapMeEndpoints();
     app.MapResourceTypesEndpoints();
     app.MapAvailabilityEndpoints();
     app.MapResourcesEndpoints();
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
+    app.MapOwnerEndpoints();
+    app.MapCheckinsEndpoints();
 
     if (app.Environment.IsDevelopment())
     {

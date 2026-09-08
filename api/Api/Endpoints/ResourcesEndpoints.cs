@@ -33,7 +33,7 @@ public static class ResourcesEndpoints
                     r.Capacity,
                     r.Description,
                     r.AvailabilitySlots
-                        .Where(s => s.EndsAt > DateTimeOffset.UtcNow)
+                        .Where(s => s.EndsAt > DateTimeOffset.UtcNow && !s.IsBlocked)
                         .OrderBy(s => s.StartsAt)
                         .Select(s => new AvailabilitySlotResponse(
                             s.Id,
