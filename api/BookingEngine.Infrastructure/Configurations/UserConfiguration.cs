@@ -23,6 +23,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.AvatarUrl).HasMaxLength(1000);
 
+        // Stored as a string ("Guest"/"Host"), same pattern as Booking.Status.
+        // HasDefaultValue backfills existing rows when the column is added.
+        builder.Property(u => u.Role)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(AccountRole.Guest);
+
         builder.Property(u => u.CreatedAt).IsRequired();
 
         builder.Property(u => u.LastSeenAt).IsRequired();

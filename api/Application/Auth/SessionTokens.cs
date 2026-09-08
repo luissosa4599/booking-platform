@@ -35,6 +35,7 @@ public class SessionTokens(AuthOptions options)
                 [JwtRegisteredClaimNames.Email] = user.Email,
                 [JwtRegisteredClaimNames.Name] = user.DisplayName ?? user.Email,
                 [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString("N"),
+                [ClaimsPrincipalExtensions.RoleClaim] = user.Role.ToString().ToLowerInvariant(),
             },
             SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256),
         };

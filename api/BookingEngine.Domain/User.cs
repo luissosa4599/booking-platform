@@ -19,6 +19,9 @@ public class User
 
     public string? AvatarUrl { get; set; }
 
+    /// <summary>Guest (books) or Host (publishes + scans). Self-upgrade only, no downgrade path yet.</summary>
+    public AccountRole Role { get; set; } = AccountRole.Guest;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset LastSeenAt { get; set; }
