@@ -25,15 +25,16 @@ const MIN_ZOOM = 3;
 const MAX_ZOOM = 19;
 
 export interface LocationValue {
-  lat: number;
-  lng: number;
+  /** null until the host drops a pin — an address with no coordinates is fine. */
+  lat: number | null;
+  lng: number | null;
   address: string | null;
 }
 
 interface LocationPickerProps {
   value: LocationValue | null;
   onChange: (next: LocationValue) => void;
-  /** Shown above the address field. */
+  /** Shown above the field. */
   label?: string;
 }
 
@@ -42,8 +43,11 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
   const { colorScheme } = useColorScheme();
   const boxWidth = Math.max(0, windowWidth - 32);
 
+  const [hasPin, setHasPin] = useState(value?.lat != null && value?.lng != null);
   const [center, setCenter] = useState<Coords>(
-    value ? { lat: value.lat, lng: value.lng } : DEFAULT_CENTER,
+    value?.lat != null && value?.lng != null
+      ? { lat: value.lat, lng: value.lng }
+      : DEFAULT_CENTER,
   );
   const [zoom, setZoom] = useState(15);
   const [address, setAddress] = useState(value?.address ?? "");
@@ -65,26 +69,40 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
       })
     : null;
 
+  function emit(next: Partial<LocationValue>) {
+    onChange({
+      lat: hasPin ? center.lat : null,
+      lng: hasPin ? center.lng : null,
+      address: address || null,
+      ...next,
+    });
+  }
+
   // Debounced reverse-geocode after the pin settles.
   const settledCenter = useDebouncedValue(center, 500);
   useEffect(() => {
-    if (addressIsManual.current) return;
+    if (!hasPin || addressIsManual.current) return;
     let cancelled = false;
     void reverseGeocode(settledCenter.lat, settledCenter.lng).then((found) => {
       if (cancelled || addressIsManual.current || !found) return;
       setAddress(found);
-      onChange({ lat: settledCenter.lat, lng: settledCenter.lng, address: found });
+      onChange({
+        lat: settledCenter.lat,
+        lng: settledCenter.lng,
+        address: found,
+      });
     });
     return () => {
       cancelled = true;
     };
-    // onChange identity isn't stable in callers; keying on the settled center is
-    // what actually matters here.
+    // Keying on the settled centre is what matters; `onChange` identity isn't
+    // stable in callers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settledCenter.lat, settledCenter.lng]);
+  }, [settledCenter.lat, settledCenter.lng, hasPin]);
 
   function moveTo(next: Coords) {
     addressIsManual.current = false;
+    setHasPin(true);
     setCenter(next);
     onChange({ lat: next.lat, lng: next.lng, address: address || null });
   }
@@ -113,7 +131,7 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
   function handleAddressChange(text: string) {
     addressIsManual.current = true;
     setAddress(text);
-    onChange({ lat: center.lat, lng: center.lng, address: text || null });
+    emit({ address: text || null });
   }
 
   return (
@@ -146,16 +164,18 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
           )}
         </Pressable>
 
-        {/* Centre pin — tip at the exact centre of the box. */}
+        {/* Centre pin — tip at the exact centre of the box. Dimmed until the
+            host has actually placed it. */}
         <View
           pointerEvents="none"
           style={{
             position: "absolute",
             left: boxWidth / 2 - 12,
             top: BOX_HEIGHT / 2 - 24,
+            opacity: hasPin ? 1 : 0.45,
           }}
         >
-          <MapPin size={24} color={pinColor} fill={pinColor} />
+          <MapPin size={24} color={pinColor} fill={hasPin ? pinColor : "none"} />
         </View>
 
         {hasKey ? (
@@ -202,9 +222,9 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
         />
       </Group>
 
-      {!hasKey ? (
+      {hasKey && !hasPin ? (
         <Text className="pl-1 text-footnote text-label-4">
-          {center.lat.toFixed(5)}, {center.lng.toFixed(5)}
+          Toca el mapa para fijar la ubicación exacta.
         </Text>
       ) : null}
     </View>

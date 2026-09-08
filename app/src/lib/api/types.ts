@@ -71,6 +71,8 @@ export interface ResourceDetail {
   name: string;
   capacity: number;
   description: string | null;
+  /** Ordered host-uploaded photo URLs (empty until PR3b lands uploads). */
+  photos?: string[];
   upcomingSlots: AvailabilitySlot[];
 }
 
@@ -201,7 +203,11 @@ export interface OwnerSpaceDetail {
   locationId: string;
   locationName: string;
   locationAddress: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   timeZone: string;
+  /** Ordered host-uploaded photo URLs (empty until PR3b lands uploads). */
+  photos?: string[];
   schedule: WeeklySchedule | null;
   upcomingSlots: OwnerSlot[];
 }
@@ -214,6 +220,8 @@ export interface CreateSpaceInput {
   locationName: string;
   address?: string | null;
   timeZone: string;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface UpdateSpaceInput {
@@ -221,6 +229,8 @@ export interface UpdateSpaceInput {
   description?: string | null;
   capacity: number;
   address?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface SetScheduleInput {
