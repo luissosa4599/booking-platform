@@ -66,20 +66,19 @@ export default function BecomeHostScreen() {
         </View>
 
         <View className="flex-1 gap-10 px-6 pt-8">
-          {/* The three-block "T" mark — pure geometry, no image. */}
-          <View style={{ width: 73, height: 34 }}>
-            <View
-              className="absolute rounded-[3px] bg-tint"
-              style={{ left: 31, top: 0, width: 11, height: 34 }}
-            />
-            <View
-              className="absolute rounded-[3px] bg-tint-soft"
-              style={{ left: 0, top: 0, width: 44, height: 11 }}
-            />
-            <View
-              className="absolute rounded-[3px] bg-tint"
-              style={{ left: 47, top: 0, width: 26, height: 11 }}
-            />
+          {/* The three-block mark — a bottom-aligned flex row, exactly the
+              handoff B geometry: occupied bar, stem (taller), free bar. */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              gap: 3,
+              height: 34,
+            }}
+          >
+            <View className="rounded-[3px] bg-tint-soft" style={{ width: 44, height: 11 }} />
+            <View className="rounded-[3px] bg-tint" style={{ width: 11, height: 34 }} />
+            <View className="rounded-[3px] bg-tint" style={{ width: 26, height: 11 }} />
           </View>
 
           <View className="gap-3">
@@ -132,9 +131,7 @@ export default function BecomeHostScreen() {
         }}
         onGoToSpaces={() => {
           setUpgraded(false);
-          // TODO(PR B1): → "/(owner)". Until the host route group exists, land
-          // on the (guest-side) profile, which now shows the host entry row.
-          router.replace("/(tabs)/profile");
+          router.replace("/(owner)");
         }}
       />
     </Screen>
