@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import Animated, {
   FadeOut,
   LinearTransition,
@@ -212,6 +212,14 @@ export default function BookingsScreen() {
   const waitlistQuery = useMyWaitlist(userId);
   const cancelBooking = useCancelBooking();
   const showSkeleton = useDelayedFlag(bookingsQuery.isLoading, 150);
+  const isRefreshing =
+    (bookingsQuery.isFetching && !bookingsQuery.isLoading) ||
+    (waitlistQuery.isFetching && !waitlistQuery.isLoading);
+
+  function handleRefresh() {
+    bookingsQuery.refetch();
+    waitlistQuery.refetch();
+  }
 
   // Pending-cancel only masks the "upcoming" list — a real, already-cancelled
   // booking should still surface under "Anteriores".
@@ -305,125 +313,135 @@ export default function BookingsScreen() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
-          gap: 22,
+          flexGrow: 1,
           paddingHorizontal: 16,
           paddingBottom: 16,
         }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="transparent"
+            colors={["transparent"]}
+          />
+        }
       >
-        {showSkeleton ? (
-          <Group>
-            <Animated.View exiting={FadeOut.duration(200)}>
-              <Skeleton />
-            </Animated.View>
-            <Animated.View exiting={FadeOut.duration(200)}>
-              <Skeleton />
-            </Animated.View>
-          </Group>
-        ) : null}
+        <View style={{ gap: 22, opacity: isRefreshing ? 0.6 : 1 }}>
+          {showSkeleton ? (
+            <Group>
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
+              <Animated.View exiting={FadeOut.duration(200)}>
+                <Skeleton />
+              </Animated.View>
+            </Group>
+          ) : null}
 
-        {!showSkeleton && bookingsQuery.isError ? (
-          <Placeholder
-            reason="offline"
-            icon={<CalendarX size={26} />}
-            title="Sin conexión"
-            body="No pudimos cargar tus reservas. Revisa tu conexión e intenta de nuevo."
-            primaryAction={{
-              label: "Reintentar",
-              onPress: () => bookingsQuery.refetch(),
-            }}
-          />
-        ) : null}
+          {!showSkeleton && bookingsQuery.isError ? (
+            <Placeholder
+              reason="offline"
+              icon={<CalendarX size={26} />}
+              title="Sin conexión"
+              body="No pudimos cargar tus reservas. Revisa tu conexión e intenta de nuevo."
+              primaryAction={{
+                label: "Reintentar",
+                onPress: () => bookingsQuery.refetch(),
+              }}
+            />
+          ) : null}
 
-        {nextBooking ? (
-          <NextBookingCard
-            booking={nextBooking}
-            shaking={shakeId === nextBooking.id}
-            onShowPass={() => setPassBooking(nextBooking)}
-            onCancel={() => handleCancel(nextBooking)}
-          />
-        ) : null}
+          {nextBooking ? (
+            <NextBookingCard
+              booking={nextBooking}
+              shaking={shakeId === nextBooking.id}
+              onShowPass={() => setPassBooking(nextBooking)}
+              onCancel={() => handleCancel(nextBooking)}
+            />
+          ) : null}
 
-        {otherUpcoming.length > 0 ? (
-          <Group>
-            {otherUpcoming.map((booking) => (
-              <CancelableRow
-                key={booking.id}
-                booking={booking}
-                shaking={shakeId === booking.id}
-                onCancel={() => handleCancel(booking)}
-              />
-            ))}
-          </Group>
-        ) : null}
+          {otherUpcoming.length > 0 ? (
+            <Group>
+              {otherUpcoming.map((booking) => (
+                <CancelableRow
+                  key={booking.id}
+                  booking={booking}
+                  shaking={shakeId === booking.id}
+                  onCancel={() => handleCancel(booking)}
+                />
+              ))}
+            </Group>
+          ) : null}
 
-        {scope === "upcoming" && waitlist.length > 0 ? (
-          <Group header="EN ESPERA">
-            {waitlist.map((entry) => (
-              <Row
-                key={entry.id}
-                title={entry.resourceName}
-                subtitle={`${entry.locationName} · ${formatSchedule(entry.startsAt, entry.endsAt)}`}
-                meta={`En espera · eres el ${ordinal(entry.position)}`}
-                metaTone="waiting"
-                trailing="chevron"
-                onPress={() =>
-                  router.push({
-                    pathname: "/resource/[id]",
-                    params: {
-                      id: entry.resourceId,
-                      name: entry.resourceName,
-                      location: entry.locationName,
-                    },
-                  })
-                }
-                accessibilityLabel={`Lista de espera para ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}, eres el ${ordinal(entry.position)}`}
-              />
-            ))}
-          </Group>
-        ) : null}
+          {scope === "upcoming" && waitlist.length > 0 ? (
+            <Group header="EN ESPERA">
+              {waitlist.map((entry) => (
+                <Row
+                  key={entry.id}
+                  title={entry.resourceName}
+                  subtitle={`${entry.locationName} · ${formatSchedule(entry.startsAt, entry.endsAt)}`}
+                  meta={`En espera · eres el ${ordinal(entry.position)}`}
+                  metaTone="waiting"
+                  trailing="chevron"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/resource/[id]",
+                      params: {
+                        id: entry.resourceId,
+                        name: entry.resourceName,
+                        location: entry.locationName,
+                      },
+                    })
+                  }
+                  accessibilityLabel={`Lista de espera para ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}, eres el ${ordinal(entry.position)}`}
+                />
+              ))}
+            </Group>
+          ) : null}
 
-        {scope === "past" && history.length > 0 ? (
-          <Group header="ESTE MES">
-            {history.map((booking) => (
-              <Row
-                key={booking.id}
-                title={booking.resourceName}
-                subtitle={formatHistoryLine(booking)}
-                trailing="action"
-                actionLabel="Repetir"
-                actionTone="wash"
-                actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
-                onActionPress={() => handleRepeat(booking)}
-              />
-            ))}
-          </Group>
-        ) : null}
+          {scope === "past" && history.length > 0 ? (
+            <Group header="ESTE MES">
+              {history.map((booking) => (
+                <Row
+                  key={booking.id}
+                  title={booking.resourceName}
+                  subtitle={formatHistoryLine(booking)}
+                  trailing="action"
+                  actionLabel="Repetir"
+                  actionTone="wash"
+                  actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
+                  onActionPress={() => handleRepeat(booking)}
+                />
+              ))}
+            </Group>
+          ) : null}
 
-        {nothingUpcoming ? (
-          <Placeholder
-            reason="noBookings"
-            icon={<CalendarX size={26} />}
-            title="Nada por aquí todavía"
-            body="Cuando reserves un espacio, aparecerá aquí."
-            primaryAction={{
-              label: "Explorar espacios",
-              onPress: () => router.navigate("/"),
-            }}
-          />
-        ) : null}
+          {nothingUpcoming ? (
+            <Placeholder
+              reason="noBookings"
+              icon={<CalendarX size={26} />}
+              title="Nada por aquí todavía"
+              body="Cuando reserves un espacio, aparecerá aquí."
+              primaryAction={{
+                label: "Explorar espacios",
+                onPress: () => router.navigate("/"),
+              }}
+            />
+          ) : null}
 
-        {nothingPast ? (
-          <Placeholder
-            reason="noHistory"
-            icon={<CalendarX size={26} />}
-            title="Todavía no tienes historial"
-            body="Tus reservas pasadas y canceladas aparecerán aquí."
-            primaryAction={{
-              label: "Explorar espacios",
-              onPress: () => router.navigate("/"),
-            }}
-          />
-        ) : null}
+          {nothingPast ? (
+            <Placeholder
+              reason="noHistory"
+              icon={<CalendarX size={26} />}
+              title="Todavía no tienes historial"
+              body="Tus reservas pasadas y canceladas aparecerán aquí."
+              primaryAction={{
+                label: "Explorar espacios",
+                onPress: () => router.navigate("/"),
+              }}
+            />
+          ) : null}
+        </View>
       </ScrollView>
 
       <BookingPassSheet
