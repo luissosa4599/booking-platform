@@ -12,9 +12,10 @@ public class CheckinsTests(ApiTestFixture fixture)
 {
     // Creates: a host, a resource the host owns, a slot starting now, and a
     // confirmed booking on it by `guestId`. Returns the booking code.
-    private async Task<(string code, string hostId, Guid bookingId)> SeedBookingAsync(
-        DateTimeOffset? slotStart = null, string guestId = "guest-checkin")
+    private async Task<(string code, string hostId, Guid bookingId, string guestId)> SeedBookingAsync(
+        DateTimeOffset? slotStart = null, string? guestId = null)
     {
+        guestId ??= $"guest-{Guid.NewGuid():N}";
         using var scope = fixture.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
 
@@ -57,7 +58,7 @@ public class CheckinsTests(ApiTestFixture fixture)
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
 
-        return (booking.Code, hostId, booking.Id);
+        return (booking.Code, hostId, booking.Id, guestId);
     }
 
     private record Result(string Status, string? VisitorName, string? SpaceName, int? Seats, string? Direction, DateTimeOffset? ConfirmedAt);
@@ -65,7 +66,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_HappyPath_MarksBookingAndAttributesHost()
     {
-        var (code, hostId, bookingId) = await SeedBookingAsync();
+        var (code, hostId, bookingId, _) = await SeedBookingAsync();
         var host = fixture.CreateAuthenticatedClient(hostId, role: AccountRole.Host);
 
         var response = await host.PostAsJsonAsync("/checkins", new { code });
@@ -86,7 +87,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_Twice_ReturnsAlreadyConfirmed_WithSameTimestamp()
     {
-        var (code, hostId, bookingId) = await SeedBookingAsync();
+        var (code, hostId, bookingId, _) = await SeedBookingAsync();
         var host = fixture.CreateAuthenticatedClient(hostId, role: AccountRole.Host);
 
         var first = await (await host.PostAsJsonAsync("/checkins", new { code })).Content.ReadFromJsonAsync<Result>();
@@ -115,7 +116,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_CancelledBooking_Returns404()
     {
-        var (code, hostId, bookingId) = await SeedBookingAsync();
+        var (code, hostId, bookingId, _) = await SeedBookingAsync();
         using (var scope = fixture.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
@@ -132,7 +133,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_OtherHost_Returns403WrongSpace()
     {
-        var (code, _, _) = await SeedBookingAsync();
+        var (code, _, _, _) = await SeedBookingAsync();
         var stranger = fixture.CreateAuthenticatedClient($"host-{Guid.NewGuid():N}", role: AccountRole.Host);
 
         var response = await stranger.PostAsJsonAsync("/checkins", new { code });
@@ -144,7 +145,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_TooEarly_Returns409Future_ForceOverrides()
     {
-        var (code, hostId, _) = await SeedBookingAsync(slotStart: DateTimeOffset.UtcNow.AddHours(4));
+        var (code, hostId, _, _) = await SeedBookingAsync(slotStart: DateTimeOffset.UtcNow.AddHours(4));
         var host = fixture.CreateAuthenticatedClient(hostId, role: AccountRole.Host);
 
         var early = await host.PostAsJsonAsync("/checkins", new { code });
@@ -161,7 +162,7 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_AfterSlotEnded_Returns409Past()
     {
-        var (code, hostId, _) = await SeedBookingAsync(slotStart: DateTimeOffset.UtcNow.AddHours(-4));
+        var (code, hostId, _, _) = await SeedBookingAsync(slotStart: DateTimeOffset.UtcNow.AddHours(-4));
         var host = fixture.CreateAuthenticatedClient(hostId, role: AccountRole.Host);
 
         var response = await host.PostAsJsonAsync("/checkins", new { code });
@@ -172,8 +173,8 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task Checkin_GuestToken_Returns403()
     {
-        var (code, _, _) = await SeedBookingAsync();
-        var guest = fixture.CreateAuthenticatedClient("plain-guest", role: AccountRole.Guest);
+        var (code, _, _, _) = await SeedBookingAsync();
+        var guest = fixture.CreateAuthenticatedClient($"plain-guest-{Guid.NewGuid():N}", role: AccountRole.Guest);
 
         var response = await guest.PostAsJsonAsync("/checkins", new { code });
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -182,11 +183,11 @@ public class CheckinsTests(ApiTestFixture fixture)
     [Fact]
     public async Task GetBookings_IncludesCheckedInAt()
     {
-        var (code, hostId, _) = await SeedBookingAsync(guestId: "guest-listcheck");
+        var (code, hostId, _, guestId) = await SeedBookingAsync();
         var host = fixture.CreateAuthenticatedClient(hostId, role: AccountRole.Host);
         await host.PostAsJsonAsync("/checkins", new { code });
 
-        var guest = fixture.CreateAuthenticatedClient("guest-listcheck");
+        var guest = fixture.CreateAuthenticatedClient(guestId);
         var json = await guest.GetStringAsync("/bookings?scope=upcoming");
         Assert.Contains("checkedInAt", json);
         Assert.DoesNotContain("\"checkedInAt\":null", json);

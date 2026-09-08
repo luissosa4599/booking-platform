@@ -140,19 +140,39 @@ public static class OwnerEndpoints
             schedule.Capacity = request.Capacity;
             schedule.UpdatedAt = now;
 
-            // Full replace of the day rows.
-            db.WeeklyScheduleDays.RemoveRange(schedule.Days);
-            schedule.Days = request.Days
-                .Select(d => new WeeklyScheduleDay
+            // Upsert day rows in place — deleting + re-inserting the same
+            // (WeeklyScheduleId, Weekday) pairs in one SaveChanges trips the
+            // unique index.
+            var existing = schedule.Days.ToDictionary(d => d.Weekday);
+            var wanted = new HashSet<DayOfWeek>();
+            foreach (var input in request.Days)
+            {
+                var weekday = Enum.Parse<DayOfWeek>(input.Weekday, ignoreCase: true);
+                wanted.Add(weekday);
+                var open = TimeOnly.Parse(input.OpenTime, CultureInfo.InvariantCulture);
+                var close = TimeOnly.Parse(input.CloseTime, CultureInfo.InvariantCulture);
+
+                if (existing.TryGetValue(weekday, out var row))
                 {
-                    Id = Guid.NewGuid(),
-                    WeeklyScheduleId = schedule.Id,
-                    Weekday = Enum.Parse<DayOfWeek>(d.Weekday, ignoreCase: true),
-                    OpenTime = TimeOnly.Parse(d.OpenTime, CultureInfo.InvariantCulture),
-                    CloseTime = TimeOnly.Parse(d.CloseTime, CultureInfo.InvariantCulture),
-                    Enabled = d.Enabled,
-                })
-                .ToList();
+                    row.OpenTime = open;
+                    row.CloseTime = close;
+                    row.Enabled = input.Enabled;
+                }
+                else
+                {
+                    schedule.Days.Add(new WeeklyScheduleDay
+                    {
+                        Id = Guid.NewGuid(),
+                        WeeklyScheduleId = schedule.Id,
+                        Weekday = weekday,
+                        OpenTime = open,
+                        CloseTime = close,
+                        Enabled = input.Enabled,
+                    });
+                }
+            }
+            db.WeeklyScheduleDays.RemoveRange(
+                schedule.Days.Where(d => !wanted.Contains(d.Weekday)).ToList());
 
             await db.SaveChangesAsync(ct);
 
