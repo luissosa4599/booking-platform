@@ -29,20 +29,24 @@ export const appleTheme = vars({
      lightened dark accent (handoff § "tema oscuro": "texto sobre él es
      #40200B"). Without this the filled CTA is white-on-#E8A883 in dark mode. */
   "--color-on-tint": "255 255 255" /* #FFFFFF */,
+  /* Subtitle text inside a filled (tint-background) button — handoff "Color —
+     themeable" table. Paired with tint, flips with the theme like on-tint. */
+  "--color-on-tint-sub": "246 217 199" /* #F6D9C7 */,
 });
 
 /**
- * Dark variant of the same 4 tokens. The handoff's "tema oscuro" table only
- * redefines `tint` — tint-press/tint-soft/tint-wash keep their light values
- * (no documented dark override), same convention used for the static tokens
- * in src/global.css.
+ * Dark variant of the themeable tokens. Values are the host handoff's
+ * "Color — themeable" table, dark column (hifi/final): tint-press/tint-soft
+ * shift to #C2571F, tint-wash to #40200B (previously these kept their light
+ * values — an earlier under-spec, corrected here).
  */
 export const appleThemeDark = vars({
   "--color-tint": "232 168 131" /* #E8A883 */,
-  "--color-tint-press": "160 69 26" /* #A0451A */,
-  "--color-tint-soft": "232 168 131" /* #E8A883 */,
-  "--color-tint-wash": "251 239 232" /* #FBEFE8 */,
+  "--color-tint-press": "194 87 31" /* #C2571F — handoff host "Color — themeable" dark col */,
+  "--color-tint-soft": "194 87 31" /* #C2571F */,
+  "--color-tint-wash": "64 32 11" /* #40200B */,
   "--color-on-tint": "64 32 11" /* #40200B — handoff § "tema oscuro" */,
+  "--color-on-tint-sub": "110 58 23" /* #6E3A17 */,
 });
 
 interface ThemeProviderProps {
