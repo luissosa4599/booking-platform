@@ -253,7 +253,7 @@ export default function ConfirmedScreen() {
             Ver reservación
           </Button>
         )}
-        <Button variant="plain" onPress={() => router.replace("/")}>
+        <Button variant="plain" onPress={() => router.replace("/(tabs)")}>
           Listo
         </Button>
       </View>
