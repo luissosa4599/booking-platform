@@ -1,0 +1,15 @@
+{
+  "name": "booking-platform",
+  "private": true,
+  "description": "Dev orchestration scripts. Two independent apps live in api/ and app/ — this root package has no dependencies, only cross-platform launch shortcuts.",
+  "scripts": {
+    "back": "dotnet run --project api/BookingEngine.Api.csproj --launch-profile lan",
+    "back:clean": "node scripts/clean-dotnet.mjs && dotnet run --project api/BookingEngine.Api.csproj --launch-profile lan",
+    "worker": "dotnet run --project api/BookingEngine.Worker/BookingEngine.Worker.csproj",
+    "front": "cd app && npm run web",
+    "front:go": "cd app && npm start",
+    "install:app": "cd app && npm ci",
+    "seed": "node scripts/seed.mjs",
+    "clean": "node scripts/clean-dotnet.mjs"
+  }
+}
