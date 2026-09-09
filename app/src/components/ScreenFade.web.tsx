@@ -15,7 +15,15 @@ import { useIsWide } from "@/lib/useBreakpoint";
 // `lib/useFadeTransition.ts` for why: Reanimated's web backend and
 // NativeWind's generated CSS both turned out not to reliably drive this kind
 // of transition in this project.
-export function ScreenFade({ children }: { children: ReactNode }) {
+export function ScreenFade({
+  children,
+  fluid = false,
+}: {
+  children: ReactNode;
+  /** Skip the centred column cap on wide viewports — for the tool screens
+   * (Explore, Bookings, Spaces) that run their own nav-rail + pane layout. */
+  fluid?: boolean;
+}) {
   const isWide = useIsWide();
   // `useState`'s lazy initializer (not `useRef().current`) avoids tripping
   // react-hooks/refs — see lib/useFadeTransition.ts for the same pattern.
@@ -32,17 +40,26 @@ export function ScreenFade({ children }: { children: ReactNode }) {
   }, [opacity]);
 
   // Phone: the original 420px centred column (handoff § "Cross-platform").
-  // Tablet/desktop (PR #11): full width — the nav rail + each screen's own
-  // layout take over the width budget. The bg-canvas backdrop still fills any
-  // letterboxed margin; legacy Animated.View doesn't apply NativeWind colour
-  // classes, so it goes on a plain View, not the Animated.View itself.
+  // Wide (PR #11): document screens (detail, forms, confirmed) stay a centred
+  // 760 column; the `fluid` tool screens go full width and run their own
+  // nav-rail + pane layout. The bg-canvas backdrop fills any letterboxed
+  // margin; legacy Animated.View doesn't apply NativeWind colour classes, so
+  // it goes on a plain View, not the Animated.View itself.
+  // Inline maxWidth, not a `max-w-[Npx]` class — NativeWind's arbitrary
+  // max-width utilities have been unreliable on web in this project (see the
+  // reverted 2-column Group attempt in the session log).
+  const maxWidth = !isWide ? 420 : fluid ? undefined : 760;
   return (
     <Animated.View style={{ flex: 1, opacity }}>
       <View className="flex-1 bg-canvas">
         <View
-          className={
-            isWide ? "w-full flex-1" : "mx-auto w-full max-w-[420px] flex-1"
-          }
+          style={{
+            flex: 1,
+            width: "100%",
+            maxWidth,
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
         >
           {children}
         </View>

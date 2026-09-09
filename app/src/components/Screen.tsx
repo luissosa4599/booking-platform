@@ -21,12 +21,17 @@ interface ScreenProps {
    */
   edges?: readonly Edge[];
   /**
-   * On wide viewports (PR #11), cap the content to this width and centre it.
-   * `ScreenFade` no longer caps at 420 there, so a screen that isn't a
-   * full-bleed tool (a reading column, a form) passes its own comfortable
-   * width — e.g. 640 for the profile, ~1080 for a list. Ignored on phone.
+   * On wide viewports (PR #11), cap the content to this width and left-align it
+   * against the nav rail. For a list column that should be narrower than the
+   * `fluid` area — e.g. 1080 for Bookings. Ignored on phone.
    */
   maxWidth?: number;
+  /**
+   * Skip `ScreenFade`'s centred 760 column on wide — for the tool screens
+   * (Explore, Bookings, Spaces) that fill the width with their own nav-rail +
+   * detail-pane layout. Document screens (detail, forms) omit this.
+   */
+  fluid?: boolean;
 }
 
 /**
@@ -45,6 +50,7 @@ export function Screen({
   bg = "canvas",
   edges = ["top"],
   maxWidth,
+  fluid = false,
 }: ScreenProps) {
   const color = useColor(bg);
   const isWide = useIsWide();
@@ -61,7 +67,7 @@ export function Screen({
       children
     );
   return (
-    <ScreenFade>
+    <ScreenFade fluid={fluid}>
       <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: color }}>
         {capped}
       </SafeAreaView>

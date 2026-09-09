@@ -412,7 +412,7 @@ export default function ExploreScreen() {
   const paneOpen = hasPane && !!paneId;
 
   return (
-    <Screen bg="canvas">
+    <Screen bg="canvas" fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
       <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
