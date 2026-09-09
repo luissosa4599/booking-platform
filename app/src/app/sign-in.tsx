@@ -48,11 +48,9 @@ export default function SignInScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-title-lg text-label-1">
-            Aparta tu lugar{"\n"}en la biblioteca.
-          </Text>
+          <Text className="text-title-lg text-label-1">Aparta tu lugar.</Text>
           <Text className="text-body text-label-3">
-            Salas, cabinas y escritorios. Un tap y es tuyo por 90 minutos.
+            Salas, cabinas y escritorios. Un tap y es tuyo.
           </Text>
         </View>
 
