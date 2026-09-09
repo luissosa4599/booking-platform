@@ -116,7 +116,9 @@ public static class AvailabilityEndpoints
                     r.RowVersion,
                     sortMode == "nearest" && r.Lat is not null && r.Lng is not null
                         ? HaversineMeters(originLat, originLng, r.Lat.Value, r.Lng.Value)
-                        : null))
+                        : null,
+                    r.Lat,
+                    r.Lng))
                 .ToList();
 
             EmptyContextResponse? emptyContext = slots.Count > 0

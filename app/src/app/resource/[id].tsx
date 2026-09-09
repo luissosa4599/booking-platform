@@ -33,7 +33,8 @@ import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
-import { directionsUrl } from "@/lib/maps";
+import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
+import { directionsUrl, formatDistance } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useCollapsingHero } from "@/lib/useCollapsingHero";
@@ -230,6 +231,15 @@ export default function ResourceScreen() {
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
+  // Live distance to this place if Explore started a location watch.
+  const livePos = useLocationStore((s) => s.position);
+  const liveDistance = formatDistance(
+    distanceToMeters(
+      livePos,
+      resource?.locationLatitude,
+      resource?.locationLongitude,
+    ),
+  );
   const heroStockImageUrl = stockImageUrl(resourceType?.name, {
     width: 800,
     height: heroExpanded,
@@ -411,6 +421,7 @@ export default function ResourceScreen() {
                   <MapPin size={14} color={mapPinColor} />
                   <Text className="text-footnote text-label-3">
                     {resource.locationAddress}
+                    {liveDistance ? ` · a ${liveDistance}` : ""}
                   </Text>
                 </Pressable>
               ) : null}

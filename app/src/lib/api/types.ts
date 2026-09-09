@@ -30,6 +30,9 @@ export interface AvailabilitySlot {
   rowVersion: number;
   /** Straight-line metres from the device — only when sort=nearest. */
   distanceMeters?: number | null;
+  /** The resource's location, so the client can recompute distance live. */
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface Booking {

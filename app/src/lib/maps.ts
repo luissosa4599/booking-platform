@@ -5,6 +5,33 @@ export interface Coords {
   lng: number;
 }
 
+/** "40 m" / "2.3 km" — nearest 10 m below ~1 km, one decimal km above. */
+export function formatDistance(meters: number | null | undefined): string | null {
+  if (meters == null) return null;
+  return meters < 950
+    ? `${Math.round(meters / 10) * 10} m`
+    : `${(meters / 1000).toFixed(1)} km`;
+}
+
+/** Great-circle distance in metres between two lat/lng points. */
+export function haversineMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6_371_000;
+  const p = Math.PI / 180;
+  const a =
+    0.5 -
+    Math.cos((lat2 - lat1) * p) / 2 +
+    (Math.cos(lat1 * p) *
+      Math.cos(lat2 * p) *
+      (1 - Math.cos((lon2 - lon1) * p))) /
+      2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 /** True when EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY is set — gates whether to attempt a map image at all. */
 export function hasMapsStaticKey(): boolean {
   return GOOGLE_MAPS_STATIC_KEY !== null;

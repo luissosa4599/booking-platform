@@ -29,7 +29,8 @@ import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
 import { CalendarX, Heart, Search } from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
-import type { Coords } from "@/lib/maps";
+import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
+import { formatDistance, type Coords } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -41,13 +42,6 @@ function formatTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatDistance(meters: number | null | undefined): string | null {
-  if (meters == null) return null;
-  return meters < 950
-    ? `${Math.round(meters / 10) * 10} m`
-    : `${(meters / 1000).toFixed(1)} km`;
 }
 
 function endOfDay(date: Date) {
@@ -78,6 +72,13 @@ export default function ExploreScreen() {
   const [sort, setSort] = useState<AvailabilitySort>("soonest");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
+  // Live device position (updates as you move) drives the per-row distance
+  // label; `sortAnchor` (a lagging copy) keys the server sort so the list order
+  // doesn't churn while you walk.
+  const livePos = useLocationStore((s) => s.position);
+  const sortAnchor = useLocationStore((s) => s.sortAnchor);
+  const ensureWatching = useLocationStore((s) => s.ensureWatching);
+  const stopWatching = useLocationStore((s) => s.stop);
   // Set from the empty state's primary action ("Ver disponibilidad") — extends
   // the query window past today so `emptyContext.nextAvailableAt` actually
   // shows up in the list.
@@ -99,6 +100,8 @@ export default function ExploreScreen() {
   const endOfToday = useMemo(() => endOfDay(now), [now]);
   const to = horizon ?? endOfToday;
 
+  // The one-shot fix or, once a watch is running, the lagging sort anchor.
+  const queryCoords = sortAnchor ?? coords;
   const resourceTypesQuery = useResourceTypes();
   const availabilityQuery = useAvailability({
     resourceTypeId: selectedResourceTypeId,
@@ -106,8 +109,8 @@ export default function ExploreScreen() {
     to,
     q: debouncedSearch || undefined,
     sort,
-    lat: coords?.lat,
-    lng: coords?.lng,
+    lat: queryCoords?.lat,
+    lng: queryCoords?.lng,
   });
   const createBooking = useCreateBooking();
   const { ids: favoriteIds } = useFavorites();
@@ -216,6 +219,7 @@ export default function ExploreScreen() {
   async function enableNearest() {
     if (coords) {
       setSort("nearest");
+      ensureWatching();
       return;
     }
     setLocating(true);
@@ -224,6 +228,7 @@ export default function ExploreScreen() {
     if (pos) {
       setCoords(pos);
       setSort("nearest");
+      ensureWatching();
     } else {
       // Denied / unavailable — stay on the current sort, don't nag.
       useToastStore
@@ -237,8 +242,12 @@ export default function ExploreScreen() {
       void enableNearest();
     } else {
       setSort(next);
+      stopWatching();
     }
   }
+
+  // Stop the watcher when leaving Explore.
+  useEffect(() => () => stopWatching(), [stopWatching]);
 
   function handleToggleFavorite(slot: AvailabilitySlot) {
     toggleFavorite.mutate({
@@ -324,6 +333,15 @@ export default function ExploreScreen() {
           onPress: () => setSelectedResourceTypeId(null),
         }
       : undefined;
+
+  // Distance label for a row — live (from the watched position) if we have one,
+  // else the server's fix. Null unless sorting by proximity.
+  function slotDistance(slot: AvailabilitySlot): string | null {
+    return formatDistance(
+      distanceToMeters(livePos, slot.locationLatitude, slot.locationLongitude) ??
+        slot.distanceMeters,
+    );
+  }
 
   return (
     <Screen bg="canvas">
@@ -434,7 +452,11 @@ export default function ExploreScreen() {
                 >
                   <Row
                     title={slot.resourceName}
-                    subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
+                    subtitle={
+                      slotDistance(slot)
+                        ? `${slot.locationName} · a ${slotDistance(slot)}`
+                        : `${slot.locationName} · hasta ${formatTime(slot.endsAt)}`
+                    }
                     meta={
                       slot.capacityRemaining === 1
                         ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
@@ -466,8 +488,8 @@ export default function ExploreScreen() {
                   key={slot.id}
                   title={slot.resourceName}
                   subtitle={
-                    formatDistance(slot.distanceMeters)
-                      ? `${slot.locationName} · ${formatDistance(slot.distanceMeters)}`
+                    slotDistance(slot)
+                      ? `${slot.locationName} · a ${slotDistance(slot)}`
                       : slot.locationName
                   }
                   trailing="chevron"

@@ -41,3 +41,33 @@ export async function requestAndGetPosition(): Promise<Coords | null> {
     return null;
   }
 }
+
+/**
+ * Live position updates ("cuando in use"). Calls `onChange` on every fix and
+ * returns a stop function. Returns a no-op stop on denial / error. `distanceMs`
+ * is the min metres of movement before another update fires.
+ */
+export async function watchPosition(
+  onChange: (coords: Coords) => void,
+  distanceMeters = 25,
+): Promise<() => void> {
+  if (deniedThisSession) return () => {};
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      deniedThisSession = true;
+      return () => {};
+    }
+    const sub = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Balanced,
+        distanceInterval: distanceMeters,
+        timeInterval: 5000,
+      },
+      (pos) => onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    );
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
+}
