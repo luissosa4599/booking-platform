@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Animated, View } from "react-native";
 
+import { useIsWide } from "@/lib/useBreakpoint";
+
 // `Stack`'s `animation` screenOption is documented Android-only — confirmed
 // empirically too (screenshots at t+0/30/60/150/300ms after navigating showed
 // the destination screen fully painted from the first frame either way).
@@ -14,6 +16,7 @@ import { Animated, View } from "react-native";
 // NativeWind's generated CSS both turned out not to reliably drive this kind
 // of transition in this project.
 export function ScreenFade({ children }: { children: ReactNode }) {
+  const isWide = useIsWide();
   // `useState`'s lazy initializer (not `useRef().current`) avoids tripping
   // react-hooks/refs — see lib/useFadeTransition.ts for the same pattern.
   const [opacity] = useState(() => new Animated.Value(0));
@@ -28,15 +31,21 @@ export function ScreenFade({ children }: { children: ReactNode }) {
     return () => animation.stop();
   }, [opacity]);
 
-  // Handoff § "Cross-platform": "Web sin rediseñar: max-w-[420px] mx-auto y
-  // el mismo árbol." The bg-canvas backdrop fills the letterboxed margins on
-  // wide viewports instead of leaving them the browser's default background
-  // — legacy Animated.View doesn't apply NativeWind color classes, so it
-  // goes on a plain View, not the Animated.View itself.
+  // Phone: the original 420px centred column (handoff § "Cross-platform").
+  // Tablet/desktop (PR #11): full width — the nav rail + each screen's own
+  // layout take over the width budget. The bg-canvas backdrop still fills any
+  // letterboxed margin; legacy Animated.View doesn't apply NativeWind colour
+  // classes, so it goes on a plain View, not the Animated.View itself.
   return (
     <Animated.View style={{ flex: 1, opacity }}>
       <View className="flex-1 bg-canvas">
-        <View className="mx-auto w-full max-w-[420px] flex-1">{children}</View>
+        <View
+          className={
+            isWide ? "w-full flex-1" : "mx-auto w-full max-w-[420px] flex-1"
+          }
+        >
+          {children}
+        </View>
       </View>
     </Animated.View>
   );
