@@ -16,6 +16,7 @@ import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
+import { ResourcePane } from "@/components/ResourcePane";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
@@ -36,7 +37,9 @@ import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { formatDistance, type Coords } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
+import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 
@@ -76,6 +79,10 @@ export default function ExploreScreen() {
   const mapAvailable = Platform.OS === "web";
   const [view, setView] = useState<"list" | "map">("list");
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  // Desktop master–detail: the selected resource shows in a pane, the list
+  // stays mounted and live. Tablet/phone push the full screen as before.
+  const hasPane = useHasDetailPane();
+  const { selectedId: paneId, select, clear } = useDetailSelection();
   const [sort, setSort] = useState<AvailabilitySort>("soonest");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
@@ -318,6 +325,11 @@ export default function ExploreScreen() {
   }
 
   function handleOpenResource(slot: AvailabilitySlot) {
+    if (hasPane) {
+      haptics.selection();
+      select(slot.resourceId);
+      return;
+    }
     router.push({
       pathname: "/resource/[id]",
       params: {
@@ -397,8 +409,12 @@ export default function ExploreScreen() {
     );
   }
 
+  const paneOpen = hasPane && !!paneId;
+
   return (
-    <Screen bg="canvas" maxWidth={1080}>
+    <Screen bg="canvas">
+     <View style={{ flex: 1, flexDirection: "row" }}>
+      <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
           even while the list scrolls under it (a scrolled contentContainer
           top-padding would disappear). */}
@@ -625,6 +641,17 @@ export default function ExploreScreen() {
         </View>
       </ScrollView>
       )}
+      </View>
+
+      {paneOpen ? (
+        <ResourcePane
+          id={paneId!}
+          onClose={clear}
+          onBook={handleBook}
+          pendingSlotIds={pendingSlotIds}
+        />
+      ) : null}
+     </View>
 
       {/* The success toast is rendered once at the root (_layout.tsx) so it
           survives router.back() into here and sits at the true bottom. */}
