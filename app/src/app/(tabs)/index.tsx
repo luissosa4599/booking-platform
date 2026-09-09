@@ -18,6 +18,7 @@ import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
+import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
@@ -29,6 +30,7 @@ import { haptics } from "@/lib/haptics";
 import { CalendarX, Heart, Search } from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
 import type { Coords } from "@/lib/maps";
+import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
@@ -110,6 +112,7 @@ export default function ExploreScreen() {
   const createBooking = useCreateBooking();
   const { ids: favoriteIds } = useFavorites();
   const toggleFavorite = useToggleFavorite();
+  const offline = useIsOffline();
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
@@ -174,6 +177,10 @@ export default function ExploreScreen() {
     : null;
 
   function handleBook(slot: AvailabilitySlot) {
+    if (offline) {
+      useToastStore.getState().show("Necesitas conexión para apartar un lugar");
+      return;
+    }
     haptics.selection();
     setPendingSlotIds((prev) => withId(prev, slot.id));
 
@@ -354,6 +361,8 @@ export default function ExploreScreen() {
           onSelect={setSelectedResourceTypeId}
           removable={isEmpty && !!selectedResourceTypeId}
         />
+
+        <StaleStamp dataUpdatedAt={availabilityQuery.dataUpdatedAt} className="pl-1 text-footnote text-label-4" />
 
         <View className="flex-row items-center justify-between">
           <SortControl value={sort} onChange={handleSortChange} />

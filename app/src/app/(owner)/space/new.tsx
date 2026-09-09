@@ -12,6 +12,7 @@ import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { Stepper } from "@/components/Stepper";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import { useCreateSpace } from "@/lib/api/owner";
+import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useColor } from "@/lib/theme/useColor";
 
@@ -41,8 +42,12 @@ export default function NewSpaceScreen() {
   const effectiveTypeId = typeId ?? options[0]?.value ?? null;
   const allowsSeats = selectedType?.allowsMultipleSeats ?? true;
 
+  const offline = useIsOffline();
   const canSubmit =
-    name.trim().length >= 3 && locationName.trim().length > 0 && !!effectiveTypeId;
+    name.trim().length >= 3 &&
+    locationName.trim().length > 0 &&
+    !!effectiveTypeId &&
+    !offline;
 
   async function submit() {
     if (!canSubmit || !effectiveTypeId) return;
@@ -165,6 +170,11 @@ export default function NewSpaceScreen() {
 
           {error ? (
             <Text className="text-center text-footnote text-state-error">{error}</Text>
+          ) : null}
+          {offline ? (
+            <Text className="text-center text-footnote text-label-4">
+              Necesitas conexión para publicar.
+            </Text>
           ) : null}
         </ScrollView>
 

@@ -22,6 +22,8 @@ import { Skeleton } from "@/components/Skeleton";
 import { Toast } from "@/components/Toast";
 import { useCancelBooking, useMyBookings } from "@/lib/api/bookings";
 import { useMyWaitlist } from "@/lib/api/waitlist";
+import { useIsOffline } from "@/lib/net";
+import { useToastStore } from "@/lib/toastStore";
 import type { BookingScope, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
@@ -211,6 +213,7 @@ export default function BookingsScreen() {
   const bookingsQuery = useMyBookings(scope, userId);
   const waitlistQuery = useMyWaitlist(userId);
   const cancelBooking = useCancelBooking();
+  const offline = useIsOffline();
   const showSkeleton = useDelayedFlag(bookingsQuery.isLoading, 150);
   const isRefreshing =
     (bookingsQuery.isFetching && !bookingsQuery.isLoading) ||
@@ -258,6 +261,16 @@ export default function BookingsScreen() {
   function handleToastExpired() {
     if (!pendingCancelId) return;
     const id = pendingCancelId;
+    // The real DELETE fires here (not on the Cancelar tap). Offline it can't —
+    // restore the row rather than queue it, so a long offline window can't
+    // cancel a booking the user later decided to keep.
+    if (offline) {
+      setPendingCancelId(null);
+      useToastStore
+        .getState()
+        .show("Sin conexión — la reserva no se canceló");
+      return;
+    }
     cancelBooking.mutate(id, {
       onSuccess: () => {
         queryClient.setQueryData<MyBooking[]>(

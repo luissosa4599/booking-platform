@@ -20,6 +20,7 @@ import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
+import { StaleStamp } from "@/components/StaleStamp";
 import { StaticMapCard } from "@/components/StaticMapCard";
 import { Stepper } from "@/components/Stepper";
 import { Button } from "@/components/Button";
@@ -33,6 +34,7 @@ import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
 import { directionsUrl } from "@/lib/maps";
+import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useCollapsingHero } from "@/lib/useCollapsingHero";
 import { useColor } from "@/lib/theme/useColor";
@@ -169,6 +171,7 @@ export default function ResourceScreen() {
   );
   const allowsMultipleSeats = resourceType?.allowsMultipleSeats ?? false;
   const allowsWaitlist = resourceType?.allowsWaitlist ?? false;
+  const offline = useIsOffline();
   const capacityUnitLabel = resourceType?.labels.capacityUnit ?? "personas";
   const actionVerb = resourceType?.labels.actionVerb ?? "Apartar";
 
@@ -267,9 +270,11 @@ export default function ResourceScreen() {
       )
     : null;
 
-  const ctaLabel = selectedSlot
-    ? `${actionVerb} ${formatTime(selectedSlot.startsAt)}`
-    : "Elige un horario";
+  const ctaLabel = offline
+    ? "Sin conexión"
+    : selectedSlot
+      ? `${actionVerb} ${formatTime(selectedSlot.startsAt)}`
+      : "Elige un horario";
   const ctaSubtitle = selectedSlot
     ? `${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)} · ${durationMinutes} min`
     : undefined;
@@ -333,8 +338,8 @@ export default function ResourceScreen() {
   const ctaButton = (
     <Button
       variant="filled"
-      subtitle={ctaSubtitle}
-      disabled={!selectedSlot}
+      subtitle={offline ? undefined : ctaSubtitle}
+      disabled={!selectedSlot || offline}
       loading={createBooking.isPending}
       onPress={handleConfirm}
     >
@@ -384,6 +389,7 @@ export default function ResourceScreen() {
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
               <Text className="text-title-md text-label-1">{displayName}</Text>
+              <StaleStamp dataUpdatedAt={resourceQuery.dataUpdatedAt} />
               {subtitleParts.length > 0 ? (
                 <Text className="text-body text-label-3">
                   {subtitleParts.join(" · ")}
@@ -494,9 +500,9 @@ export default function ResourceScreen() {
                             trailingText={isJoined ? undefined : "Anotarme"}
                             trailingTone="waiting"
                             trailingLoading={isJoining}
-                            disabled={isJoined || isJoining}
+                            disabled={isJoined || isJoining || offline}
                             onPress={
-                              isJoined
+                              isJoined || offline
                                 ? undefined
                                 : () => handleJoinWaitlist(slot)
                             }

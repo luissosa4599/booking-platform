@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/owner";
 import type { OwnerSlot, WeeklySchedule } from "@/lib/api/types";
 import { ArrowLeft } from "@/lib/icons";
+import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
@@ -40,6 +41,7 @@ export default function HostSpaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? "";
   const userId = useUserId();
+  const offline = useIsOffline();
   const backColor = useColor("label-1");
   const { data: space, isLoading } = useOwnerSpace(spaceId, userId);
 
@@ -51,6 +53,7 @@ export default function HostSpaceScreen() {
   const [blockConfirm, setBlockConfirm] = useState<{ slotId: string; bookings: number } | null>(null);
 
   function tryBlock(slotId: string) {
+    if (offline) return;
     blockSlot.mutate(
       { slotId },
       {
@@ -143,13 +146,16 @@ export default function HostSpaceScreen() {
                       (unblockSlot.isPending && unblockSlot.variables === slot.id)
                     }
                     onBlock={() => tryBlock(slot.id)}
-                    onUnblock={() => unblockSlot.mutate(slot.id)}
+                    onUnblock={() => {
+                      if (!offline) unblockSlot.mutate(slot.id);
+                    }}
                   />
                 ))}
                 <Row
                   title="Agregar horario puntual"
                   trailing="chevron"
-                  onPress={() => setAddOpen(true)}
+                  disabled={offline}
+                  onPress={offline ? undefined : () => setAddOpen(true)}
                 />
               </Group>
             </View>

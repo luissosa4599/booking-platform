@@ -14,6 +14,7 @@ import type { ResourceImage } from "@/lib/api/types";
 import { uploadToSignedUrl, uriToBlob } from "@/lib/api/uploadToSignedUrl";
 import { haptics } from "@/lib/haptics";
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "@/lib/icons";
+import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
 
 interface PhotoManagerProps {
@@ -38,6 +39,7 @@ function contentTypeOf(asset: ImagePicker.ImagePickerAsset): string {
 
 export function PhotoManager({ spaceId, images }: PhotoManagerProps) {
   const [busy, setBusy] = useState(false);
+  const offline = useIsOffline();
   const iconColor = useColor("label-2");
   const disabledColor = useColor("label-4");
   const dangerColor = useColor("state-error");
@@ -131,13 +133,13 @@ export function PhotoManager({ spaceId, images }: PhotoManagerProps) {
 
         <Pressable
           onPress={pickAndUpload}
-          disabled={busy}
+          disabled={busy || offline}
           accessibilityRole="button"
           className="h-11 flex-row items-center justify-center gap-2 rounded-group bg-fill"
         >
           <ImagePlus size={16} color={iconColor} />
           <Text className="text-subhead text-label-2">
-            {busy ? "Subiendo…" : "Agregar fotos"}
+            {offline ? "Sin conexión" : busy ? "Subiendo…" : "Agregar fotos"}
           </Text>
         </Pressable>
       </View>

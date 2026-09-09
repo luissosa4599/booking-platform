@@ -24,6 +24,7 @@ import {
   Store as LStore,
   Trash2 as LTrash2,
   User as LUser,
+  WifiOff as LWifiOff,
   X as LX,
 } from "lucide-react-native";
 
@@ -70,6 +71,7 @@ export const Search = typed(LSearch);
 export const Store = typed(LStore);
 export const Trash2 = typed(LTrash2);
 export const User = typed(LUser);
+export const WifiOff = typed(LWifiOff);
 export const X = typed(LX);
 
 // Handoff: "usar el set de iconos del proyecto — expo-symbols (SF Symbols)

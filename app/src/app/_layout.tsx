@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Easing, LogBox, StyleSheet, View } from "react-native";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import {
   SpaceGrotesk_500Medium,
   SpaceGrotesk_700Bold,
@@ -21,8 +21,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AnimatedSplash } from "@/components/AnimatedSplash";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import { Toast } from "@/components/Toast";
+import { persistOptions } from "@/lib/api/persist";
 import { queryClient } from "@/lib/api/queryClient";
+import { wireConnectivity } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
@@ -224,25 +227,40 @@ export default function RootLayout() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const [splashDone, setSplashDone] = useState(false);
+  // The persisted query cache restores asynchronously; gate the splash on it so
+  // the first paint has cached data. A hung restore must never wedge the app.
+  const [cacheRestored, setCacheRestored] = useState(false);
+  useEffect(() => {
+    wireConnectivity();
+    const t = setTimeout(() => setCacheRestored(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <AppBackground>
-          <QueryClientProvider client={queryClient}>
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={persistOptions}
+            onSuccess={() => setCacheRestored(true)}
+          >
             <GestureHandlerRootView style={{ flex: 1 }}>
               <StatusBar style="auto" />
               <AuthGate />
               <GroupTransition />
               <GlobalToast />
+              <OfflineNotice />
               {!splashDone ? (
                 <AnimatedSplash
-                  appReady={fontsLoaded && hydrated && themeHydrated}
+                  appReady={
+                    fontsLoaded && hydrated && themeHydrated && cacheRestored
+                  }
                   onFinish={() => setSplashDone(true)}
                 />
               ) : null}
             </GestureHandlerRootView>
-          </QueryClientProvider>
+          </PersistQueryClientProvider>
         </AppBackground>
       </ThemeProvider>
     </SafeAreaProvider>

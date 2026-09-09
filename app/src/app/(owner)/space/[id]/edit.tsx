@@ -11,6 +11,7 @@ import { PhotoManager } from "@/components/PhotoManager";
 import { Screen } from "@/components/Screen";
 import { Stepper } from "@/components/Stepper";
 import { useOwnerSpace, useUpdateSpace } from "@/lib/api/owner";
+import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
@@ -46,7 +47,8 @@ export default function EditSpaceScreen() {
     setHydrated(true);
   }
 
-  const canSubmit = name.trim().length >= 3;
+  const offline = useIsOffline();
+  const canSubmit = name.trim().length >= 3 && !offline;
 
   async function submit() {
     if (!canSubmit) return;
