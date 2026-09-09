@@ -306,7 +306,7 @@ export default function BookingsScreen() {
   }
 
   return (
-    <Screen bg="canvas">
+    <Screen bg="canvas" maxWidth={1080}>
       <View className="px-4 pt-3">
         <Text className="text-title-lg text-label-1">Reservas</Text>
       </View>

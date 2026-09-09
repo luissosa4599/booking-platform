@@ -348,7 +348,7 @@ export default function ExploreScreen() {
   }
 
   return (
-    <Screen bg="canvas">
+    <Screen bg="canvas" maxWidth={1080}>
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
           even while the list scrolls under it (a scrolled contentContainer
           top-padding would disappear). */}

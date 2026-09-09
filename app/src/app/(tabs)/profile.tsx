@@ -5,7 +5,7 @@ import { ProfileContent } from "@/components/ProfileContent";
 // ProfileContent. Replaces the old "Próximamente" placeholder.
 export default function ProfileScreen() {
   return (
-    <Screen bg="canvas">
+    <Screen bg="canvas" maxWidth={640}>
       <ProfileContent />
     </Screen>
   );
