@@ -8,6 +8,12 @@ import { Group } from "@/components/Group";
 import { Row } from "@/components/Row";
 import { Sheet } from "@/components/Sheet";
 import { Toggle } from "@/components/Toggle";
+import {
+  useCalendarStatus,
+  useConnectCalendar,
+  useDisconnectCalendar,
+} from "@/lib/api/calendar";
+import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
 import { useMe } from "@/lib/api/me";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
 import { useThemeStore } from "@/lib/theme/themeStore";
@@ -30,6 +36,24 @@ export function ProfileContent() {
   const setThemePreference = useThemeStore((s) => s.setPreference);
 
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+
+  const calendarStatus = useCalendarStatus();
+  const calendarAuth = useGoogleCalendarAuth();
+  const connectCalendar = useConnectCalendar();
+  const disconnectCalendar = useDisconnectCalendar();
+  const calendarConfigured =
+    !!calendarStatus.data?.available && calendarAuth.ready;
+  const calendarConnected = !!calendarStatus.data?.connected;
+  const calendarBusy = connectCalendar.isPending || disconnectCalendar.isPending;
+
+  async function toggleCalendar() {
+    if (calendarConnected) {
+      await disconnectCalendar.mutateAsync();
+      return;
+    }
+    const grant = await calendarAuth.authorize();
+    if (grant) await connectCalendar.mutateAsync(grant);
+  }
 
   const name = session?.displayName ?? me?.displayName ?? session?.email ?? "";
   const email = session?.email ?? me?.email ?? "";
@@ -124,6 +148,26 @@ export function ProfileContent() {
               value={isDark}
               onValueChange={(v) => setThemePreference(v ? "dark" : "light")}
             />
+            {calendarConfigured ? (
+              <Row
+                title="Google Calendar"
+                subtitle={
+                  calendarConnected
+                    ? "Conectado — tus reservas se agregan solas"
+                    : "Conéctalo para agregar reservas a tu calendario"
+                }
+                trailing="text"
+                trailingText={
+                  calendarBusy
+                    ? "…"
+                    : calendarConnected
+                      ? "Desconectar"
+                      : "Conectar"
+                }
+                trailingTone={calendarConnected ? "default" : "waiting"}
+                onPress={calendarBusy ? undefined : () => void toggleCalendar()}
+              />
+            ) : null}
           </Group>
         </View>
 

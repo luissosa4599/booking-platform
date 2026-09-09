@@ -22,6 +22,19 @@ public class AuthOptions
     /// </summary>
     public IReadOnlyList<string> GoogleClientIds { get; set; } = [];
 
+    /// <summary>
+    /// The <b>web</b> OAuth client id + secret — used only for the Google
+    /// Calendar auth-code exchange / refresh (a separate flow from sign-in).
+    /// Empty <see cref="GoogleClientSecret"/> disables the /calendar endpoints.
+    /// </summary>
+    public string GoogleWebClientId { get; set; } = string.Empty;
+
+    public string GoogleClientSecret { get; set; } = string.Empty;
+
+    public bool GoogleCalendarEnabled =>
+        !string.IsNullOrWhiteSpace(GoogleWebClientId)
+        && !string.IsNullOrWhiteSpace(GoogleClientSecret);
+
     public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(30);
 
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(30);

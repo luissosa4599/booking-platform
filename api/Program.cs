@@ -4,6 +4,7 @@ using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
+using BookingEngine.Api.Infrastructure.Calendar;
 using BookingEngine.Api.Infrastructure.Seed;
 using DotNetEnv;
 using FluentValidation;
@@ -47,11 +48,17 @@ try
         Secret = builder.Configuration["AUTH_TOKEN_SECRET"] ?? AuthOptions.DevSecret,
         GoogleClientIds = (builder.Configuration["GOOGLE_CLIENT_ID"] ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+        GoogleWebClientId = builder.Configuration["GOOGLE_WEB_CLIENT_ID"] ?? string.Empty,
+        GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"] ?? string.Empty,
     };
     builder.Services.AddSingleton(authOptions);
     builder.Services.AddSingleton<SessionTokens>();
     builder.Services.AddSingleton<SessionIssuer>();
+    builder.Services.AddSingleton<CalendarTokenCipher>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+
+    // Google Calendar (the calendar.events OAuth2 flow — separate from sign-in).
+    builder.Services.AddHttpClient<GoogleCalendarClient>();
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -149,6 +156,7 @@ try
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
+    app.MapCalendarEndpoints();
     app.MapOwnerEndpoints();
     app.MapCheckinsEndpoints();
 

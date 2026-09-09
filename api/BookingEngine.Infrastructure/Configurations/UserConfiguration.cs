@@ -35,6 +35,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.LastSeenAt).IsRequired();
 
+        // Encrypted (AES-GCM) refresh token — base64 ciphertext, comfortably
+        // under this cap.
+        builder.Property(u => u.GoogleCalendarRefreshToken).HasMaxLength(2000);
+
         builder.HasIndex(u => u.Email).IsUnique();
 
         builder.HasIndex(u => u.GoogleSub)

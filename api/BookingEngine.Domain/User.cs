@@ -26,5 +26,12 @@ public class User
 
     public DateTimeOffset LastSeenAt { get; set; }
 
+    /// <summary>
+    /// Encrypted Google OAuth2 refresh token for the <c>calendar.events</c>
+    /// scope — set when the user connects Google Calendar (a separate consent
+    /// from sign-in). Null = not connected.
+    /// </summary>
+    public string? GoogleCalendarRefreshToken { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

@@ -8,6 +8,12 @@ import { Screen } from "@/components/Screen";
 import { SuccessCheckmark } from "@/components/SuccessCheckmark";
 import { useBookingStreak } from "@/lib/api/bookings";
 import {
+  useAddToGoogleCalendar,
+  useCalendarStatus,
+  useConnectCalendar,
+} from "@/lib/api/calendar";
+import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
+import {
   addBookingToCalendar,
   copyBookingDetails,
   openCalendarEvent,
@@ -92,6 +98,7 @@ function SummaryRow({
 export default function ConfirmedScreen() {
   const router = useRouter();
   const {
+    id: bookingId = "",
     code = "",
     name = "Tu reserva",
     location = "",
@@ -142,6 +149,8 @@ export default function ConfirmedScreen() {
   // Set once the event lands in the OS calendar — swaps "Ver reservación" for
   // "Ver en el calendario", which opens Google Calendar on that event.
   const [calEventId, setCalEventId] = useState<string | null>(null);
+  // Set when the event was created via the Google Calendar API (works on web).
+  const [googleLink, setGoogleLink] = useState<string | null>(null);
 
   const calendarEvent = {
     title: name,
@@ -151,14 +160,51 @@ export default function ConfirmedScreen() {
     notes: code ? `Código: ${code}` : undefined,
   };
 
-  async function handleCalendar() {
+  // Google Calendar (PR #9) — the real API path. Falls back to the device
+  // calendar / clipboard below when it isn't configured or errors.
+  const calendarStatus = useCalendarStatus();
+  const googleCalAuth = useGoogleCalendarAuth();
+  const connectCalendar = useConnectCalendar();
+  const addToGoogle = useAddToGoogleCalendar();
+  const googleAvailable =
+    !!calendarStatus.data?.available && googleCalAuth.ready && !!bookingId;
+  const googleConnected = !!calendarStatus.data?.connected;
+
+  async function createGoogleEvent(): Promise<boolean> {
+    const result = await addToGoogle.mutateAsync(bookingId);
+    if (result.status === "created" && result.htmlLink) {
+      setGoogleLink(result.htmlLink);
+      setCalDone(true);
+      return true;
+    }
+    return false;
+  }
+
+  async function handleGoogleCalendar() {
     setCalBusy(true);
+    try {
+      if (!googleConnected) {
+        const grant = await googleCalAuth.authorize();
+        if (!grant) return;
+        await connectCalendar.mutateAsync(grant);
+      }
+      const ok = await createGoogleEvent();
+      if (!ok) {
+        // e.g. token was revoked from Google's side — fall to the device path.
+        await handleDeviceCalendar();
+      }
+    } catch {
+      await handleDeviceCalendar();
+    } finally {
+      setCalBusy(false);
+    }
+  }
+
+  async function handleDeviceCalendar() {
     const { outcome, eventId } =
       calMode === "add"
         ? await addBookingToCalendar(calendarEvent)
         : await copyBookingDetails(calendarEvent);
-    setCalBusy(false);
-
     if (outcome === "added") {
       setCalDone(true);
       setCalEventId(eventId ?? null);
@@ -170,13 +216,28 @@ export default function ConfirmedScreen() {
     }
   }
 
+  function handleCalendar() {
+    if (googleAvailable && calMode === "add") {
+      void handleGoogleCalendar();
+    } else {
+      setCalBusy(true);
+      void handleDeviceCalendar().finally(() => setCalBusy(false));
+    }
+  }
+
   const calLabel = calDone
-    ? calMode === "add"
-      ? "Añadido al calendario"
-      : "Detalles copiados"
-    : calMode === "add"
-      ? "Añadir al calendario"
-      : "Copiar detalles";
+    ? googleLink
+      ? "Añadido a Google Calendar"
+      : calMode === "add"
+        ? "Añadido al calendario"
+        : "Detalles copiados"
+    : googleAvailable && calMode === "add"
+      ? googleConnected
+        ? "Añadir a Google Calendar"
+        : "Conectar Google Calendar"
+      : calMode === "add"
+        ? "Añadir al calendario"
+        : "Copiar detalles";
 
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
@@ -244,7 +305,11 @@ export default function ConfirmedScreen() {
         >
           {calLabel}
         </Button>
-        {calEventId ? (
+        {googleLink ? (
+          <Button variant="gray" onPress={() => void Linking.openURL(googleLink)}>
+            Ver en Google Calendar
+          </Button>
+        ) : calEventId ? (
           <Button variant="gray" onPress={() => openCalendarEvent(calEventId)}>
             Ver en el calendario
           </Button>
