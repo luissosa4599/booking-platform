@@ -6,17 +6,31 @@ namespace BookingEngine.Api.Infrastructure.Storage;
 public interface IImageStorage
 {
     bool Enabled { get; }
-    (string UploadUrl, string PublicUrl) CreateUploadUrl(Guid resourceId, string contentType);
+    Task<(string UploadUrl, string PublicUrl)> CreateUploadUrlAsync(
+        Guid resourceId, string contentType, CancellationToken ct = default);
     bool OwnsUrl(Guid resourceId, string url);
 }
 
 /// <summary>
 /// Issues V4 signed PUT URLs so the app uploads space photos straight to a GCS
 /// bucket (the API never touches the bytes). Objects are public-read with
-/// unguessable GUID names. Disabled — every call is a no-op / 503 — unless
-/// <c>GCS_BUCKET</c> plus a service-account credential is configured, either as
-/// <c>GCS_CREDENTIALS_PATH</c> (a path to the downloaded key JSON — easiest) or
-/// <c>GCS_CREDENTIALS_JSON</c> (the JSON inline, must be one line).
+/// unguessable GUID names.
+///
+/// Signing needs a service account that has <c>roles/storage.objectAdmin</c> on
+/// the bucket, but the API never holds that account's key — V4 URLs are signed
+/// through the IAM Credentials API (<c>signBlob</c>). Config:
+///   <c>GCS_BUCKET</c>                 - bucket name; required to enable this at all.
+///   <c>GCS_SIGNER_SERVICE_ACCOUNT</c> - the signer SA's email. Local dev: keep it
+///        set and let Application Default Credentials (<c>gcloud auth
+///        application-default login</c>) impersonate it — the developer needs
+///        <c>roles/iam.serviceAccountTokenCreator</c> on that SA and the IAM
+///        Credentials API enabled. Deployed with that SA attached: leave it unset,
+///        ADC already *is* the signer and signs directly.
+///   <c>GCS_CREDENTIALS_PATH</c> / <c>GCS_CREDENTIALS_JSON</c> - legacy fallback,
+///        a downloaded SA key. Only usable where an org policy doesn't block key
+///        creation; the keyless path above is preferred.
+/// Disabled — every call is a no-op / 503 — until <c>GCS_BUCKET</c> plus a
+/// working signer are configured.
 /// </summary>
 public class GcsImageStorage : IImageStorage
 {
@@ -28,30 +42,52 @@ public class GcsImageStorage : IImageStorage
     public GcsImageStorage(IConfiguration config, ILogger<GcsImageStorage> logger)
     {
         _bucket = config["GCS_BUCKET"];
-
-        var credentialsPath = config["GCS_CREDENTIALS_PATH"];
-        var credentialsJson = config["GCS_CREDENTIALS_JSON"];
-        if (string.IsNullOrWhiteSpace(credentialsJson)
-            && !string.IsNullOrWhiteSpace(credentialsPath)
-            && File.Exists(credentialsPath))
-        {
-            credentialsJson = File.ReadAllText(credentialsPath);
-        }
-
-        if (string.IsNullOrWhiteSpace(_bucket) || string.IsNullOrWhiteSpace(credentialsJson))
+        if (string.IsNullOrWhiteSpace(_bucket))
         {
             return;
         }
 
         try
         {
-            var serviceAccount = CredentialFactory.FromJson<ServiceAccountCredential>(credentialsJson);
-            _signer = UrlSigner.FromCredential(serviceAccount.ToGoogleCredential());
+            _signer = BuildSigner(config);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "GCS credentials failed to parse — image uploads disabled.");
+            logger.LogError(ex, "GCS signer setup failed - image uploads disabled.");
         }
+    }
+
+    private static UrlSigner BuildSigner(IConfiguration config)
+    {
+        // Legacy: a downloaded service-account key, if one is configured (signs
+        // locally, no IAM Credentials API call). Kept for environments where the
+        // org allows key creation.
+        var keyJson = config["GCS_CREDENTIALS_JSON"];
+        var keyPath = config["GCS_CREDENTIALS_PATH"];
+        if (string.IsNullOrWhiteSpace(keyJson)
+            && !string.IsNullOrWhiteSpace(keyPath)
+            && File.Exists(keyPath))
+        {
+            keyJson = File.ReadAllText(keyPath);
+        }
+        if (!string.IsNullOrWhiteSpace(keyJson))
+        {
+            var sa = CredentialFactory.FromJson<ServiceAccountCredential>(keyJson);
+            return UrlSigner.FromCredential(sa.ToGoogleCredential());
+        }
+
+        // Keyless: Application Default Credentials. When ADC is already a service
+        // account (deployed with the signer SA attached) it can sign V4 URLs
+        // directly via signBlob; when it's a user (local dev) it impersonates the
+        // signer SA named by GCS_SIGNER_SERVICE_ACCOUNT. Both routes call the IAM
+        // Credentials API rather than using a local private key.
+        var credential = GoogleCredential.GetApplicationDefault();
+        var signerSa = config["GCS_SIGNER_SERVICE_ACCOUNT"];
+        if (!string.IsNullOrWhiteSpace(signerSa))
+        {
+            credential = credential.Impersonate(new ImpersonatedCredential.Initializer(signerSa));
+        }
+        return UrlSigner.FromCredential(credential);
     }
 
     public bool Enabled => _signer is not null && !string.IsNullOrWhiteSpace(_bucket);
@@ -63,7 +99,8 @@ public class GcsImageStorage : IImageStorage
     /// A one-shot signed PUT URL for a new object, plus the public URL it will
     /// have once uploaded. The upload must send exactly <paramref name="contentType"/>.
     /// </summary>
-    public (string UploadUrl, string PublicUrl) CreateUploadUrl(Guid resourceId, string contentType)
+    public async Task<(string UploadUrl, string PublicUrl)> CreateUploadUrlAsync(
+        Guid resourceId, string contentType, CancellationToken ct = default)
     {
         var ext = contentType switch
         {
@@ -86,7 +123,7 @@ public class GcsImageStorage : IImageStorage
             .FromDuration(UploadUrlLifetime)
             .WithSigningVersion(SigningVersion.V4);
 
-        var uploadUrl = _signer!.Sign(template, options);
+        var uploadUrl = await _signer!.SignAsync(template, options, ct);
         var publicUrl = $"https://storage.googleapis.com/{_bucket}/{objectName}";
         return (uploadUrl, publicUrl);
     }

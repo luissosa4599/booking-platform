@@ -330,7 +330,7 @@ public static class OwnerEndpoints
                     detail: "Image storage is not configured.");
             }
 
-            var (uploadUrl, publicUrl) = storage.CreateUploadUrl(id, request.ContentType);
+            var (uploadUrl, publicUrl) = await storage.CreateUploadUrlAsync(id, request.ContentType, ct);
             return Results.Ok(new UploadUrlResponse(uploadUrl, publicUrl));
         })
         .AddEndpointFilter<ValidationFilter<UploadUrlRequest>>()

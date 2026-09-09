@@ -19,9 +19,11 @@ public class OwnerImagesTests(ApiTestFixture fixture)
     {
         public bool Enabled => true;
 
-        public (string UploadUrl, string PublicUrl) CreateUploadUrl(Guid resourceId, string contentType) =>
-            ($"https://upload.example/{resourceId}/{Guid.NewGuid():N}",
-             $"https://storage.googleapis.com/test-bucket/spaces/{resourceId}/{Guid.NewGuid():N}.jpg");
+        public Task<(string UploadUrl, string PublicUrl)> CreateUploadUrlAsync(
+            Guid resourceId, string contentType, CancellationToken ct = default) =>
+            Task.FromResult(
+                ($"https://upload.example/{resourceId}/{Guid.NewGuid():N}",
+                 $"https://storage.googleapis.com/test-bucket/spaces/{resourceId}/{Guid.NewGuid():N}.jpg"));
 
         public bool OwnsUrl(Guid resourceId, string url) =>
             url.StartsWith($"https://storage.googleapis.com/test-bucket/spaces/{resourceId}/", StringComparison.Ordinal);
