@@ -172,6 +172,9 @@ export default function ResourceScreen() {
   );
   const allowsMultipleSeats = resourceType?.allowsMultipleSeats ?? false;
   const allowsWaitlist = resourceType?.allowsWaitlist ?? false;
+  // Auditorio / Salón: booked as a whole unit (capacity 1, no seat picker). A
+  // free slot is just "Libre", not "Último lugar", and there's no party size.
+  const wholeUnit = !allowsMultipleSeats;
   const offline = useIsOffline();
   const capacityUnitLabel = resourceType?.labels.capacityUnit ?? "personas";
   const actionVerb = resourceType?.labels.actionVerb ?? "Apartar";
@@ -268,7 +271,9 @@ export default function ResourceScreen() {
   const subtitleParts = [
     resource?.description ?? undefined,
     resource
-      ? `hasta ${resource.capacity} ${capacityUnitLabel}`
+      ? wholeUnit
+        ? undefined
+        : `hasta ${resource.capacity} ${capacityUnitLabel}`
       : passedLocation,
   ].filter((part): part is string => !!part);
 
@@ -286,7 +291,9 @@ export default function ResourceScreen() {
       ? `${actionVerb} ${formatTime(selectedSlot.startsAt)}`
       : "Elige un horario";
   const ctaSubtitle = selectedSlot
-    ? `${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)} · ${durationMinutes} min`
+    ? wholeUnit
+      ? `${durationMinutes} min`
+      : `${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)} · ${durationMinutes} min`
     : undefined;
 
   function handleJoinWaitlist(slot: AvailabilitySlot) {
@@ -545,12 +552,16 @@ export default function ResourceScreen() {
                         tabularTitle
                         trailing="text"
                         trailingText={
-                          slot.capacityRemaining === 1
-                            ? "Último lugar"
-                            : `${slot.capacityRemaining} lugares`
+                          wholeUnit
+                            ? "Libre"
+                            : slot.capacityRemaining === 1
+                              ? "Último lugar"
+                              : `${slot.capacityRemaining} lugares`
                         }
                         trailingTone={
-                          slot.capacityRemaining === 1 ? "last" : "default"
+                          !wholeUnit && slot.capacityRemaining === 1
+                            ? "last"
+                            : "default"
                         }
                         selected={slot.id === selectedSlotId && eligible}
                         disabled={!eligible}
@@ -560,9 +571,11 @@ export default function ResourceScreen() {
                             : undefined
                         }
                         accessibilityLabel={
-                          eligible
-                            ? `Horario ${title}, ${slot.capacityRemaining === 1 ? "último lugar" : `${slot.capacityRemaining} lugares disponibles`}`
-                            : `Horario ${title}, no hay lugares suficientes para ${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)}`
+                          !eligible
+                            ? `Horario ${title}, no hay lugares suficientes para ${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)}`
+                            : wholeUnit
+                              ? `Horario ${title}, libre`
+                              : `Horario ${title}, ${slot.capacityRemaining === 1 ? "último lugar" : `${slot.capacityRemaining} lugares disponibles`}`
                         }
                       />
                     );

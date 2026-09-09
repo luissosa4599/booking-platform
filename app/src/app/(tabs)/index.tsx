@@ -135,7 +135,11 @@ export default function ExploreScreen() {
       { id: null, label: "Cualquiera" },
       ...(resourceTypesQuery.data ?? []).map((type) => ({
         id: type.id,
-        label: type.name,
+        // The user-facing plural, never the internal `name` (which is ASCII-only
+        // and not styled for display — e.g. "Salon" vs "salones").
+        label:
+          type.labels.plural.charAt(0).toUpperCase() +
+          type.labels.plural.slice(1),
       })),
     ],
     [resourceTypesQuery.data],

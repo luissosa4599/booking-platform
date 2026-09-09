@@ -12,14 +12,14 @@ const OPTIONS: { value: AvailabilitySort; label: string; hint?: string }[] = [
   { value: "soonest", label: "Disponible antes" },
   { value: "nearest", label: "Más cercano", hint: "Usa tu ubicación" },
   { value: "name", label: "Nombre (A–Z)" },
-  { value: "capacity", label: "Mayor aforo" },
+  { value: "capacity", label: "Más cupo", hint: "Lugares libres ahora" },
 ];
 
 const SHORT: Record<AvailabilitySort, string> = {
   soonest: "Antes",
   nearest: "Cerca",
   name: "Nombre",
-  capacity: "Aforo",
+  capacity: "Cupo",
 };
 
 interface SortControlProps {
