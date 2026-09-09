@@ -1,7 +1,11 @@
 import type { ComponentType } from "react";
 import {
+  ArrowDown as LArrowDown,
   ArrowLeft as LArrowLeft,
+  ArrowUp as LArrowUp,
+  ArrowUpDown as LArrowUpDown,
   Ban as LBan,
+  ImagePlus as LImagePlus,
   Calendar as LCalendar,
   CalendarClock as LCalendarClock,
   CalendarX as LCalendarX,
@@ -10,6 +14,7 @@ import {
   ChevronRight as LChevronRight,
   Clock as LClock,
   Compass as LCompass,
+  Heart as LHeart,
   LogOut as LLogOut,
   MapPin as LMapPin,
   Minus as LMinus,
@@ -19,6 +24,7 @@ import {
   Store as LStore,
   Trash2 as LTrash2,
   User as LUser,
+  WifiOff as LWifiOff,
   X as LX,
 } from "lucide-react-native";
 
@@ -34,12 +40,19 @@ export interface IconProps {
    * native (see lib/theme/palette.ts). Resolve it with `useColor()`.
    */
   color?: string;
+  /** Fill color — used for the filled/active state of an outline icon (e.g. a
+   * favorited Heart). lucide forwards it to the underlying `<svg>`. */
+  fill?: string;
 }
 
 const typed = <T,>(icon: T) => icon as ComponentType<IconProps>;
 
+export const ArrowDown = typed(LArrowDown);
 export const ArrowLeft = typed(LArrowLeft);
+export const ArrowUp = typed(LArrowUp);
+export const ArrowUpDown = typed(LArrowUpDown);
 export const Ban = typed(LBan);
+export const ImagePlus = typed(LImagePlus);
 export const Calendar = typed(LCalendar);
 export const CalendarClock = typed(LCalendarClock);
 export const CalendarX = typed(LCalendarX);
@@ -48,6 +61,7 @@ export const Check = typed(LCheck);
 export const ChevronRight = typed(LChevronRight);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
+export const Heart = typed(LHeart);
 export const LogOut = typed(LLogOut);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
@@ -57,6 +71,7 @@ export const Search = typed(LSearch);
 export const Store = typed(LStore);
 export const Trash2 = typed(LTrash2);
 export const User = typed(LUser);
+export const WifiOff = typed(LWifiOff);
 export const X = typed(LX);
 
 // Handoff: "usar el set de iconos del proyecto — expo-symbols (SF Symbols)

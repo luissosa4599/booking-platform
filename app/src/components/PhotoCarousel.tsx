@@ -3,14 +3,17 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 import { Image } from "expo-image";
 
-interface HeroCarouselProps {
+interface PhotoCarouselProps {
+  /**
+   * Ordered photo URLs. Empty -> the single `fallbackUrl` image, no dots.
+   */
+  photos: string[];
   /**
    * The image band's fixed height — the hero's *expanded* height. This View
    * fills its (animated, collapsing) parent and keeps the band vertically
@@ -18,30 +21,25 @@ interface HeroCarouselProps {
    * image, not the top.
    */
   contentHeight: number;
-  /** Google Static Maps URL, or null when no key / no coordinates. */
-  mapImageUrl: string | null;
-  /** A stock photo of the space (Unsplash). Always present. */
-  stockImageUrl: string;
-  /** Opens directions — wired to the map page (and the whole hero when there's no map). */
-  onMapPress?: () => void;
+  /** Stock image shown when `photos` is empty (Unsplash, always present). */
+  fallbackUrl: string;
 }
 
 /**
- * The resource-detail hero: a horizontal pager over [static map, stock photo].
- * When there's no map it's just the photo (still a single "page", no dots).
- * Everything sits on the same `bg-fill` block underneath, so a page whose
- * image fails to load degrades to grey rather than a broken image.
+ * The space-detail hero: a horizontal pager over the space's photos. Everything
+ * sits on the same `bg-fill` block underneath, so a page whose image fails to
+ * load degrades to grey rather than a broken image. (The map is no longer a
+ * hero page — it's a separate `StaticMapCard` at the bottom of the content.)
  */
-export function HeroCarousel({
+export function PhotoCarousel({
+  photos,
   contentHeight,
-  mapImageUrl,
-  stockImageUrl,
-  onMapPress,
-}: HeroCarouselProps) {
+  fallbackUrl,
+}: PhotoCarouselProps) {
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
 
-  const pages: ("map" | "photo")[] = mapImageUrl ? ["map", "photo"] : ["photo"];
+  const uris = photos.length > 0 ? photos : [fallbackUrl];
 
   function onLayout(e: LayoutChangeEvent) {
     setWidth(e.nativeEvent.layout.width);
@@ -66,40 +64,27 @@ export function HeroCarousel({
             showsHorizontalScrollIndicator={false}
             onScroll={onScroll}
             scrollEventThrottle={16}
-            scrollEnabled={pages.length > 1}
-            // Fixed-height band, vertically centred by the parent's
-            // `justifyContent` — the parent clips the overflow as it collapses.
+            scrollEnabled={uris.length > 1}
             style={{ flexGrow: 0, height: contentHeight }}
           >
-            {pages.map((kind) => (
-              <Pressable
-                key={kind}
-                onPress={kind === "map" ? onMapPress : undefined}
-                disabled={kind !== "map" || !onMapPress}
-                accessibilityLabel={
-                  kind === "map" ? "Cómo llegar en Google Maps" : undefined
-                }
+            {uris.map((uri, i) => (
+              <Image
+                key={`${i}-${uri}`}
+                source={{ uri }}
                 style={{ width, height: contentHeight }}
-              >
-                <Image
-                  source={{
-                    uri: kind === "map" ? mapImageUrl! : stockImageUrl,
-                  }}
-                  style={{ width, height: contentHeight }}
-                  contentFit="cover"
-                  contentPosition="center"
-                  transition={150}
-                  accessibilityIgnoresInvertColors
-                />
-              </Pressable>
+                contentFit="cover"
+                contentPosition="center"
+                transition={150}
+                accessibilityIgnoresInvertColors
+              />
             ))}
           </ScrollView>
 
-          {pages.length > 1 ? (
+          {uris.length > 1 ? (
             <View style={styles.dots}>
-              {pages.map((kind, i) => (
+              {uris.map((uri, i) => (
                 <View
-                  key={kind}
+                  key={`${i}-${uri}`}
                   style={{
                     width: 6,
                     height: 6,

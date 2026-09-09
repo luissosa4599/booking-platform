@@ -85,6 +85,25 @@ const config: ExpoConfig = {
           "Tempo usa la cámara solo para leer el QR de las reservaciones. Nada se guarda.",
       },
     ],
+    // Foreground ("cuando la app está en uso") location — orders Explore by
+    // proximity and centres the owner map picker. Only the plugin permission
+    // string is build-time; the request itself works in Expo Go and on web.
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Tempo usa tu ubicación para ordenar los espacios por cercanía.",
+      },
+    ],
+    // Photo library access for the host to add photos of their space. Build-only
+    // permission string; library picking works in Expo Go and on web.
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Tempo accede a tus fotos para que publiques imágenes de tu espacio.",
+      },
+    ],
   ],
   experiments: {
     reactCompiler: false,

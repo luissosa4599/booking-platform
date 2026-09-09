@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { Screen } from "@/components/Screen";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
+import { useIsOffline } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -19,6 +20,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const offline = useIsOffline();
 
   const emailValid = EMAIL_RE.test(email.trim());
 
@@ -46,18 +48,16 @@ export default function SignInScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-title-lg text-label-1">
-            Aparta tu lugar{"\n"}en la biblioteca.
-          </Text>
+          <Text className="text-title-lg text-label-1">Aparta tu lugar.</Text>
           <Text className="text-body text-label-3">
-            Salas, cabinas y escritorios. Un tap y es tuyo por 90 minutos.
+            Salas, cabinas y escritorios. Un tap y es tuyo.
           </Text>
         </View>
 
         <View className="gap-3">
           {googleReady ? (
             <GoogleSignInButton
-              busy={busy}
+              busy={busy || offline}
               emphasis="primary"
               onBusyChange={setBusy}
               onError={setError}
@@ -85,7 +85,7 @@ export default function SignInScreen() {
               />
               <Button
                 variant={googleReady ? "gray" : "filled"}
-                disabled={!emailValid || busy}
+                disabled={!emailValid || busy || offline}
                 loading={busy}
                 onPress={() => continueWithDevLink(email.trim())}
               >
@@ -95,7 +95,7 @@ export default function SignInScreen() {
           ) : null}
 
           <Text className="text-footnote text-center text-label-4">
-            Sin contraseñas.
+            {offline ? "Necesitas conexión para entrar." : "Sin contraseñas."}
           </Text>
           {error ? (
             <Text className="text-footnote text-center text-state-error">

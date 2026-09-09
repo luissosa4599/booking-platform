@@ -54,6 +54,16 @@ services:
       # integration. Empty -> /calendar/* return 503.
       GOOGLE_WEB_CLIENT_ID: ""
       GOOGLE_CLIENT_SECRET: ""
+      # Optional: server-side Google key with the Geocoding API enabled, for the
+      # owner map picker's reverse-geocoding proxy. Empty -> manual address only.
+      GOOGLE_MAPS_SERVER_KEY: ""
+      # Optional: GCS bucket + a signer for space-photo uploads. Empty -> the
+      # photo endpoints return 503. GCS_SIGNER_SERVICE_ACCOUNT (keyless, signs
+      # via the IAM Credentials API) is preferred; GCS_CREDENTIALS_JSON is the
+      # downloaded-key fallback.
+      GCS_BUCKET: ""
+      GCS_SIGNER_SERVICE_ACCOUNT: ""
+      GCS_CREDENTIALS_JSON: ""
 
   worker:
     build:

@@ -1,14 +1,22 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 import { Group } from "@/components/Group";
+import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
+import { PhotoManager } from "@/components/PhotoManager";
 import { Screen } from "@/components/Screen";
 import { Stepper } from "@/components/Stepper";
 import { useOwnerSpace, useUpdateSpace } from "@/lib/api/owner";
+import { useIsOffline } from "@/lib/net";
+import { stockImageUrl } from "@/lib/stockImages";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
+
+const HERO_HEIGHT = 168;
 
 export default function EditSpaceScreen() {
   const router = useRouter();
@@ -19,7 +27,7 @@ export default function EditSpaceScreen() {
   const updateSpace = useUpdateSpace(id ?? "");
 
   const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
+  const [location, setLocation] = useState<LocationValue | null>(null);
   const [capacity, setCapacity] = useState(1);
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,13 +37,18 @@ export default function EditSpaceScreen() {
   const [hydrated, setHydrated] = useState(false);
   if (space && !hydrated) {
     setName(space.name);
-    setAddress(space.locationAddress ?? "");
     setCapacity(space.capacity);
     setDescription(space.description ?? "");
+    setLocation({
+      lat: space.locationLatitude,
+      lng: space.locationLongitude,
+      address: space.locationAddress ?? null,
+    });
     setHydrated(true);
   }
 
-  const canSubmit = name.trim().length >= 3;
+  const offline = useIsOffline();
+  const canSubmit = name.trim().length >= 3 && !offline;
 
   async function submit() {
     if (!canSubmit) return;
@@ -45,7 +58,9 @@ export default function EditSpaceScreen() {
         name: name.trim(),
         description: description.trim() || null,
         capacity,
-        address: address.trim() || null,
+        address: location?.address ?? null,
+        locationLatitude: location?.lat ?? null,
+        locationLongitude: location?.lng ?? null,
       });
       router.back();
     } catch {
@@ -70,6 +85,24 @@ export default function EditSpaceScreen() {
         className="flex-1"
       >
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 16 }}>
+          <View
+            style={{ height: HERO_HEIGHT }}
+            className="overflow-hidden rounded-group"
+          >
+            <PhotoCarousel
+              photos={space?.images.map((i) => i.url) ?? []}
+              contentHeight={HERO_HEIGHT}
+              fallbackUrl={stockImageUrl(space?.resourceTypeName, {
+                width: 800,
+                height: HERO_HEIGHT,
+              })}
+            />
+          </View>
+
+          {space ? (
+            <PhotoManager spaceId={space.id} images={space.images} />
+          ) : null}
+
           <Field label="NOMBRE">
             <Group>
               <TextInput
@@ -81,17 +114,11 @@ export default function EditSpaceScreen() {
             </Group>
           </Field>
 
-          <Field label="DIRECCIÓN">
-            <Group>
-              <TextInput
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Dirección (opcional)"
-                placeholderTextColor={placeholderColor}
-                className="px-4 py-[15px] text-body text-label-1"
-              />
-            </Group>
-          </Field>
+          <LocationPicker
+            label="UBICACIÓN"
+            value={location}
+            onChange={setLocation}
+          />
 
           {space?.allowsMultipleSeats ? (
             <Field label="CAPACIDAD">
@@ -134,14 +161,5 @@ export default function EditSpaceScreen() {
         </View>
       </KeyboardAvoidingView>
     </Screen>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <View className="gap-2">
-      <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">{label}</Text>
-      {children}
-    </View>
   );
 }

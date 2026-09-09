@@ -198,6 +198,91 @@ public class OwnerEndpointsTests(ApiTestFixture fixture)
         Assert.Equal(firstDetail!.UpcomingSlots.Length, secondDetail!.UpcomingSlots.Length);
     }
 
+    [Fact]
+    public async Task PostAndPatchSpace_RoundTripsCoordinates()
+    {
+        var typeId = await TypeIdAsync();
+        var host = fixture.CreateAuthenticatedClient("coord-host", role: AccountRole.Host);
+
+        var createBody = new
+        {
+            name = "Sala Mapa",
+            capacity = 4,
+            resourceTypeId = typeId,
+            locationName = "Edificio Mapa",
+            address = "Calle 1",
+            timeZone = "America/Mexico_City",
+            locationLatitude = 19.4326,
+            locationLongitude = -99.1332,
+        };
+        var created = await host.PostAsJsonAsync("/owner/spaces", createBody);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var detail = await created.Content.ReadFromJsonAsync<SpaceDetail>();
+        Assert.Equal(19.4326, detail!.LocationLatitude);
+        Assert.Equal(-99.1332, detail.LocationLongitude);
+
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+            var loc = await db.Resources.Include(r => r.Location).Where(r => r.Id == detail.Id)
+                .Select(r => r.Location).FirstAsync();
+            Assert.Equal(19.4326, loc.Latitude);
+            Assert.Equal(-99.1332, loc.Longitude);
+        }
+
+        var patched = await host.PatchAsJsonAsync($"/owner/spaces/{detail.Id}", new
+        {
+            name = "Sala Mapa",
+            capacity = 4,
+            address = "Calle 2",
+            locationLatitude = 20.0,
+            locationLongitude = -100.0,
+        });
+        Assert.Equal(HttpStatusCode.OK, patched.StatusCode);
+        var after = await patched.Content.ReadFromJsonAsync<SpaceDetail>();
+        Assert.Equal(20.0, after!.LocationLatitude);
+        Assert.Equal(-100.0, after.LocationLongitude);
+    }
+
+    [Fact]
+    public async Task PostSpace_WithOnlyLatitude_Is400()
+    {
+        var typeId = await TypeIdAsync();
+        var host = fixture.CreateAuthenticatedClient("coord-host-2", role: AccountRole.Host);
+
+        var response = await host.PostAsJsonAsync("/owner/spaces", new
+        {
+            name = "Sala Incompleta",
+            capacity = 4,
+            resourceTypeId = typeId,
+            locationName = "Edificio",
+            timeZone = "America/Mexico_City",
+            locationLatitude = 19.4,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSpace_WithOutOfRangeLatitude_Is400()
+    {
+        var typeId = await TypeIdAsync();
+        var host = fixture.CreateAuthenticatedClient("coord-host-3", role: AccountRole.Host);
+
+        var response = await host.PostAsJsonAsync("/owner/spaces", new
+        {
+            name = "Sala Polar",
+            capacity = 4,
+            resourceTypeId = typeId,
+            locationName = "Edificio",
+            timeZone = "America/Mexico_City",
+            locationLatitude = 120.0,
+            locationLongitude = 10.0,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static object[] AllWeek(string open, string close) =>
         Enum.GetValues<DayOfWeek>()
             .Select(d => (object)new
@@ -211,7 +296,9 @@ public class OwnerEndpointsTests(ApiTestFixture fixture)
 
     private record SpaceSummary(Guid Id, string Name);
     private record Slot(Guid Id, DateTimeOffset StartsAt);
-    private record SpaceDetail(Guid Id, string Name, int Capacity, Slot[] UpcomingSlots);
+    private record SpaceDetail(
+        Guid Id, string Name, int Capacity, Slot[] UpcomingSlots,
+        double? LocationLatitude = null, double? LocationLongitude = null);
     private record AvailabilityBody(Slot[] Slots);
     private record ResourceDetailBody(Slot[] UpcomingSlots);
 }

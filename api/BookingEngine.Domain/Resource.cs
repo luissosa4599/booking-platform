@@ -25,4 +25,7 @@ public class Resource
     public WeeklySchedule? WeeklySchedule { get; set; }
 
     public ICollection<AvailabilitySlot> AvailabilitySlots { get; set; } = new List<AvailabilitySlot>();
+
+    /// <summary>Host-uploaded photos, ordered by <see cref="ResourceImage.Position"/>.</summary>
+    public ICollection<ResourceImage> Images { get; set; } = new List<ResourceImage>();
 }

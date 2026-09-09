@@ -18,6 +18,10 @@ obj/
 .env
 .env.*
 !.env.example
+.secrets/
+*-key.json
+*-credentials.json
+gcs-*.json
 
 # --- Local-only notes ---
 docs/session-log.md

@@ -4,10 +4,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { Sheet } from "@/components/Sheet";
 import { SlotSheet, type NewSlotInput } from "@/components/SlotSheet";
+import { StaticMapCard } from "@/components/StaticMapCard";
 import {
   useAddSlot,
   useBlockSlot,
@@ -16,8 +18,12 @@ import {
 } from "@/lib/api/owner";
 import type { OwnerSlot, WeeklySchedule } from "@/lib/api/types";
 import { ArrowLeft } from "@/lib/icons";
+import { useIsOffline } from "@/lib/net";
+import { stockImageUrl } from "@/lib/stockImages";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
+
+const HERO_HEIGHT = 200;
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ES: Record<string, string> = {
@@ -35,6 +41,7 @@ export default function HostSpaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id ?? "";
   const userId = useUserId();
+  const offline = useIsOffline();
   const backColor = useColor("label-1");
   const { data: space, isLoading } = useOwnerSpace(spaceId, userId);
 
@@ -46,6 +53,7 @@ export default function HostSpaceScreen() {
   const [blockConfirm, setBlockConfirm] = useState<{ slotId: string; bookings: number } | null>(null);
 
   function tryBlock(slotId: string) {
+    if (offline) return;
     blockSlot.mutate(
       { slotId },
       {
@@ -63,20 +71,31 @@ export default function HostSpaceScreen() {
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="flex-row items-center justify-between px-4 pt-2">
+        <View style={{ height: HERO_HEIGHT }}>
+          <PhotoCarousel
+            photos={space?.images.map((i) => i.url) ?? []}
+            contentHeight={HERO_HEIGHT}
+            fallbackUrl={stockImageUrl(space?.resourceTypeName, {
+              width: 800,
+              height: HERO_HEIGHT,
+            })}
+          />
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Volver"
-            className="h-9 w-9 items-center justify-center rounded-full bg-fill"
+            style={{ position: "absolute", top: 12, left: 16 }}
+            className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
           >
             <ArrowLeft size={18} color={backColor} />
           </Pressable>
           <Pressable
             onPress={() => router.push(`/(owner)/space/${spaceId}/edit`)}
             accessibilityRole="button"
+            style={{ position: "absolute", top: 14, right: 16 }}
+            className="rounded-full bg-card/90 px-3 py-1.5"
           >
-            <Text className="text-body text-tint">Editar espacio</Text>
+            <Text className="text-subhead text-tint">Editar</Text>
           </Pressable>
         </View>
 
@@ -127,15 +146,32 @@ export default function HostSpaceScreen() {
                       (unblockSlot.isPending && unblockSlot.variables === slot.id)
                     }
                     onBlock={() => tryBlock(slot.id)}
-                    onUnblock={() => unblockSlot.mutate(slot.id)}
+                    onUnblock={() => {
+                      if (!offline) unblockSlot.mutate(slot.id);
+                    }}
                   />
                 ))}
                 <Row
                   title="Agregar horario puntual"
                   trailing="chevron"
-                  onPress={() => setAddOpen(true)}
+                  disabled={offline}
+                  onPress={offline ? undefined : () => setAddOpen(true)}
                 />
               </Group>
+            </View>
+
+            <View className="gap-2">
+              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+                Ubicación
+              </Text>
+              <StaticMapCard
+                coords={
+                  space.locationLatitude != null && space.locationLongitude != null
+                    ? { lat: space.locationLatitude, lng: space.locationLongitude }
+                    : null
+                }
+                address={space.locationAddress}
+              />
             </View>
 
             <View className="pt-2">

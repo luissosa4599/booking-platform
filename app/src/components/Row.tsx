@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Button, Spinner, type ButtonPillTone } from "@/components/Button";
+import { HeartButton } from "@/components/HeartButton";
 import { cn } from "@/lib/cn";
 import { Check, ChevronRight } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
@@ -36,6 +37,9 @@ interface RowProps {
   selected?: boolean;
   disabled?: boolean;
   onPress?: () => void;
+  /** When set, a heart toggle renders just before the trailing content. */
+  favorite?: boolean;
+  onFavoriteToggle?: () => void;
   /** Falls back to a label built from title/subtitle/meta/trailingText when
    * not given — pass this whenever that fallback wouldn't read naturally. */
   accessibilityLabel?: string;
@@ -68,6 +72,8 @@ export function Row({
   selected = false,
   disabled = false,
   onPress,
+  favorite = false,
+  onFavoriteToggle,
   accessibilityLabel,
   actionAccessibilityLabel,
 }: RowProps) {
@@ -166,6 +172,14 @@ export function Row({
         ) : null}
       </View>
 
+      {onFavoriteToggle ? (
+        <HeartButton
+          variant="inline"
+          active={favorite}
+          onToggle={onFavoriteToggle}
+        />
+      ) : null}
+
       <RowTrailingContent
         trailing={effectiveTrailing}
         trailingText={trailingText}
@@ -186,13 +200,13 @@ export function Row({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       // react-native-web renders accessibilityRole="button" as a literal
-      // <button>. Rows with a nested "action" pill already render their own
-      // <button> (via Button) — explicitly roling the outer row too would
+      // <button>. Rows with a nested "action" pill or a favorite heart already
+      // render their own <button> — explicitly roling the outer row too would
       // nest a <button> inside a <button>, which is invalid HTML and threw a
       // hydration error (confirmed via Playwright). Leaving the role unset
       // here still leaves the row focusable/tappable, just without the
       // (invalid, in this one case) explicit button semantics.
-      accessibilityRole={onActionPress ? undefined : "button"}
+      accessibilityRole={onActionPress || onFavoriteToggle ? undefined : "button"}
       accessibilityLabel={accessibilityLabel ?? fallbackLabel}
       accessibilityState={{ disabled, selected }}
     >
