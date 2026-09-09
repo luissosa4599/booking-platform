@@ -3,6 +3,7 @@ using System;
 using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BookingEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(BookingEngineDbContext))]
-    partial class BookingEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909175032_AddGoogleCalendarToken")]
+    partial class AddGoogleCalendarToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -120,33 +123,6 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
-                });
-
-            modelBuilder.Entity("BookingEngine.Domain.FavoriteResource", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ResourceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResourceId");
-
-                    b.HasIndex("UserId", "ResourceId")
-                        .IsUnique();
-
-                    b.ToTable("Favorites");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.Location", b =>
@@ -324,33 +300,6 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("ResourceTypeId");
 
                     b.ToTable("Resources");
-                });
-
-            modelBuilder.Entity("BookingEngine.Domain.ResourceImage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ResourceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(600)
-                        .HasColumnType("character varying(600)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResourceId", "Position");
-
-                    b.ToTable("ResourceImages");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.ResourceType", b =>
@@ -566,17 +515,6 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.Navigation("AvailabilitySlot");
                 });
 
-            modelBuilder.Entity("BookingEngine.Domain.FavoriteResource", b =>
-                {
-                    b.HasOne("BookingEngine.Domain.Resource", "Resource")
-                        .WithMany()
-                        .HasForeignKey("ResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Resource");
-                });
-
             modelBuilder.Entity("BookingEngine.Domain.RefreshToken", b =>
                 {
                     b.HasOne("BookingEngine.Domain.User", "User")
@@ -605,17 +543,6 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.Navigation("Location");
 
                     b.Navigation("ResourceType");
-                });
-
-            modelBuilder.Entity("BookingEngine.Domain.ResourceImage", b =>
-                {
-                    b.HasOne("BookingEngine.Domain.Resource", "Resource")
-                        .WithMany("Images")
-                        .HasForeignKey("ResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Resource");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.ResourceType", b =>
@@ -705,8 +632,6 @@ namespace BookingEngine.Infrastructure.Migrations
             modelBuilder.Entity("BookingEngine.Domain.Resource", b =>
                 {
                     b.Navigation("AvailabilitySlots");
-
-                    b.Navigation("Images");
 
                     b.Navigation("WeeklySchedule");
                 });

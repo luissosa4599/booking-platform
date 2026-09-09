@@ -4,6 +4,7 @@ using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
+using BookingEngine.Api.Infrastructure.Calendar;
 using BookingEngine.Api.Infrastructure.Geocoding;
 using BookingEngine.Api.Infrastructure.Seed;
 using BookingEngine.Api.Infrastructure.Storage;
@@ -49,11 +50,17 @@ try
         Secret = builder.Configuration["AUTH_TOKEN_SECRET"] ?? AuthOptions.DevSecret,
         GoogleClientIds = (builder.Configuration["GOOGLE_CLIENT_ID"] ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+        GoogleWebClientId = builder.Configuration["GOOGLE_WEB_CLIENT_ID"] ?? string.Empty,
+        GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"] ?? string.Empty,
     };
     builder.Services.AddSingleton(authOptions);
     builder.Services.AddSingleton<SessionTokens>();
     builder.Services.AddSingleton<SessionIssuer>();
+    builder.Services.AddSingleton<CalendarTokenCipher>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+
+    // Google Calendar (the calendar.events OAuth2 flow — separate from sign-in).
+    builder.Services.AddHttpClient<GoogleCalendarClient>();
 
     // Server-side reverse-geocoding proxy for the owner map picker (see
     // GeocodingClient — the Geocoding web-service key can't be referrer-locked).
@@ -61,7 +68,7 @@ try
         c.BaseAddress = new Uri("https://maps.googleapis.com"));
 
     // Space-photo uploads: issues GCS V4 signed PUT URLs. A no-op (endpoints
-    // 503) until GCS_BUCKET + GCS_CREDENTIALS_JSON are configured.
+    // 503) until GCS_BUCKET + a signer are configured.
     builder.Services.AddSingleton<IImageStorage, GcsImageStorage>();
 
     builder.Services
@@ -160,6 +167,7 @@ try
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
+    app.MapCalendarEndpoints();
     app.MapFavoritesEndpoints();
     app.MapGeocodeEndpoints();
     app.MapOwnerEndpoints();

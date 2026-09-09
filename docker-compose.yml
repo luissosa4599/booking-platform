@@ -50,6 +50,10 @@ services:
       # a real deployment. Google sign-in needs GOOGLE_CLIENT_ID set to your
       # own OAuth client id(s) if you want to test that flow against compose.
       AUTH_TOKEN_SECRET: dev-compose-secret-change-me
+      # Optional: the web OAuth client id + secret for the Google Calendar
+      # integration. Empty -> /calendar/* return 503.
+      GOOGLE_WEB_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
       # Optional: server-side Google key with the Geocoding API enabled, for the
       # owner map picker's reverse-geocoding proxy. Empty -> manual address only.
       GOOGLE_MAPS_SERVER_KEY: ""
