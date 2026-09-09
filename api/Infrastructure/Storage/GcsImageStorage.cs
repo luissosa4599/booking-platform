@@ -13,8 +13,10 @@ public interface IImageStorage
 /// <summary>
 /// Issues V4 signed PUT URLs so the app uploads space photos straight to a GCS
 /// bucket (the API never touches the bytes). Objects are public-read with
-/// unguessable GUID names. Disabled — every call is a no-op / 503 — when
-/// <c>GCS_BUCKET</c> + <c>GCS_CREDENTIALS_JSON</c> aren't both configured.
+/// unguessable GUID names. Disabled — every call is a no-op / 503 — unless
+/// <c>GCS_BUCKET</c> plus a service-account credential is configured, either as
+/// <c>GCS_CREDENTIALS_PATH</c> (a path to the downloaded key JSON — easiest) or
+/// <c>GCS_CREDENTIALS_JSON</c> (the JSON inline, must be one line).
 /// </summary>
 public class GcsImageStorage : IImageStorage
 {
@@ -26,7 +28,15 @@ public class GcsImageStorage : IImageStorage
     public GcsImageStorage(IConfiguration config, ILogger<GcsImageStorage> logger)
     {
         _bucket = config["GCS_BUCKET"];
+
+        var credentialsPath = config["GCS_CREDENTIALS_PATH"];
         var credentialsJson = config["GCS_CREDENTIALS_JSON"];
+        if (string.IsNullOrWhiteSpace(credentialsJson)
+            && !string.IsNullOrWhiteSpace(credentialsPath)
+            && File.Exists(credentialsPath))
+        {
+            credentialsJson = File.ReadAllText(credentialsPath);
+        }
 
         if (string.IsNullOrWhiteSpace(_bucket) || string.IsNullOrWhiteSpace(credentialsJson))
         {
