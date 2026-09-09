@@ -5,6 +5,7 @@ import type {
   CreateSpaceInput,
   OwnerSpaceDetail,
   OwnerSpaceSummary,
+  ResourceImage,
   SetScheduleInput,
   UpdateSpaceInput,
 } from "./types";
@@ -104,6 +105,58 @@ export function useUnblockSlot(id: string) {
   return useMutation({
     mutationFn: (slotId: string) =>
       apiFetch<void>(`/owner/spaces/${id}/slots/${slotId}/unblock`, { method: "POST" }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+// --- Photos (PR3b) --------------------------------------------------------
+
+interface UploadUrlResponse {
+  uploadUrl: string;
+  publicUrl: string;
+}
+
+export function useCreateImageUploadUrl(id: string) {
+  return useMutation({
+    mutationFn: (contentType: string) =>
+      apiFetch<UploadUrlResponse>(`/owner/spaces/${id}/images/upload-url`, {
+        method: "POST",
+        body: { contentType },
+      }),
+  });
+}
+
+export function useAddSpaceImage(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (url: string) =>
+      apiFetch<ResourceImage[]>(`/owner/spaces/${id}/images`, {
+        method: "POST",
+        body: { url },
+      }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useDeleteSpaceImage(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (imageId: string) =>
+      apiFetch<ResourceImage[]>(`/owner/spaces/${id}/images/${imageId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useReorderSpaceImages(id: string) {
+  const invalidate = useOwnerInvalidation();
+  return useMutation({
+    mutationFn: (imageIds: string[]) =>
+      apiFetch<ResourceImage[]>(`/owner/spaces/${id}/images/order`, {
+        method: "PUT",
+        body: { imageIds },
+      }),
     onSuccess: () => invalidate(id),
   });
 }

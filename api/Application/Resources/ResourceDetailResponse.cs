@@ -16,4 +16,5 @@ public record ResourceDetailResponse(
     string Name,
     int Capacity,
     string? Description,
+    IReadOnlyList<string> Photos,
     IReadOnlyList<AvailabilitySlotResponse> UpcomingSlots);

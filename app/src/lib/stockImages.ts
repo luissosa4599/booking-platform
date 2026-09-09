@@ -1,9 +1,18 @@
 // Free-to-use Unsplash photos (Unsplash License — no attribution required, no
-// API key). Generic library / study-space interiors, keyed loosely by the
-// resource type's internal name so a "Sala de estudio" and an "Espacio
-// individual" don't show the same picture. These are NOT photos of the real
-// place — they're stand-ins for the hero until real photography exists.
+// API key). Keyed loosely by the resource type's internal name so an "Auditorio"
+// and a "Cubiculo de estudio" don't show the same picture. These are NOT photos
+// of the real place — they're stand-ins for the hero until real photography
+// exists. The dev seeder (api/Infrastructure/Seed/DevSeeder.cs) attaches its own
+// per-type photo pools directly as ResourceImage rows; this fallback only shows
+// for a host-published space that has no photos yet.
 const BY_TYPE: Record<string, string> = {
+  Auditorio: "https://images.unsplash.com/photo-1519452575417-564c1401ecc0",
+  Salon: "https://images.unsplash.com/photo-1580582932707-520aed937b7b",
+  "Sala de lectura":
+    "https://images.unsplash.com/photo-1568667256549-094345857637",
+  "Cubiculo de estudio":
+    "https://images.unsplash.com/photo-1434030216411-0b793f4b4173",
+  // Legacy type names (pre-2026-09-09 seeder) — harmless to keep as aliases.
   "Sala de estudio":
     "https://images.unsplash.com/photo-1521587760476-6c12a4b040da",
   "Espacio individual":

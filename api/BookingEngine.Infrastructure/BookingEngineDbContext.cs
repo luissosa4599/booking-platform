@@ -36,6 +36,10 @@ public class BookingEngineDbContext : DbContext
 
     public DbSet<SentNotification> SentNotifications => Set<SentNotification>();
 
+    public DbSet<FavoriteResource> Favorites => Set<FavoriteResource>();
+
+    public DbSet<ResourceImage> ResourceImages => Set<ResourceImage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(BookingEngineDbContext).Assembly);

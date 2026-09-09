@@ -14,6 +14,7 @@ import { Toggle } from "@/components/Toggle";
 import { useOwnerSpace, useSetSchedule } from "@/lib/api/owner";
 import type { WeeklyScheduleDay } from "@/lib/api/types";
 import { ArrowLeft } from "@/lib/icons";
+import { useIsOffline } from "@/lib/net";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
 
@@ -45,6 +46,7 @@ export default function WeeklyScheduleScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const userId = useUserId();
+  const offline = useIsOffline();
   const backColor = useColor("label-1");
   const { data: space } = useOwnerSpace(id ?? "", userId);
   const setSchedule = useSetSchedule(id ?? "");
@@ -203,8 +205,13 @@ export default function WeeklyScheduleScreen() {
         <Text className="text-center text-footnote text-label-4">
           Se generan ~{estimatedSlots} horarios para los próximos {HORIZON_DAYS} días.
         </Text>
-        <Button variant="filled" loading={setSchedule.isPending} onPress={save}>
-          Guardar horario
+        <Button
+          variant="filled"
+          disabled={offline}
+          loading={setSchedule.isPending}
+          onPress={save}
+        >
+          {offline ? "Sin conexión" : "Guardar horario"}
         </Button>
       </View>
 

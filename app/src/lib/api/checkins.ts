@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { drainCheckinQueue, enqueueCheckin } from "@/lib/checkinQueue";
+import { onReconnect } from "@/lib/net";
 import { ApiError, apiFetch } from "./client";
 import type { CheckinResult } from "./types";
 
@@ -22,6 +23,9 @@ export function useSubmitCheckin() {
   const queryClient = useQueryClient();
 
   return useMutation<CheckinResult, Error, CheckinInput>({
+    // Always run the mutationFn even offline — its own catch enqueues the code
+    // (lib/checkinQueue) and returns a "queued" result. Never let it pause.
+    networkMode: "always",
     mutationFn: async (input) => {
       try {
         return await postCheckin(input);
@@ -47,7 +51,7 @@ export function useSubmitCheckin() {
   });
 }
 
-/** Drains the offline queue on mount, on app foreground, and on demand. */
+/** Drains the offline queue on mount, on app foreground, and on reconnect. */
 export function useCheckinQueueDrain() {
   const queryClient = useQueryClient();
 
@@ -70,6 +74,10 @@ export function useCheckinQueueDrain() {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") void run();
     });
-    return () => sub.remove();
+    const unsubscribeReconnect = onReconnect(() => void run());
+    return () => {
+      sub.remove();
+      unsubscribeReconnect();
+    };
   }, [queryClient]);
 }

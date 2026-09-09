@@ -28,6 +28,11 @@ export interface AvailabilitySlot {
   endsAt: string;
   capacityRemaining: number;
   rowVersion: number;
+  /** Straight-line metres from the device — only when sort=nearest. */
+  distanceMeters?: number | null;
+  /** The resource's location, so the client can recompute distance live. */
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface Booking {
@@ -69,6 +74,8 @@ export interface ResourceDetail {
   name: string;
   capacity: number;
   description: string | null;
+  /** Ordered host-uploaded photo URLs (empty until PR3b lands uploads). */
+  photos?: string[];
   upcomingSlots: AvailabilitySlot[];
 }
 
@@ -199,7 +206,11 @@ export interface OwnerSpaceDetail {
   locationId: string;
   locationName: string;
   locationAddress: string | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   timeZone: string;
+  /** Ordered host-uploaded photos (with ids, for reorder/delete). */
+  images: ResourceImage[];
   schedule: WeeklySchedule | null;
   upcomingSlots: OwnerSlot[];
 }
@@ -212,6 +223,8 @@ export interface CreateSpaceInput {
   locationName: string;
   address?: string | null;
   timeZone: string;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface UpdateSpaceInput {
@@ -219,12 +232,21 @@ export interface UpdateSpaceInput {
   description?: string | null;
   capacity: number;
   address?: string | null;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
 }
 
 export interface SetScheduleInput {
   slotDurationMinutes: number;
   capacity: number;
   days: WeeklyScheduleDay[];
+}
+
+/** One row of GET/POST/DELETE/PUT /owner/spaces/{id}/images. */
+export interface ResourceImage {
+  id: string;
+  url: string;
+  position: number;
 }
 
 /** GET /me — the signed-in account plus the two counters the profile shows. */

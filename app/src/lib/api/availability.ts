@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { AvailabilityResponse, AvailabilitySlot } from "./types";
 
+export type AvailabilitySort = "soonest" | "nearest" | "name" | "capacity";
+
 interface AvailabilityFilters {
   /** null = "Cualquiera" — no type filter. */
   resourceTypeId: string | null;
@@ -12,9 +14,23 @@ interface AvailabilityFilters {
   q?: string;
   /** Minimum resource capacity (party-size filter). */
   minCapacity?: number;
+  /** Ordering — "soonest" (default) keeps the historical behaviour. */
+  sort?: AvailabilitySort;
+  /** Device coordinates — only sent when sort is "nearest". */
+  lat?: number;
+  lng?: number;
 }
 
-function buildParams({ resourceTypeId, from, to, q, minCapacity }: AvailabilityFilters) {
+function buildParams({
+  resourceTypeId,
+  from,
+  to,
+  q,
+  minCapacity,
+  sort,
+  lat,
+  lng,
+}: AvailabilityFilters) {
   const params = new URLSearchParams({
     from: from.toISOString(),
     to: to.toISOString(),
@@ -28,6 +44,13 @@ function buildParams({ resourceTypeId, from, to, q, minCapacity }: AvailabilityF
   if (minCapacity && minCapacity > 0) {
     params.set("minCapacity", String(minCapacity));
   }
+  if (sort && sort !== "soonest") {
+    params.set("sort", sort);
+  }
+  if (sort === "nearest" && lat != null && lng != null) {
+    params.set("lat", String(lat));
+    params.set("lng", String(lng));
+  }
   return params;
 }
 
@@ -38,7 +61,9 @@ function buildParams({ resourceTypeId, from, to, q, minCapacity }: AvailabilityF
  * `slots` as a convenience for the common case.
  */
 export function useAvailability(filters: AvailabilityFilters) {
-  const { resourceTypeId, from, to, q, minCapacity } = filters;
+  const { resourceTypeId, from, to, q, minCapacity, sort, lat, lng } = filters;
+  const effectiveSort = sort ?? "soonest";
+  const nearest = effectiveSort === "nearest" && lat != null && lng != null;
 
   const query = useQuery({
     queryKey: [
@@ -48,6 +73,9 @@ export function useAvailability(filters: AvailabilityFilters) {
       to.toISOString(),
       q?.trim() || null,
       minCapacity ?? null,
+      effectiveSort,
+      nearest ? lat : null,
+      nearest ? lng : null,
     ],
     queryFn: () =>
       apiFetch<AvailabilityResponse>(`/availability?${buildParams(filters).toString()}`),

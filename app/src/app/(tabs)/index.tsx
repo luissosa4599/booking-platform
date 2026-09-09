@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -16,13 +17,21 @@ import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
-import { useAvailability } from "@/lib/api/availability";
+import { SortControl } from "@/components/SortControl";
+import { StaleStamp } from "@/components/StaleStamp";
+import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
+import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot } from "@/lib/api/types";
+import { cn } from "@/lib/cn";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
-import { CalendarX, Search } from "@/lib/icons";
+import { CalendarX, Heart, Search } from "@/lib/icons";
+import { requestAndGetPosition } from "@/lib/location";
+import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
+import { formatDistance, type Coords } from "@/lib/maps";
+import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
@@ -59,6 +68,17 @@ export default function ExploreScreen() {
     string | null
   >(null);
   const [searchInput, setSearchInput] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sort, setSort] = useState<AvailabilitySort>("soonest");
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [locating, setLocating] = useState(false);
+  // Live device position (updates as you move) drives the per-row distance
+  // label; `sortAnchor` (a lagging copy) keys the server sort so the list order
+  // doesn't churn while you walk.
+  const livePos = useLocationStore((s) => s.position);
+  const sortAnchor = useLocationStore((s) => s.sortAnchor);
+  const ensureWatching = useLocationStore((s) => s.ensureWatching);
+  const stopWatching = useLocationStore((s) => s.stop);
   // Set from the empty state's primary action ("Ver disponibilidad") — extends
   // the query window past today so `emptyContext.nextAvailableAt` actually
   // shows up in the list.
@@ -80,14 +100,25 @@ export default function ExploreScreen() {
   const endOfToday = useMemo(() => endOfDay(now), [now]);
   const to = horizon ?? endOfToday;
 
+  // The one-shot fix or, once a watch is running, the lagging sort anchor.
+  const queryCoords = sortAnchor ?? coords;
   const resourceTypesQuery = useResourceTypes();
   const availabilityQuery = useAvailability({
     resourceTypeId: selectedResourceTypeId,
     from: now,
     to,
     q: debouncedSearch || undefined,
+    sort,
+    lat: queryCoords?.lat,
+    lng: queryCoords?.lng,
   });
   const createBooking = useCreateBooking();
+  const { ids: favoriteIds } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  const offline = useIsOffline();
+
+  const favoriteChipActiveColor = useColor("canvas");
+  const favoriteChipRestColor = useColor("label-2");
 
   useEffect(() => {
     if (createBooking.isConflict) {
@@ -104,14 +135,21 @@ export default function ExploreScreen() {
       { id: null, label: "Cualquiera" },
       ...(resourceTypesQuery.data ?? []).map((type) => ({
         id: type.id,
-        label: type.name,
+        // The user-facing plural, never the internal `name` (which is ASCII-only
+        // and not styled for display — e.g. "Salon" vs "salones").
+        label:
+          type.labels.plural.charAt(0).toUpperCase() +
+          type.labels.plural.slice(1),
       })),
     ],
     [resourceTypesQuery.data],
   );
 
   const availableSlots = availabilityQuery.slots.filter(
-    (slot) => slot.capacityRemaining > 0 && !dismissedSlotIds.has(slot.id),
+    (slot) =>
+      slot.capacityRemaining > 0 &&
+      !dismissedSlotIds.has(slot.id) &&
+      (!favoritesOnly || favoriteIds.has(slot.resourceId)),
   );
 
   // "Ahora mismo" includes slots already in progress AND slots starting
@@ -124,11 +162,18 @@ export default function ExploreScreen() {
   const nowGroup = availableSlots.filter(
     (slot) => new Date(slot.startsAt).getTime() <= nowGroupCutoffMs,
   );
-  const laterGroup = availableSlots
-    .filter((slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs)
-    .sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-    );
+  const laterGroupUnsorted = availableSlots.filter(
+    (slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs,
+  );
+  // The server already ordered the flat list for the chosen sort; only re-sort
+  // by time when we're on the default "soonest".
+  const laterGroup =
+    sort === "soonest"
+      ? [...laterGroupUnsorted].sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        )
+      : laterGroupUnsorted;
 
   const laterHeader = horizon ? "PRÓXIMAMENTE" : "MÁS TARDE HOY";
 
@@ -139,6 +184,10 @@ export default function ExploreScreen() {
     : null;
 
   function handleBook(slot: AvailabilitySlot) {
+    if (offline) {
+      useToastStore.getState().show("Necesitas conexión para apartar un lugar");
+      return;
+    }
     haptics.selection();
     setPendingSlotIds((prev) => withId(prev, slot.id));
 
@@ -171,6 +220,53 @@ export default function ExploreScreen() {
     );
   }
 
+  async function enableNearest() {
+    if (coords) {
+      setSort("nearest");
+      ensureWatching();
+      return;
+    }
+    setLocating(true);
+    const pos = await requestAndGetPosition();
+    setLocating(false);
+    if (pos) {
+      setCoords(pos);
+      setSort("nearest");
+      ensureWatching();
+    } else {
+      // Denied / unavailable — stay on the current sort, don't nag.
+      useToastStore
+        .getState()
+        .show("Activa la ubicación para ordenar por cercanía");
+    }
+  }
+
+  function handleSortChange(next: AvailabilitySort) {
+    if (next === "nearest") {
+      void enableNearest();
+    } else {
+      setSort(next);
+      stopWatching();
+    }
+  }
+
+  // Stop the watcher when leaving Explore.
+  useEffect(() => () => stopWatching(), [stopWatching]);
+
+  function handleToggleFavorite(slot: AvailabilitySlot) {
+    toggleFavorite.mutate({
+      resourceId: slot.resourceId,
+      next: !favoriteIds.has(slot.resourceId),
+      summary: {
+        resourceId: slot.resourceId,
+        name: slot.resourceName,
+        locationName: slot.locationName,
+        locationAddress: null,
+        resourceTypeId: slot.resourceTypeId,
+      },
+    });
+  }
+
   function handleOpenResource(slot: AvailabilitySlot) {
     router.push({
       pathname: "/resource/[id]",
@@ -195,8 +291,13 @@ export default function ExploreScreen() {
   // resolved by clearing it, not by jumping the calendar forward — so that
   // takes precedence over `nextAvailableAt` when the cause is `noResults`.
   const emptyReason = availabilityQuery.emptyContext?.reason;
+  // A "Favoritos"-filtered empty list is its own case — the fix is to drop the
+  // filter, not to widen the time window or clear the search.
+  const favoritesEmpty = favoritesOnly && isEmpty;
   let emptyPrimary: { label: string; onPress: () => void };
-  if (debouncedSearch && emptyReason === "noResults") {
+  if (favoritesEmpty) {
+    emptyPrimary = { label: "Ver todo", onPress: () => setFavoritesOnly(false) };
+  } else if (debouncedSearch && emptyReason === "noResults") {
     emptyPrimary = {
       label: "Ver todo",
       onPress: () => {
@@ -237,6 +338,15 @@ export default function ExploreScreen() {
         }
       : undefined;
 
+  // Distance label for a row — live (from the watched position) if we have one,
+  // else the server's fix. Null unless sorting by proximity.
+  function slotDistance(slot: AvailabilitySlot): string | null {
+    return formatDistance(
+      distanceToMeters(livePos, slot.locationLatitude, slot.locationLongitude) ??
+        slot.distanceMeters,
+    );
+  }
+
   return (
     <Screen bg="canvas">
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
@@ -246,7 +356,11 @@ export default function ExploreScreen() {
         <View className="flex-row items-end justify-between">
           <Text className="text-title-lg text-label-1">Ahora</Text>
           <Text className="text-subhead text-label-4">
-            {isRefreshing ? "Actualizando…" : formatHeaderDate(now)}
+            {locating
+              ? "Ubicando…"
+              : isRefreshing
+                ? "Actualizando…"
+                : formatHeaderDate(now)}
           </Text>
         </View>
 
@@ -269,6 +383,39 @@ export default function ExploreScreen() {
           onSelect={setSelectedResourceTypeId}
           removable={isEmpty && !!selectedResourceTypeId}
         />
+
+        <StaleStamp dataUpdatedAt={availabilityQuery.dataUpdatedAt} className="pl-1 text-footnote text-label-4" />
+
+        <View className="flex-row items-center justify-between">
+          <SortControl value={sort} onChange={handleSortChange} />
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              setFavoritesOnly((v) => !v);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Mostrar solo favoritos"
+            accessibilityState={{ selected: favoritesOnly }}
+            className={cn(
+              "h-[34px] flex-row items-center gap-1.5 rounded-full px-[14px]",
+              favoritesOnly ? "bg-label-1" : "bg-card",
+            )}
+          >
+            <Heart
+              size={13}
+              color={favoritesOnly ? favoriteChipActiveColor : favoriteChipRestColor}
+              fill={favoritesOnly ? favoriteChipActiveColor : "none"}
+            />
+            <Text
+              className={cn(
+                "text-subhead",
+                favoritesOnly ? "text-canvas" : "text-label-2",
+              )}
+            >
+              Favoritos
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -309,7 +456,11 @@ export default function ExploreScreen() {
                 >
                   <Row
                     title={slot.resourceName}
-                    subtitle={`${slot.locationName} · hasta ${formatTime(slot.endsAt)}`}
+                    subtitle={
+                      slotDistance(slot)
+                        ? `${slot.locationName} · a ${slotDistance(slot)}`
+                        : `${slot.locationName} · hasta ${formatTime(slot.endsAt)}`
+                    }
                     meta={
                       slot.capacityRemaining === 1
                         ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
@@ -324,6 +475,8 @@ export default function ExploreScreen() {
                     actionLoading={pendingSlotIds.has(slot.id)}
                     actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
                     onActionPress={() => handleBook(slot)}
+                    favorite={favoriteIds.has(slot.resourceId)}
+                    onFavoriteToggle={() => handleToggleFavorite(slot)}
                     onPress={() => handleOpenResource(slot)}
                     accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible hasta ${formatTime(slot.endsAt)}`}
                   />
@@ -338,9 +491,15 @@ export default function ExploreScreen() {
                 <Row
                   key={slot.id}
                   title={slot.resourceName}
-                  subtitle={slot.locationName}
+                  subtitle={
+                    slotDistance(slot)
+                      ? `${slot.locationName} · a ${slotDistance(slot)}`
+                      : slot.locationName
+                  }
                   trailing="chevron"
                   trailingText={formatTime(slot.startsAt)}
+                  favorite={favoriteIds.has(slot.resourceId)}
+                  onFavoriteToggle={() => handleToggleFavorite(slot)}
                   onPress={() => handleOpenResource(slot)}
                   accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible a las ${formatTime(slot.startsAt)}`}
                 />
@@ -356,10 +515,14 @@ export default function ExploreScreen() {
                 "noAvailability"
               }
               icon={<CalendarX size={26} />}
-              title={emptyCopy.title}
-              body={emptyCopy.body}
+              title={favoritesEmpty ? "Sin favoritos disponibles" : emptyCopy.title}
+              body={
+                favoritesEmpty
+                  ? "Ninguno de tus espacios favoritos tiene lugar ahora mismo."
+                  : emptyCopy.body
+              }
               primaryAction={emptyPrimary}
-              secondaryAction={emptySecondary}
+              secondaryAction={favoritesEmpty ? undefined : emptySecondary}
             />
           ) : null}
         </View>

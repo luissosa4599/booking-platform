@@ -6,10 +6,27 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- This project's directory (api/) is the PARENT of the other four projects.
+       Every SDK default item glob is rooted here ("**/*.cs", and — because this
+       is Sdk.Web — "**/*.json" as copy-to-output Content, plus "**/*" as None),
+       so without this they sweep up the nested projects' source AND their
+       bin/obj build outputs. The Content path is the nasty one: each build
+       copies the nested bin/obj trees into api/bin/, the Tests ProjectReference
+       copies that back out, and the next build re-globs it one level deeper —
+       paths grow ~4 segments per cycle until they blow past Windows' 260-char
+       limit and the build dies with MSB3030. DefaultItemExcludes feeds the
+       Exclude= of ALL those globs at once (Compile, Content, None,
+       EmbeddedResource), which the old per-glob <Compile Remove> could not.
+       Add any new sibling project directory here too. -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);BookingEngine.Api.Tests/**;BookingEngine.Domain/**;BookingEngine.Infrastructure/**;BookingEngine.Worker/**</DefaultItemExcludes>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
-    <PackageReference Include="Google.Apis.Auth" Version="1.71.0" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
+    <PackageReference Include="Google.Cloud.Storage.V1" Version="4.15.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
@@ -25,17 +42,6 @@
          BookingEngine.Infrastructure's own comment). -->
     <ProjectReference Include="BookingEngine.Domain\BookingEngine.Domain.csproj" />
     <ProjectReference Include="BookingEngine.Infrastructure\BookingEngine.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <!-- BookingEngine.Api.Tests, BookingEngine.Domain, BookingEngine.Infrastructure
-       and BookingEngine.Worker all nest inside this project's directory;
-       without this, the default **/*.cs glob would compile their files into
-       this project too. -->
-  <ItemGroup>
-    <Compile Remove="BookingEngine.Api.Tests/**/*.cs" />
-    <Compile Remove="BookingEngine.Domain/**/*.cs" />
-    <Compile Remove="BookingEngine.Infrastructure/**/*.cs" />
-    <Compile Remove="BookingEngine.Worker/**/*.cs" />
   </ItemGroup>
 
 </Project>

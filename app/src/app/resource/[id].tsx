@@ -9,22 +9,23 @@ import {
   Pressable,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
-import { useColorScheme } from "nativewind";
 import Animated, { FadeOut } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { Group } from "@/components/Group";
-import { HeroCarousel } from "@/components/HeroCarousel";
+import { HeartButton } from "@/components/HeartButton";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { Row } from "@/components/Row";
 import { ScreenFade } from "@/components/ScreenFade";
 import { Skeleton } from "@/components/Skeleton";
+import { StaleStamp } from "@/components/StaleStamp";
+import { StaticMapCard } from "@/components/StaticMapCard";
 import { Stepper } from "@/components/Stepper";
 import { Button } from "@/components/Button";
 import { useCreateBooking } from "@/lib/api/bookings";
+import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
 import { useResource } from "@/lib/api/resources";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import { useJoinWaitlist } from "@/lib/api/waitlist";
@@ -32,12 +33,13 @@ import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
-import { directionsUrl, staticMapUrl } from "@/lib/maps";
+import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
+import { directionsUrl, formatDistance } from "@/lib/maps";
+import { useIsOffline } from "@/lib/net";
 import { stockImageUrl } from "@/lib/stockImages";
+import { useCollapsingHero } from "@/lib/useCollapsingHero";
 import { useColor } from "@/lib/theme/useColor";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
-
-const HERO_HEIGHT = 196;
 
 const DAYS_SHOWN = 4;
 
@@ -105,37 +107,11 @@ function buildDayBuckets(slots: AvailabilitySlot[]): DayBucket[] {
   });
 }
 
-const HERO_EXPANDED_MAX = 460;
-
 export default function ResourceScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { insets, heroExpanded, heroHeight, onScroll, contentMinHeight } =
+    useCollapsingHero();
 
-  // The hero starts at ~half the screen and shrinks to its resting height as
-  // the page scrolls (a standard collapsing header). Legacy `Animated` +
-  // `useNativeDriver: false` — it animates `height`, a layout prop, and it's
-  // the API that actually works cross-platform in this project (see CLAUDE.md).
-  const heroExpanded = Math.round(
-    Math.min(windowHeight * 0.5, HERO_EXPANDED_MAX),
-  );
-  const heroCollapsed = HERO_HEIGHT + insets.top;
-  const collapseDistance = Math.max(1, heroExpanded - heroCollapsed);
-  const [scrollY] = useState(() => new RNAnimated.Value(0));
-  const heroHeight = scrollY.interpolate({
-    inputRange: [0, collapseDistance],
-    outputRange: [heroExpanded, heroCollapsed],
-    extrapolate: "clamp",
-  });
-  // The hero is in-flow, so its shrinking would normally shrink the scrollable
-  // content height too — which, on a page short enough to reach the bottom
-  // mid-collapse, feeds back into the scroll offset and makes the whole page
-  // shudder. Guaranteeing the content is always at least `collapseDistance`
-  // taller than the viewport means that by the time you *can* be at the
-  // bottom, `scrollY >= collapseDistance` and the hero height is already
-  // clamped (constant) — no feedback. (The classic parallax-ScrollView
-  // "footer spacer" trick, as a minHeight.)
-  const contentMinHeight = windowHeight + collapseDistance;
   // `name`/`location` are passed from the ExploreScreen row so the header
   // paints instantly (per handoff: "cero pantalla de carga al entrar")
   // instead of waiting on GET /resources/{id} for content already known.
@@ -169,8 +145,25 @@ export default function ResourceScreen() {
   const resourceTypesQuery = useResourceTypes();
   const createBooking = useCreateBooking();
   const joinWaitlist = useJoinWaitlist();
+  const { ids: favoriteIds } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
 
   const resource = resourceQuery.data;
+  const isFavorite = favoriteIds.has(id);
+
+  function handleToggleFavorite() {
+    toggleFavorite.mutate({
+      resourceId: id,
+      next: !isFavorite,
+      summary: {
+        resourceId: id,
+        name: resource?.name ?? passedName ?? "",
+        locationName: resource?.locationName ?? passedLocation ?? "",
+        locationAddress: resource?.locationAddress ?? null,
+        resourceTypeId: resource?.resourceTypeId ?? "",
+      },
+    });
+  }
   // Not returned by GET /resources/{id} (only by GET /resource-types) —
   // cross-referenced from the resource-types cache instead of adding fields
   // to the detail endpoint, since ExploreScreen already warms that cache.
@@ -179,6 +172,10 @@ export default function ResourceScreen() {
   );
   const allowsMultipleSeats = resourceType?.allowsMultipleSeats ?? false;
   const allowsWaitlist = resourceType?.allowsWaitlist ?? false;
+  // Auditorio / Salón: booked as a whole unit (capacity 1, no seat picker). A
+  // free slot is just "Libre", not "Último lugar", and there's no party size.
+  const wholeUnit = !allowsMultipleSeats;
+  const offline = useIsOffline();
   const capacityUnitLabel = resourceType?.labels.capacityUnit ?? "personas";
   const actionVerb = resourceType?.labels.actionVerb ?? "Apartar";
 
@@ -234,17 +231,18 @@ export default function ResourceScreen() {
   const showSlotSkeleton = useDelayedFlag(resourceQuery.isLoading, 150);
   const backIconColor = useColor("label-1");
   const mapPinColor = useColor("label-3");
-  const { colorScheme } = useColorScheme();
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
-  // Sized for the hero's *expanded* height — it's scaled down as it collapses.
-  const mapImageUrl = hasCoords
-    ? staticMapUrl(
-        { lat: resource!.locationLatitude!, lng: resource!.locationLongitude! },
-        { width: 700, height: heroExpanded, dark: colorScheme === "dark" },
-      )
-    : null;
+  // Live distance to this place if Explore started a location watch.
+  const livePos = useLocationStore((s) => s.position);
+  const liveDistance = formatDistance(
+    distanceToMeters(
+      livePos,
+      resource?.locationLatitude,
+      resource?.locationLongitude,
+    ),
+  );
   const heroStockImageUrl = stockImageUrl(resourceType?.name, {
     width: 800,
     height: heroExpanded,
@@ -273,7 +271,9 @@ export default function ResourceScreen() {
   const subtitleParts = [
     resource?.description ?? undefined,
     resource
-      ? `hasta ${resource.capacity} ${capacityUnitLabel}`
+      ? wholeUnit
+        ? undefined
+        : `hasta ${resource.capacity} ${capacityUnitLabel}`
       : passedLocation,
   ].filter((part): part is string => !!part);
 
@@ -285,11 +285,15 @@ export default function ResourceScreen() {
       )
     : null;
 
-  const ctaLabel = selectedSlot
-    ? `${actionVerb} ${formatTime(selectedSlot.startsAt)}`
-    : "Elige un horario";
+  const ctaLabel = offline
+    ? "Sin conexión"
+    : selectedSlot
+      ? `${actionVerb} ${formatTime(selectedSlot.startsAt)}`
+      : "Elige un horario";
   const ctaSubtitle = selectedSlot
-    ? `${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)} · ${durationMinutes} min`
+    ? wholeUnit
+      ? `${durationMinutes} min`
+      : `${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)} · ${durationMinutes} min`
     : undefined;
 
   function handleJoinWaitlist(slot: AvailabilitySlot) {
@@ -351,8 +355,8 @@ export default function ResourceScreen() {
   const ctaButton = (
     <Button
       variant="filled"
-      subtitle={ctaSubtitle}
-      disabled={!selectedSlot}
+      subtitle={offline ? undefined : ctaSubtitle}
+      disabled={!selectedSlot || offline}
       loading={createBooking.isPending}
       onPress={handleConfirm}
     >
@@ -369,23 +373,20 @@ export default function ResourceScreen() {
             paddingBottom: isWeb ? 24 : 140,
           }}
           scrollEventThrottle={16}
-          onScroll={RNAnimated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false },
-          )}
+          onScroll={onScroll}
         >
           {/* Collapsing hero — in-flow (first child), so a drag anywhere on it
               still scrolls the page and the carousel stays a nested horizontal
               pager. It shrinks from ~half the screen to its resting height over
               the first `collapseDistance` px of scroll; `contentMinHeight`
               keeps that from shuddering at the bottom. Edge-to-edge under the
-              status bar; only the back button is inset. */}
+              status bar; only the back button is inset. The map is a separate
+              StaticMapCard at the bottom of the content, not a hero page. */}
           <RNAnimated.View style={{ height: heroHeight }}>
-            <HeroCarousel
+            <PhotoCarousel
+              photos={resource?.photos ?? []}
               contentHeight={heroExpanded}
-              mapImageUrl={mapImageUrl}
-              stockImageUrl={heroStockImageUrl}
-              onMapPress={directions ? openDirections : undefined}
+              fallbackUrl={heroStockImageUrl}
             />
             <Pressable
               onPress={() => router.back()}
@@ -397,11 +398,15 @@ export default function ResourceScreen() {
             >
               <ArrowLeft size={17} color={backIconColor} />
             </Pressable>
+            <View style={{ position: "absolute", top: insets.top + 12, right: 16 }}>
+              <HeartButton active={isFavorite} onToggle={handleToggleFavorite} />
+            </View>
           </RNAnimated.View>
 
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
               <Text className="text-title-md text-label-1">{displayName}</Text>
+              <StaleStamp dataUpdatedAt={resourceQuery.dataUpdatedAt} />
               {subtitleParts.length > 0 ? (
                 <Text className="text-body text-label-3">
                   {subtitleParts.join(" · ")}
@@ -423,6 +428,7 @@ export default function ResourceScreen() {
                   <MapPin size={14} color={mapPinColor} />
                   <Text className="text-footnote text-label-3">
                     {resource.locationAddress}
+                    {liveDistance ? ` · a ${liveDistance}` : ""}
                   </Text>
                 </Pressable>
               ) : null}
@@ -512,9 +518,9 @@ export default function ResourceScreen() {
                             trailingText={isJoined ? undefined : "Anotarme"}
                             trailingTone="waiting"
                             trailingLoading={isJoining}
-                            disabled={isJoined || isJoining}
+                            disabled={isJoined || isJoining || offline}
                             onPress={
-                              isJoined
+                              isJoined || offline
                                 ? undefined
                                 : () => handleJoinWaitlist(slot)
                             }
@@ -546,12 +552,16 @@ export default function ResourceScreen() {
                         tabularTitle
                         trailing="text"
                         trailingText={
-                          slot.capacityRemaining === 1
-                            ? "Último lugar"
-                            : `${slot.capacityRemaining} lugares`
+                          wholeUnit
+                            ? "Libre"
+                            : slot.capacityRemaining === 1
+                              ? "Último lugar"
+                              : `${slot.capacityRemaining} lugares`
                         }
                         trailingTone={
-                          slot.capacityRemaining === 1 ? "last" : "default"
+                          !wholeUnit && slot.capacityRemaining === 1
+                            ? "last"
+                            : "default"
                         }
                         selected={slot.id === selectedSlotId && eligible}
                         disabled={!eligible}
@@ -561,9 +571,11 @@ export default function ResourceScreen() {
                             : undefined
                         }
                         accessibilityLabel={
-                          eligible
-                            ? `Horario ${title}, ${slot.capacityRemaining === 1 ? "último lugar" : `${slot.capacityRemaining} lugares disponibles`}`
-                            : `Horario ${title}, no hay lugares suficientes para ${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)}`
+                          !eligible
+                            ? `Horario ${title}, no hay lugares suficientes para ${seatCount} ${pluralizeUnit(seatCount, capacityUnitLabel)}`
+                            : wholeUnit
+                              ? `Horario ${title}, libre`
+                              : `Horario ${title}, ${slot.capacityRemaining === 1 ? "último lugar" : `${slot.capacityRemaining} lugares disponibles`}`
                         }
                       />
                     );
@@ -577,6 +589,18 @@ export default function ResourceScreen() {
                 )}
               </Group>
             </View>
+
+            <StaticMapCard
+              coords={
+                hasCoords
+                  ? {
+                      lat: resource!.locationLatitude!,
+                      lng: resource!.locationLongitude!,
+                    }
+                  : null
+              }
+              address={resource?.locationAddress}
+            />
           </View>
 
           {isWeb ? (

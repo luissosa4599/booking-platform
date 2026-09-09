@@ -8,6 +8,7 @@ import { Group } from "@/components/Group";
 import { Row } from "@/components/Row";
 import { Sheet } from "@/components/Sheet";
 import { Toggle } from "@/components/Toggle";
+import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
 import { useThemeStore } from "@/lib/theme/themeStore";
@@ -25,6 +26,7 @@ export function ProfileContent() {
   const setViewMode = useAuthStore((s) => s.setViewMode);
   const signOut = useAuthStore((s) => s.signOut);
   const { data: me, isLoading } = useMe(userId);
+  const { favorites } = useFavorites();
 
   const isDark = useIsDark();
   const setThemePreference = useThemeStore((s) => s.setPreference);
@@ -112,6 +114,35 @@ export function ProfileContent() {
             />
           </Group>
         </View>
+
+        {/* Favorites (guest only) */}
+        {role === "guest" && favorites.length > 0 ? (
+          <View className="mt-6 gap-2">
+            <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+              Tus favoritos
+            </Text>
+            <Group>
+              {favorites.map((f) => (
+                <Row
+                  key={f.resourceId}
+                  title={f.name}
+                  subtitle={f.locationName}
+                  trailing="chevron"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/resource/[id]",
+                      params: {
+                        id: f.resourceId,
+                        name: f.name,
+                        location: f.locationName,
+                      },
+                    })
+                  }
+                />
+              ))}
+            </Group>
+          </View>
+        ) : null}
 
         {/* Settings */}
         <View className="mt-6 gap-2">

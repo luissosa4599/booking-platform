@@ -14,6 +14,14 @@ public class CreateSpaceRequestValidator : AbstractValidator<CreateSpaceRequest>
         RuleFor(x => x.LocationName).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Address).MaximumLength(300);
         RuleFor(x => x.TimeZone).NotEmpty().MaximumLength(100);
+
+        RuleFor(x => x.LocationLatitude).InclusiveBetween(-90, 90)
+            .When(x => x.LocationLatitude.HasValue);
+        RuleFor(x => x.LocationLongitude).InclusiveBetween(-180, 180)
+            .When(x => x.LocationLongitude.HasValue);
+        RuleFor(x => x)
+            .Must(x => x.LocationLatitude.HasValue == x.LocationLongitude.HasValue)
+            .WithMessage("Latitude and longitude must be provided together.");
     }
 }
 
@@ -25,6 +33,14 @@ public class UpdateSpaceRequestValidator : AbstractValidator<UpdateSpaceRequest>
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.Capacity).GreaterThan(0).LessThanOrEqualTo(60);
         RuleFor(x => x.Address).MaximumLength(300);
+
+        RuleFor(x => x.LocationLatitude).InclusiveBetween(-90, 90)
+            .When(x => x.LocationLatitude.HasValue);
+        RuleFor(x => x.LocationLongitude).InclusiveBetween(-180, 180)
+            .When(x => x.LocationLongitude.HasValue);
+        RuleFor(x => x)
+            .Must(x => x.LocationLatitude.HasValue == x.LocationLongitude.HasValue)
+            .WithMessage("Latitude and longitude must be provided together.");
     }
 }
 
