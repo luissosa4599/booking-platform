@@ -23,6 +23,7 @@ import { SortControl } from "@/components/SortControl";
 import { SpaceMap } from "@/components/SpaceMap";
 import type { MapPlace } from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
+import { Timeline } from "@/components/Timeline";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
@@ -37,7 +38,7 @@ import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { formatDistance, type Coords } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
-import { useHasDetailPane } from "@/lib/useBreakpoint";
+import { useHasDetailPane, useIsWide } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
@@ -82,6 +83,7 @@ export default function ExploreScreen() {
   // Desktop master–detail: the selected resource shows in a pane, the list
   // stays mounted and live. Tablet/phone push the full screen as before.
   const hasPane = useHasDetailPane();
+  const isWide = useIsWide();
   const { selectedId: paneId, select, clear } = useDetailSelection();
   const [sort, setSort] = useState<AvailabilitySort>("soonest");
   const [coords, setCoords] = useState<Coords | null>(null);
@@ -429,6 +431,10 @@ export default function ExploreScreen() {
                 : formatHeaderDate(now)}
           </Text>
         </View>
+
+        {isWide && view === "list" && !isEmpty ? (
+          <Timeline slots={availableSlots} now={now} />
+        ) : null}
 
         <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
           <Search size={13} color={searchIconColor} />

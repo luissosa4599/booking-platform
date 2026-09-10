@@ -6,9 +6,13 @@ import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
+import { SpacePane } from "@/components/SpacePane";
 import { useOwnerSpaces } from "@/lib/api/owner";
+import { haptics } from "@/lib/haptics";
 import { Store } from "@/lib/icons";
 import { useUserId } from "@/lib/session";
+import { useHasDetailPane } from "@/lib/useBreakpoint";
+import { useDetailSelection } from "@/lib/useDetailSelection";
 
 export default function MySpacesScreen() {
   const router = useRouter();
@@ -17,8 +21,19 @@ export default function MySpacesScreen() {
 
   const isEmpty = !isLoading && (spaces?.length ?? 0) === 0;
 
+  // Desktop master–detail: tapping a space opens a read-only SpacePane; the
+  // list stays mounted. Tablet/phone push the full (owner)/space/[id] screen.
+  const hasPane = useHasDetailPane();
+  const { selectedId, select, clear } = useDetailSelection();
+  const paneId =
+    hasPane && selectedId && (spaces ?? []).some((s) => s.id === selectedId)
+      ? selectedId
+      : null;
+
   return (
-    <Screen bg="canvas" edges={["top", "bottom"]} fluid maxWidth={1080}>
+    <Screen bg="canvas" edges={["top", "bottom"]} fluid>
+     <View style={{ flex: 1, flexDirection: "row" }}>
+      <View style={{ flex: 1, maxWidth: paneId ? 760 : 1080 }}>
       <View className="flex-1">
         <ScrollView
           contentContainerStyle={{
@@ -62,7 +77,14 @@ export default function MySpacesScreen() {
                     }
                     metaTone={space.upcomingSlotCount > 0 ? "default" : "last"}
                     trailing="chevron"
-                    onPress={() => router.push(`/(owner)/space/${space.id}`)}
+                    onPress={() => {
+                      if (hasPane) {
+                        haptics.selection();
+                        select(space.id);
+                      } else {
+                        router.push(`/(owner)/space/${space.id}`);
+                      }
+                    }}
                   />
                 ))}
               </Group>
@@ -84,6 +106,10 @@ export default function MySpacesScreen() {
           </View>
         ) : null}
       </View>
+      </View>
+
+      {paneId ? <SpacePane id={paneId} onClose={clear} /> : null}
+     </View>
     </Screen>
   );
 }

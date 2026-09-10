@@ -11,6 +11,7 @@ import Animated, {
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
+import { BookingPane } from "@/components/BookingPane";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
 import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
@@ -28,7 +29,9 @@ import type { BookingScope, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { CalendarX } from "@/lib/icons";
+import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
+import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 import { useUserId } from "@/lib/session";
 
@@ -175,10 +178,12 @@ function CancelableRow({
   booking,
   shaking,
   onCancel,
+  onPress,
 }: {
   booking: MyBooking;
   shaking: boolean;
   onCancel: () => void;
+  onPress?: () => void;
 }) {
   const shakeStyle = useShake(shaking);
 
@@ -196,6 +201,7 @@ function CancelableRow({
         actionTone="wash"
         actionAccessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${formatSchedule(booking.startsAt, booking.endsAt)}`}
         onActionPress={onCancel}
+        onPress={onPress}
       />
     </Animated.View>
   );
@@ -209,6 +215,11 @@ export default function BookingsScreen() {
   const [shakeId, setShakeId] = useState<string | null>(null);
   const [passBooking, setPassBooking] = useState<MyBooking | null>(null);
   const userId = useUserId();
+
+  // Desktop master–detail: the selected booking shows in a pane (with its QR
+  // pass inline), the list stays mounted. Phone/tablet keep the BookingPassSheet.
+  const hasPane = useHasDetailPane();
+  const { selectedId, select, clear } = useDetailSelection();
 
   const bookingsQuery = useMyBookings(scope, userId);
   const waitlistQuery = useMyWaitlist(userId);
@@ -234,6 +245,22 @@ export default function BookingsScreen() {
   const nextBooking = scope === "upcoming" ? bookings[0] : undefined;
   const otherUpcoming = scope === "upcoming" ? bookings.slice(1) : [];
   const history = scope === "past" ? bookings : [];
+
+  const selectedBooking =
+    (hasPane && selectedId
+      ? bookings.find((b) => b.id === selectedId)
+      : undefined) ?? null;
+  const paneOpen = !!selectedBooking;
+
+  function openInPane(booking: MyBooking) {
+    haptics.selection();
+    select(booking.id);
+  }
+
+  function handleScopeChange(next: BookingScope) {
+    clear();
+    setScope(next);
+  }
 
   const nothingUpcoming =
     scope === "upcoming" &&
@@ -306,7 +333,9 @@ export default function BookingsScreen() {
   }
 
   return (
-    <Screen bg="canvas" fluid maxWidth={1080}>
+    <Screen bg="canvas" fluid>
+     <View style={{ flex: 1, flexDirection: "row" }}>
+      <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
       <View className="px-4 pt-3">
         <Text className="text-title-lg text-label-1">Reservas</Text>
       </View>
@@ -319,7 +348,7 @@ export default function BookingsScreen() {
             { label: "Anteriores", value: "past" },
           ]}
           value={scope}
-          onChange={(v) => setScope(v as BookingScope)}
+          onChange={(v) => handleScopeChange(v as BookingScope)}
         />
       </View>
 
@@ -368,7 +397,9 @@ export default function BookingsScreen() {
             <NextBookingCard
               booking={nextBooking}
               shaking={shakeId === nextBooking.id}
-              onShowPass={() => setPassBooking(nextBooking)}
+              onShowPass={() =>
+                hasPane ? openInPane(nextBooking) : setPassBooking(nextBooking)
+              }
               onCancel={() => handleCancel(nextBooking)}
             />
           ) : null}
@@ -381,6 +412,7 @@ export default function BookingsScreen() {
                   booking={booking}
                   shaking={shakeId === booking.id}
                   onCancel={() => handleCancel(booking)}
+                  onPress={hasPane ? () => openInPane(booking) : undefined}
                 />
               ))}
             </Group>
@@ -424,6 +456,7 @@ export default function BookingsScreen() {
                   actionTone="wash"
                   actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
                   onActionPress={() => handleRepeat(booking)}
+                  onPress={hasPane ? () => openInPane(booking) : undefined}
                 />
               ))}
             </Group>
@@ -456,6 +489,24 @@ export default function BookingsScreen() {
           ) : null}
         </View>
       </ScrollView>
+      </View>
+
+      {selectedBooking ? (
+        <BookingPane
+          booking={selectedBooking}
+          scope={scope}
+          onClose={clear}
+          onCancel={(b) => {
+            clear();
+            handleCancel(b);
+          }}
+          onRepeat={(b) => {
+            clear();
+            handleRepeat(b);
+          }}
+        />
+      ) : null}
+     </View>
 
       <BookingPassSheet
         isOpen={!!passBooking}
