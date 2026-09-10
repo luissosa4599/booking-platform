@@ -3,6 +3,7 @@ import { View } from "react-native";
 import {
   AdvancedMarker,
   APIProvider,
+  ColorScheme,
   Map as GoogleMap,
 } from "@vis.gl/react-google-maps";
 
@@ -20,7 +21,9 @@ import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
  *
  * `AdvancedMarker` needs a vector map id; `DEMO_MAP_ID` is Google's public
  * dev id and works with no cloud setup. Set `EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID`
- * to a styled one later for the dark palette.
+ * to your own (unstyled) vector map id for production — `DEMO_MAP_ID` is
+ * dev-only. Dark tiles come from the Maps JS API's built-in `colorScheme`
+ * (no cloud style needed), driven off the app theme.
  */
 const MAP_ID = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 const MEXICO_CITY = { lat: 19.4326, lng: -99.1332 };
@@ -33,7 +36,8 @@ export function SpaceMap({
   userPosition,
 }: SpaceMapProps) {
   const { colorScheme } = useColorScheme();
-  const c = palette(colorScheme === "dark" ? "dark" : "light");
+  const isDark = colorScheme === "dark";
+  const c = palette(isDark ? "dark" : "light");
 
   const center = useMemo(() => {
     if (userPosition) return userPosition;
@@ -58,6 +62,7 @@ export function SpaceMap({
           defaultCenter={center}
           defaultZoom={userPosition ? 13 : 11}
           mapId={MAP_ID}
+          colorScheme={isDark ? ColorScheme.DARK : ColorScheme.LIGHT}
           disableDefaultUI
           zoomControl
           gestureHandling="greedy"
