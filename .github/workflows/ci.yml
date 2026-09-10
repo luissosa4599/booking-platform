@@ -47,7 +47,7 @@ jobs:
       # discovered at actual deploy time. See docker-compose.yml for how
       # these two images are meant to be run together locally.
       - name: Build api image
-        run: docker build -f api/Dockerfile -t booking-api:ci ./api
+        run: docker build -f api/BookingEngine.Api/Dockerfile -t booking-api:ci ./api
 
       - name: Build worker image
         run: docker build -f api/BookingEngine.Worker/Dockerfile -t booking-worker:ci ./api

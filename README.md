@@ -7,9 +7,11 @@ Motor genérico de reservas de recursos.
 ```
 booking-engine/
 ├── api/
+│   ├── BookingEngine.Api.slnx         → solución (los 5 proyectos)
+│   ├── Directory.Build.props          → settings comunes (TFM, Nullable, …)
 │   ├── BookingEngine.Domain/          → entidades, sin dependencias
 │   ├── BookingEngine.Infrastructure/  → EF Core: DbContext, configs, migraciones
-│   ├── BookingEngine.Api.csproj       → API HTTP (Minimal APIs)
+│   ├── BookingEngine.Api/             → API HTTP (Minimal APIs) — host web + .env
 │   ├── BookingEngine.Worker/          → microservicio de notificaciones (push)
 │   └── BookingEngine.Api.Tests/       → xUnit
 ├── app/          → Expo (React Native + NativeWind) — iOS / Android / Web
@@ -18,7 +20,7 @@ booking-engine/
 └── README.md     → Overview del proyecto completo
 ```
 
-`api/BookingEngine.Api.csproj` y `api/BookingEngine.Worker/` comparten la misma base de datos vía
+`api/BookingEngine.Api/` y `api/BookingEngine.Worker/` comparten la misma base de datos vía
 `BookingEngine.Domain`/`BookingEngine.Infrastructure` (referenciadas como class libraries) — la API
 es la única que corre migraciones (`dotnet ef`, ver abajo); el worker solo lee/escribe con el mismo
 `DbContext`.
@@ -30,27 +32,29 @@ es la única que corre migraciones (`dotnet ef`, ver abajo); el worker solo lee/
 Cada parte trae un `.env.example` — cópialo a `.env` y llena los valores reales antes de correr:
 
 ```bash
-cp api/.env.example api/.env
+cp api/BookingEngine.Api/.env.example api/BookingEngine.Api/.env
 cp app/.env.example app/.env
 ```
 
-- `api/.env` — `ConnectionStrings__Default` (Postgres/Neon) y `FRONTEND_WEB_URL` (origen CORS de
-  producción, vacío en local). Se carga solo al arrancar (`DotNetEnv` en `Program.cs`, solo si el
-  archivo existe — no afecta CI/producción). Ojo: Neon te da la connection string en formato URI
-  (`postgresql://...`), pero Npgsql necesita `Host=...;Database=...;Username=...;Password=...` —
-  ver el comentario en `api/.env.example`.
+- `api/BookingEngine.Api/.env` — `ConnectionStrings__Default` (Postgres/Neon) y `FRONTEND_WEB_URL`
+  (origen CORS de producción, vacío en local). Se carga solo al arrancar (`DotNetEnv` en
+  `Program.cs`, solo si el archivo existe — la ruta es relativa al directorio de trabajo, que
+  `dotnet run --project` fija a la carpeta del proyecto; no afecta CI/producción). Ojo: Neon te da
+  la connection string en formato URI (`postgresql://...`), pero Npgsql necesita
+  `Host=...;Database=...;Username=...;Password=...` — ver el comentario en
+  `api/BookingEngine.Api/.env.example`.
 - `app/.env` — `EXPO_PUBLIC_API_URL`, solo necesaria para builds de producción; en desarrollo la URL
   del API se resuelve sola por plataforma (ver más abajo).
 
 **Neon**: usa una rama de desarrollo (`dev`) separada de `main` para trabajo local, para no
 arriesgar los datos de la rama principal. Esto se configura manualmente en el dashboard de Neon
-(no hay nada que instalar ni correr aquí) — `api/.env`'s `ConnectionStrings__Default` debe apuntar
-a esa rama `dev`, nunca a `main`.
+(no hay nada que instalar ni correr aquí) — el `ConnectionStrings__Default` de
+`api/BookingEngine.Api/.env` debe apuntar a esa rama `dev`, nunca a `main`.
 
 ### Backend (`/api`)
 
 ```bash
-cd api
+cd api/BookingEngine.Api
 dotnet run
 ```
 
@@ -74,8 +78,9 @@ cd api
 dotnet run --project BookingEngine.Worker
 ```
 
-Necesita la misma `ConnectionStrings__Default` que la API (usa el mismo `.env` si corres desde
-`api/`). No requiere `dotnet-ef` ni corre migraciones — asume que la API ya las aplicó.
+Necesita la misma `ConnectionStrings__Default` que la API — tiene su propio
+`api/BookingEngine.Worker/.env` (que `dotnet run --project` encuentra al fijar el CWD a esa
+carpeta). No requiere `dotnet-ef` ni corre migraciones — asume que la API ya las aplicó.
 
 ### Stack completo con Docker Compose
 
@@ -130,7 +135,7 @@ para que el resto del código no tenga que volver a decidirlos:
 
 - **`src/lib/config.ts`** — centraliza la URL del API. En desarrollo resuelve por plataforma
   (`10.0.2.2:5190` en el emulador de Android, porque el emulador no comparte el `localhost` del
-  host; `localhost:5190` en iOS/web — puerto de `api/Properties/launchSettings.json`). En
+  host; `localhost:5190` en iOS/web — puerto de `api/BookingEngine.Api/Properties/launchSettings.json`). En
   producción exige `EXPO_PUBLIC_API_URL` y falla rápido si
   falta, en vez de apuntar silenciosamente a la URL equivocada. Esta lógica vive en tiempo de
   ejecución (no en `app.config.ts`), porque `app.config.ts` corre en Node durante el build y no

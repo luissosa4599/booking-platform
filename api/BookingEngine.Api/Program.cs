@@ -16,10 +16,12 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 // ASP.NET Core doesn't read .env files on its own — without this, running
-// `dotnet run` picks up nothing from api/.env and ConnectionStrings__Default
-// stays empty (Npgsql then throws "ConnectionString property has not been
-// initialized"). Only loads when the file exists, so it's a no-op in CI/
-// production, where real environment variables are set directly and no
+// `dotnet run` picks up nothing from api/BookingEngine.Api/.env and
+// ConnectionStrings__Default stays empty (Npgsql then throws "ConnectionString
+// property has not been initialized"). The path is relative to the process CWD,
+// which `dotnet run --project` sets to this project's directory — the same
+// folder the .env lives in. Only loads when the file exists, so it's a no-op in
+// CI/production, where real environment variables are set directly and no
 // .env file is deployed (it's gitignored).
 if (File.Exists(".env"))
 {
