@@ -121,6 +121,11 @@ try
     // Not present before this task despite the assumption it was — added
     // here. Global fixed-window limiter, partitioned per client IP, so it
     // covers every endpoint (existing and new) without decorating each one.
+    // `RATE_LIMIT_PER_MINUTE` overrides the default so a test harness hitting
+    // every endpoint from one IP (the e2e suite) doesn't trip it — set it high
+    // there, leave it unset in prod.
+    var rateLimitPerMinute =
+        builder.Configuration.GetValue<int?>("RATE_LIMIT_PER_MINUTE") ?? 100;
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -129,7 +134,7 @@ try
                 partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 100,
+                    PermitLimit = rateLimitPerMinute,
                     Window = TimeSpan.FromMinutes(1),
                 }));
     });
