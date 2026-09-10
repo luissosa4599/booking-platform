@@ -26,6 +26,7 @@ gcs-*.json
 # --- Local-only notes ---
 docs/session-log.md
 docs/roadmap.md
+docs/google-cloud-setup.md
 CLAUDE.md
 
 # --- OS / editor ---
