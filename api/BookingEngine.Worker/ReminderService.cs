@@ -14,7 +14,7 @@ namespace BookingEngine.Worker;
 public class ReminderService(
     IServiceScopeFactory scopeFactory,
     ExpoPushClient pushClient,
-    ILogger<ReminderService> logger) : BackgroundService
+    ILogger<ReminderService> logger) : BackgroundService, IOneShotPass
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
 
@@ -41,7 +41,7 @@ public class ReminderService(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task RunOnceAsync(CancellationToken ct)
+    public async Task RunOnceAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();

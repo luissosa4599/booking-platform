@@ -13,7 +13,7 @@ namespace BookingEngine.Worker;
 /// </summary>
 public class ScheduleExpansionService(
     IServiceScopeFactory scopeFactory,
-    ILogger<ScheduleExpansionService> logger) : BackgroundService
+    ILogger<ScheduleExpansionService> logger) : BackgroundService, IOneShotPass
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromHours(6);
 
@@ -41,7 +41,7 @@ public class ScheduleExpansionService(
         }
     }
 
-    private async Task RunOnceAsync(CancellationToken ct)
+    public async Task RunOnceAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();

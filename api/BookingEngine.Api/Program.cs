@@ -153,6 +153,22 @@ try
         await db.Database.MigrateAsync();
     }
 
+    // A one-off: migrate, run the demo seeder, then exit (0) — the process
+    // never starts serving. Wired to a Cloud Run job so the deployed database
+    // can be (re)seeded on demand; `POST /dev/seed` is Development-only.
+    // DevSeeder always wipes and reseeds, so re-running the job is a clean
+    // "reset the demo" button.
+    if (builder.Configuration.GetValue<bool>("RUN_SEED_ON_STARTUP"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await db.Database.MigrateAsync();
+        var seedResult = await DevSeeder.SeedAsync(db, seedLogger);
+        Log.Information("Seed complete: {@SeedResult}", seedResult);
+        return;
+    }
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();

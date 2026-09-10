@@ -31,11 +31,60 @@ try
 
     builder.Services.AddHttpClient<ExpoPushClient>();
 
-    builder.Services.AddHostedService<ReminderService>();
-    builder.Services.AddHostedService<WaitlistPromotionService>();
-    builder.Services.AddHostedService<ScheduleExpansionService>();
+    // Two shapes for the same three sweeps:
+    //  - default: always-on BackgroundServices, each on its own PeriodicTimer.
+    //    Used by local `docker compose` (and anyone who wants a long-running
+    //    worker process).
+    //  - WORKER_ONESHOT=true: run each sweep exactly once, then exit. The
+    //    deployed shape — a scheduler (Cloud Scheduler) fires this as a job on
+    //    an interval, so nothing stays running (and billing) between sweeps.
+    var oneShot = builder.Configuration.GetValue<bool>("WORKER_ONESHOT");
+
+    if (oneShot)
+    {
+        builder.Services.AddTransient<ScheduleExpansionService>();
+        builder.Services.AddTransient<ReminderService>();
+        builder.Services.AddTransient<WaitlistPromotionService>();
+    }
+    else
+    {
+        builder.Services.AddHostedService<ReminderService>();
+        builder.Services.AddHostedService<WaitlistPromotionService>();
+        builder.Services.AddHostedService<ScheduleExpansionService>();
+    }
 
     var host = builder.Build();
+
+    if (oneShot)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+
+        // Order matters: expand schedules first (it can create slots the other
+        // two then act on), then reminders, then waitlist promotion. A failing
+        // pass is logged and the next one still runs — same "a bad sweep
+        // shouldn't sink the rest" stance as the long-running loops.
+        var passes = new IOneShotPass[]
+        {
+            host.Services.GetRequiredService<ScheduleExpansionService>(),
+            host.Services.GetRequiredService<ReminderService>(),
+            host.Services.GetRequiredService<WaitlistPromotionService>(),
+        };
+
+        foreach (var pass in passes)
+        {
+            try
+            {
+                await pass.RunOnceAsync(cts.Token);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "one-shot pass {Pass} failed", pass.GetType().Name);
+            }
+        }
+
+        return;
+    }
+
     host.Run();
 }
 catch (Exception ex)
