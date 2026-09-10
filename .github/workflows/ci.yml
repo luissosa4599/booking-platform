@@ -73,8 +73,20 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npx expo lint
+
       - name: Test
         run: npm test --if-present -- --watchAll=false
+
+      # Production web bundle — catches a broken import / a Metro-only asset
+      # path that tsc + jest miss. `output: "static"` prerenders every route,
+      # so this also exercises SSR-time code. Needs the env var (fails fast
+      # otherwise); the value is irrelevant here.
+      - name: Web export
+        run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_API_URL: http://localhost:5190
 
   e2e:
     name: e2e
