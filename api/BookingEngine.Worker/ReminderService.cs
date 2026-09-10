@@ -18,10 +18,14 @@ public class ReminderService(
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
 
-    // A booking starting 28-32 minutes out is "reminder time" — a 4-minute
-    // window comfortably covers one poll's worth of drift either way.
-    private static readonly TimeSpan WindowStart = TimeSpan.FromMinutes(28);
-    private static readonly TimeSpan WindowEnd = TimeSpan.FromMinutes(32);
+    // A booking starting ~30 minutes out is "reminder time". The window has to
+    // be wider than the gap between sweeps (plus scheduler jitter) or a booking
+    // can slip between two sweeps and never get a reminder — deployed, sweeps
+    // are a Cloud Scheduler job every ~10 min, not the 60s local loop. 26-42
+    // (16 min wide) covers that with room to spare; SentNotification (keyed by
+    // bookingId) makes the extra overlapping matches a no-op.
+    private static readonly TimeSpan WindowStart = TimeSpan.FromMinutes(26);
+    private static readonly TimeSpan WindowEnd = TimeSpan.FromMinutes(42);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -90,7 +94,7 @@ public class ReminderService(
                 var outcome = await pushClient.SendAsync(
                     token.ExpoPushToken,
                     booking.AvailabilitySlot.Resource.Name,
-                    "Tu reserva empieza en 30 minutos.",
+                    "Tu reserva empieza en unos 30 minutos.",
                     ct);
 
                 if (outcome == PushOutcome.TokenInvalid)
