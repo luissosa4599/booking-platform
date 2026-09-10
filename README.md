@@ -115,18 +115,24 @@ producción, define `EXPO_PUBLIC_API_URL` en `app/.env`.
 ### Tests
 
 ```bash
-cd api && dotnet test     # xUnit + WebApplicationFactory (sin --project: corre toda la .slnx)
+cd api && dotnet test     # xUnit + Testcontainers.PostgreSql (sin --project: corre toda la .slnx). Necesita Docker.
 cd app && npm test        # Jest + jest-expo
+cd app && npm run test:e2e # Playwright — necesita el API (:5190), Expo web (:8081) y un seed corriendo
 ```
 
 `dotnet test` sin argumento explícito descubre `api/BookingEngine.Api.slnx` (los 5 proyectos:
 Domain, Infrastructure, Api, Api.Tests, Worker) — solo `Api.Tests` tiene pruebas reales, los demás
-simplemente se compilan como parte del mismo build.
+simplemente se compilan como parte del mismo build. Las de integración levantan un Postgres en
+contenedor (Testcontainers), así que necesitan Docker.
 
-CI (`.github/workflows/ci.yml`) corre tres jobs en paralelo en cada push/PR a `main`: `api`
-(restore + build + test de toda la solución), `app` (install + type check + test), y `docker`
-(`docker build` de las dos imágenes — validación de que los Dockerfiles compilan, sin push a
-ningún registry).
+La suite e2e ([`app/e2e/`](app/e2e/)) maneja navegador + API + Postgres reales en ambos esquemas
+de color; corre el dev server de Expo (no un export) porque el campo de magic-link del sign-in
+está detrás de `__DEV__`.
+
+CI (`.github/workflows/ci.yml`) corre cuatro jobs en paralelo en cada push/PR a `main`: `api`
+(restore + build + suite completa con Testcontainers), `app` (install + type check + Jest),
+`docker` (`docker build` de las dos imágenes) y `e2e` (Postgres como service container + API +
+Expo web + Playwright, con `playwright-report` como artifact).
 
 ## Cross-platform notes
 
