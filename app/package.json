@@ -80,6 +80,10 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
-    "resolver": "react-native-worklets/jest/resolver.js"
+    "resolver": "react-native-worklets/jest/resolver.js",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/e2e/"
+    ]
   }
 }
