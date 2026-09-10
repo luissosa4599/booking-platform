@@ -130,7 +130,7 @@ de color; corre el dev server de Expo (no un export) porque el campo de magic-li
 está detrás de `__DEV__`.
 
 CI (`.github/workflows/ci.yml`) corre cuatro jobs en paralelo en cada push/PR a `main`: `api`
-(restore + build + suite completa con Testcontainers), `app` (install + type check + Jest),
+(restore + build + suite completa con Testcontainers), `app` (type check + lint + Jest + export web),
 `docker` (`docker build` de las dos imágenes) y `e2e` (Postgres como service container + API +
 Expo web + Playwright, con `playwright-report` como artifact).
 
