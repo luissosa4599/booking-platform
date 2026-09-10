@@ -29,6 +29,12 @@ docs/roadmap.md
 docs/google-cloud-setup.md
 CLAUDE.md
 
+# --- Playwright e2e ---
+app/test-results/
+app/playwright-report/
+app/blob-report/
+app/playwright/.cache/
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
