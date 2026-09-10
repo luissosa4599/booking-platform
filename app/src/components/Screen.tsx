@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useColor } from "@/lib/theme/useColor";
+import { useIsWide } from "@/lib/useBreakpoint";
 import { ScreenFade } from "./ScreenFade";
 
 type ScreenBg = "canvas" | "card";
@@ -18,6 +20,18 @@ interface ScreenProps {
    * doesn't use this component.
    */
   edges?: readonly Edge[];
+  /**
+   * On wide viewports (PR #11), cap the content to this width and left-align it
+   * against the nav rail. For a list column that should be narrower than the
+   * `fluid` area — e.g. 1080 for Bookings. Ignored on phone.
+   */
+  maxWidth?: number;
+  /**
+   * Skip `ScreenFade`'s centred 760 column on wide — for the tool screens
+   * (Explore, Bookings, Spaces) that fill the width with their own nav-rail +
+   * detail-pane layout. Document screens (detail, forms) omit this.
+   */
+  fluid?: boolean;
 }
 
 /**
@@ -35,12 +49,27 @@ export function Screen({
   children,
   bg = "canvas",
   edges = ["top"],
+  maxWidth,
+  fluid = false,
 }: ScreenProps) {
   const color = useColor(bg);
-  return (
-    <ScreenFade>
-      <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: color }}>
+  const isWide = useIsWide();
+  // Left-aligned against the nav rail, not floated in the centre — the app
+  // reads as one workspace. On desktop the empty right side is where a detail
+  // pane lands (Explore, Bookings); on a reading column (profile) it just
+  // stays a flush-left column.
+  const capped =
+    isWide && maxWidth ? (
+      <View style={{ flex: 1, width: "100%", maxWidth, alignSelf: "flex-start" }}>
         {children}
+      </View>
+    ) : (
+      children
+    );
+  return (
+    <ScreenFade fluid={fluid}>
+      <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: color }}>
+        {capped}
       </SafeAreaView>
     </ScreenFade>
   );

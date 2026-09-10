@@ -15,7 +15,9 @@ import {
   Clock as LClock,
   Compass as LCompass,
   Heart as LHeart,
+  List as LList,
   LogOut as LLogOut,
+  Map as LMap,
   MapPin as LMapPin,
   Minus as LMinus,
   Plus as LPlus,
@@ -62,7 +64,9 @@ export const ChevronRight = typed(LChevronRight);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
 export const Heart = typed(LHeart);
+export const List = typed(LList);
 export const LogOut = typed(LLogOut);
+export const Map = typed(LMap);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
 export const Plus = typed(LPlus);

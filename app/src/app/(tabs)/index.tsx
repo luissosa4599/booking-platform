@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,9 +16,12 @@ import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
 import { Row } from "@/components/Row";
+import { ResourcePane } from "@/components/ResourcePane";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
+import { SpaceMap } from "@/components/SpaceMap";
+import type { MapPlace } from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking } from "@/lib/api/bookings";
@@ -27,13 +31,15 @@ import type { AvailabilitySlot } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
-import { CalendarX, Heart, Search } from "@/lib/icons";
+import { CalendarX, Heart, List, Map as MapIcon, Search } from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { formatDistance, type Coords } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
+import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
 
@@ -69,6 +75,14 @@ export default function ExploreScreen() {
   >(null);
   const [searchInput, setSearchInput] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  // List vs map (PR #10). Web only — native keeps the list (see SpaceMap.native).
+  const mapAvailable = Platform.OS === "web";
+  const [view, setView] = useState<"list" | "map">("list");
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  // Desktop master–detail: the selected resource shows in a pane, the list
+  // stays mounted and live. Tablet/phone push the full screen as before.
+  const hasPane = useHasDetailPane();
+  const { selectedId: paneId, select, clear } = useDetailSelection();
   const [sort, setSort] = useState<AvailabilitySort>("soonest");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
@@ -119,6 +133,8 @@ export default function ExploreScreen() {
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
+  const segOnColor = useColor("label-1");
+  const segOffColor = useColor("label-3");
 
   useEffect(() => {
     if (createBooking.isConflict) {
@@ -151,6 +167,47 @@ export default function ExploreScreen() {
       !dismissedSlotIds.has(slot.id) &&
       (!favoritesOnly || favoriteIds.has(slot.resourceId)),
   );
+
+  // One marker per resource for the map — the earliest bookable slot decides
+  // its state (`free` if starting within the hour, else `soon` + minutes).
+  const mapPlaces: MapPlace[] = useMemo(() => {
+    const byResource = new Map<string, MapPlace>();
+    const nowMs = now.getTime();
+    for (const slot of availableSlots) {
+      if (slot.locationLatitude == null || slot.locationLongitude == null) {
+        continue;
+      }
+      const startMs = new Date(slot.startsAt).getTime();
+      const minutesUntil = Math.max(0, Math.round((startMs - nowMs) / 60_000));
+      const freeNow = startMs <= nowMs + 60 * 60 * 1000;
+      const prev = byResource.get(slot.resourceId);
+      if (prev && (prev.state === "free" || (prev.soonMinutes ?? 1e9) <= minutesUntil)) {
+        continue;
+      }
+      const meters = distanceToMeters(
+        livePos,
+        slot.locationLatitude,
+        slot.locationLongitude,
+      );
+      byResource.set(slot.resourceId, {
+        resourceId: slot.resourceId,
+        name: slot.resourceName,
+        locationName: slot.locationName,
+        lat: slot.locationLatitude,
+        lng: slot.locationLongitude,
+        state: freeNow ? "free" : "soon",
+        soonMinutes: freeNow ? null : minutesUntil,
+        distanceLabel: meters != null ? formatDistance(meters) : null,
+        actionLabel: "Apartar",
+      });
+    }
+    return [...byResource.values()];
+  }, [availableSlots, livePos, now]);
+
+  function bookByResource(resourceId: string) {
+    const slot = availableSlots.find((s) => s.resourceId === resourceId);
+    if (slot) handleBook(slot);
+  }
 
   // "Ahora mismo" includes slots already in progress AND slots starting
   // shortly — a slot starting in 20 minutes is still something you can walk
@@ -268,6 +325,11 @@ export default function ExploreScreen() {
   }
 
   function handleOpenResource(slot: AvailabilitySlot) {
+    if (hasPane) {
+      haptics.selection();
+      select(slot.resourceId);
+      return;
+    }
     router.push({
       pathname: "/resource/[id]",
       params: {
@@ -347,8 +409,12 @@ export default function ExploreScreen() {
     );
   }
 
+  const paneOpen = hasPane && !!paneId;
+
   return (
-    <Screen bg="canvas">
+    <Screen bg="canvas" fluid>
+     <View style={{ flex: 1, flexDirection: "row" }}>
+      <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
           even while the list scrolls under it (a scrolled contentContainer
           top-padding would disappear). */}
@@ -386,6 +452,44 @@ export default function ExploreScreen() {
 
         <StaleStamp dataUpdatedAt={availabilityQuery.dataUpdatedAt} className="pl-1 text-footnote text-label-4" />
 
+        {mapAvailable ? (
+          <View className="h-9 flex-row rounded-control bg-fill p-[3px]">
+            {(["list", "map"] as const).map((v) => {
+              const on = view === v;
+              return (
+                <Pressable
+                  key={v}
+                  onPress={() => {
+                    haptics.selection();
+                    setView(v);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={v === "list" ? "Ver como lista" : "Ver en el mapa"}
+                  className={cn(
+                    "flex-1 flex-row items-center justify-center gap-1.5 rounded-control-segmented-inner",
+                    on ? "bg-card" : "",
+                  )}
+                >
+                  {v === "list" ? (
+                    <List size={14} color={on ? segOnColor : segOffColor} />
+                  ) : (
+                    <MapIcon size={14} color={on ? segOnColor : segOffColor} />
+                  )}
+                  <Text
+                    className={cn(
+                      "text-subhead font-semibold",
+                      on ? "text-label-1" : "text-label-3",
+                    )}
+                  >
+                    {v === "list" ? "Lista" : "Mapa"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         <View className="flex-row items-center justify-between">
           <SortControl value={sort} onChange={handleSortChange} />
           <Pressable
@@ -418,6 +522,15 @@ export default function ExploreScreen() {
         </View>
       </View>
 
+      {view === "map" && mapAvailable ? (
+        <SpaceMap
+          places={mapPlaces}
+          selectedId={selectedMapId}
+          onSelect={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
+          onAction={bookByResource}
+          userPosition={livePos}
+        />
+      ) : (
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -527,6 +640,18 @@ export default function ExploreScreen() {
           ) : null}
         </View>
       </ScrollView>
+      )}
+      </View>
+
+      {paneOpen ? (
+        <ResourcePane
+          id={paneId!}
+          onClose={clear}
+          onBook={handleBook}
+          pendingSlotIds={pendingSlotIds}
+        />
+      ) : null}
+     </View>
 
       {/* The success toast is rendered once at the root (_layout.tsx) so it
           survives router.back() into here and sits at the true bottom. */}

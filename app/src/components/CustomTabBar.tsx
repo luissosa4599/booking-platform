@@ -7,6 +7,7 @@ import { Pressable, Text, View } from "react-native";
 import { cn } from "@/lib/cn";
 import { Compass, type IconProps } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
+import { useIsWide } from "@/lib/useBreakpoint";
 
 export interface TabConfig {
   icon: ComponentType<IconProps>;
@@ -31,8 +32,14 @@ export function CustomTabBar({
   tabs,
 }: CustomTabBarProps) {
   const { colorScheme } = useColorScheme();
+  const isWide = useIsWide();
   const activeColor = useColor("tint");
   const inactiveColor = useColor("label-4");
+
+  // Wide viewport (PR #11): the NavRail replaces the bottom bar entirely.
+  if (isWide) {
+    return null;
+  }
 
   // The scanner is immersive — the bar hides while it's the active tab and the
   // screen itself carries a close affordance (handoff § I).

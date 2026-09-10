@@ -18,7 +18,7 @@ export default function MySpacesScreen() {
   const isEmpty = !isLoading && (spaces?.length ?? 0) === 0;
 
   return (
-    <Screen bg="canvas" edges={["top", "bottom"]}>
+    <Screen bg="canvas" edges={["top", "bottom"]} fluid maxWidth={1080}>
       <View className="flex-1">
         <ScrollView
           contentContainerStyle={{
