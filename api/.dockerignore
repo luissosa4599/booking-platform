@@ -2,6 +2,6 @@ bin/
 obj/
 **/bin/
 **/obj/
-.env
-.env.example
+**/.env
+**/.env.example
 *.user

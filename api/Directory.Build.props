@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Shared by all 5 projects under api/ (Api, Domain, Infrastructure, Worker,
+       Api.Tests). MSBuild imports the nearest Directory.Build.props walking up
+       from each project directory. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
