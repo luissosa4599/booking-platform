@@ -5,7 +5,10 @@ import { useFadeTransition } from "@/lib/useFadeTransition";
 
 import type { ToastProps } from "./Toast.types";
 
-const TRANSITION_MS = 200;
+// Was 200ms — bumped for perceptibility, 2026-09-11 punch-list item 4 (see
+// Sheet.web.tsx for the same change and why native is untouched). 300ms
+// matches the standard toast in/out duration in general UX guidance.
+const TRANSITION_MS = 300;
 
 // Not one of the "componentes faltantes" the task named, but the booking
 // interaction spec requires a bottom toast with an action — built minimal

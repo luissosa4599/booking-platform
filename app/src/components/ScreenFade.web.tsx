@@ -32,7 +32,14 @@ export function ScreenFade({
   useEffect(() => {
     const animation = Animated.timing(opacity, {
       toValue: 1,
-      duration: 180,
+      // Was 180ms — the user found the web app's transitions read as
+      // "fast-forward" after using it live; bumped for perceptibility
+      // (2026-09-11 punch-list item 4). 300ms sits at the low end of the
+      // standard screen-transition band (Material Design 3's "transitions"
+      // category: 300-700ms; general UX guidance for modals/panels/page
+      // transitions: 300-500ms). Web-only, so native (unverified on a
+      // device) is untouched.
+      duration: 300,
       useNativeDriver: false,
     });
     animation.start();
