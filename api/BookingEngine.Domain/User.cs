@@ -15,6 +15,14 @@ public class User
     /// <summary>Google's stable subject identifier (the <c>sub</c> claim). Null for dev magic-link users.</summary>
     public string? GoogleSub { get; set; }
 
+    /// <summary>
+    /// PBKDF2-SHA256 password hash (see <c>PasswordHasher</c>), null until the
+    /// user registers with email+password or sets one via password recovery.
+    /// A user who first signed in with Google can still add a password later —
+    /// same <see cref="Id"/> derivation for both, so it's the same account.
+    /// </summary>
+    public string? PasswordHash { get; set; }
+
     public string? DisplayName { get; set; }
 
     public string? AvatarUrl { get; set; }

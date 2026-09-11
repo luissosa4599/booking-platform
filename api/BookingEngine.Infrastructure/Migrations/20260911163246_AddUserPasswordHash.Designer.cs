@@ -3,6 +3,7 @@ using System;
 using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BookingEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(BookingEngineDbContext))]
-    partial class BookingEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911163246_AddUserPasswordHash")]
+    partial class AddUserPasswordHash
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -62,7 +65,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("ResourceId", "StartsAt");
 
-                    b.ToTable("AvailabilitySlots", (string)null);
+                    b.ToTable("AvailabilitySlots");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.Booking", b =>
@@ -119,7 +122,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bookings", (string)null);
+                    b.ToTable("Bookings");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.FavoriteResource", b =>
@@ -146,7 +149,7 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("UserId", "ResourceId")
                         .IsUnique();
 
-                    b.ToTable("Favorites", (string)null);
+                    b.ToTable("Favorites");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.Location", b =>
@@ -183,7 +186,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("OwnerUserId");
 
-                    b.ToTable("Locations", (string)null);
+                    b.ToTable("Locations");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.NotificationOutbox", b =>
@@ -213,7 +216,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("ProcessedAt");
 
-                    b.ToTable("NotificationOutbox", (string)null);
+                    b.ToTable("NotificationOutbox");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.PushToken", b =>
@@ -245,7 +248,7 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("UserId", "ExpoPushToken")
                         .IsUnique();
 
-                    b.ToTable("PushTokens", (string)null);
+                    b.ToTable("PushTokens");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.RefreshToken", b =>
@@ -284,7 +287,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.Resource", b =>
@@ -323,7 +326,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("ResourceTypeId");
 
-                    b.ToTable("Resources", (string)null);
+                    b.ToTable("Resources");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.ResourceImage", b =>
@@ -350,7 +353,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("ResourceId", "Position");
 
-                    b.ToTable("ResourceImages", (string)null);
+                    b.ToTable("ResourceImages");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.ResourceType", b =>
@@ -372,7 +375,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ResourceTypes", (string)null);
+                    b.ToTable("ResourceTypes");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.SentNotification", b =>
@@ -406,7 +409,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "Type", "BookingId");
 
-                    b.ToTable("SentNotifications", (string)null);
+                    b.ToTable("SentNotifications");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.User", b =>
@@ -461,7 +464,7 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("GoogleSub")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.WaitlistEntry", b =>
@@ -488,7 +491,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                     b.HasIndex("AvailabilitySlotId", "CreatedAt");
 
-                    b.ToTable("WaitlistEntries", (string)null);
+                    b.ToTable("WaitlistEntries");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.WeeklySchedule", b =>
@@ -514,7 +517,7 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("ResourceId")
                         .IsUnique();
 
-                    b.ToTable("WeeklySchedules", (string)null);
+                    b.ToTable("WeeklySchedules");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.WeeklyScheduleDay", b =>
@@ -545,7 +548,7 @@ namespace BookingEngine.Infrastructure.Migrations
                     b.HasIndex("WeeklyScheduleId", "Weekday")
                         .IsUnique();
 
-                    b.ToTable("WeeklyScheduleDays", (string)null);
+                    b.ToTable("WeeklyScheduleDays");
                 });
 
             modelBuilder.Entity("BookingEngine.Domain.AvailabilitySlot", b =>
@@ -651,7 +654,7 @@ namespace BookingEngine.Infrastructure.Migrations
 
                             b1.HasKey("ResourceTypeId");
 
-                            b1.ToTable("ResourceTypes", (string)null);
+                            b1.ToTable("ResourceTypes");
 
                             b1.WithOwner()
                                 .HasForeignKey("ResourceTypeId");
