@@ -12,7 +12,9 @@ test.describe("auth", () => {
     guestEmail,
   }) => {
     await page.goto("/sign-in");
-    await page.getByPlaceholder("Correo (solo dev)").fill(guestEmail);
+    // The email field is shared with the always-visible password login/register
+    // form now (PR #20) — no longer a dev-only placeholder.
+    await page.getByPlaceholder("Correo").fill(guestEmail);
     await page.getByRole("button", { name: "Entrar con enlace de dev" }).click();
 
     await expect(

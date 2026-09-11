@@ -5,6 +5,7 @@ using BookingEngine.Api.Application.Bookings;
 using BookingEngine.Infrastructure;
 using BookingEngine.Api.Infrastructure.Auth;
 using BookingEngine.Api.Infrastructure.Calendar;
+using BookingEngine.Api.Infrastructure.Email;
 using BookingEngine.Api.Infrastructure.Geocoding;
 using BookingEngine.Api.Infrastructure.Seed;
 using BookingEngine.Api.Infrastructure.Storage;
@@ -60,6 +61,21 @@ try
     builder.Services.AddSingleton<SessionIssuer>();
     builder.Services.AddSingleton<CalendarTokenCipher>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+
+    // Password-reset emails via Resend (see ResendEmailClient). Disabled
+    // (logs + falls back to a Development-only debug token) until
+    // RESEND_API_KEY is set.
+    var emailOptions = new EmailOptions
+    {
+        ApiKey = builder.Configuration["RESEND_API_KEY"] ?? string.Empty,
+    };
+    var configuredFromAddress = builder.Configuration["RESEND_FROM_ADDRESS"];
+    if (!string.IsNullOrWhiteSpace(configuredFromAddress))
+    {
+        emailOptions.FromAddress = configuredFromAddress;
+    }
+    builder.Services.AddSingleton(emailOptions);
+    builder.Services.AddHttpClient<IEmailSender, ResendEmailClient>();
 
     // Google Calendar (the calendar.events OAuth2 flow — separate from sign-in).
     builder.Services.AddHttpClient<GoogleCalendarClient>();

@@ -13,6 +13,27 @@ public record RequestLinkResponse(string Token, string MagicLink);
 
 public record VerifyRequest(string Token);
 
+// --- Email + password ---
+
+public record RegisterRequest(string Email, string Password);
+
+public record LoginRequest(string Email, string Password);
+
+public record ForgotPasswordRequest(string Email);
+
+/// <summary>
+/// Always the same generic message regardless of whether the email is
+/// registered (don't leak which emails have accounts). In Development only,
+/// also carries the raw token/link — there's no mail sender wired for local
+/// testing, same fallback the dev magic link uses.
+/// </summary>
+public record ForgotPasswordResponse(
+    string Message,
+    string? DebugToken = null,
+    string? DebugResetLink = null);
+
+public record ResetPasswordRequest(string Token, string NewPassword);
+
 // --- Google OAuth2 → first-party session ---
 
 public record GoogleSignInRequest(string IdToken);

@@ -96,6 +96,14 @@ interface RequestLinkResult {
   magicLink: string;
 }
 
+// The wire shape of /auth/forgot-password.
+interface ForgotPasswordResult {
+  message: string;
+  /** Development only — no mail sender for local testing (see CLAUDE.md). */
+  debugToken?: string | null;
+  debugResetLink?: string | null;
+}
+
 interface AuthState {
   /** false until the persisted session has been read once at startup. */
   hydrated: boolean;
@@ -108,6 +116,16 @@ interface AuthState {
   /** Dev-only simulated magic link (no mail). Kept for local testing. */
   requestLink: (email: string) => Promise<RequestLinkResult>;
   verify: (token: string) => Promise<void>;
+  /** Creates a new account (or adds a password to an existing Google/magic-link
+   * one for the same email) and signs in. Throws ApiError(409) if that email
+   * already has a password set. */
+  registerWithPassword: (email: string, password: string) => Promise<void>;
+  /** Throws ApiError(401) on a wrong password or an unknown email. */
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+  /** Always resolves — the server never reveals whether the email exists. */
+  forgotPassword: (email: string) => Promise<ForgotPasswordResult>;
+  /** Signs in immediately on success. Throws ApiError(400) for an invalid/expired token. */
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   /** Rotate the refresh token for a fresh access token. Throws on failure. */
   refresh: () => Promise<void>;
   /** Self-upgrade to host. Server re-issues the session so the new token carries role=host. */
@@ -173,6 +191,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await apiFetch<SessionResponse>("/auth/verify", {
       method: "POST",
       body: { token },
+    });
+    await persist(set, toSession(res));
+    void registerForPushNotificationsAsync();
+  },
+
+  registerWithPassword: async (email, password) => {
+    const res = await apiFetch<SessionResponse>("/auth/register", {
+      method: "POST",
+      body: { email: email.trim(), password },
+    });
+    await persist(set, toSession(res));
+    void registerForPushNotificationsAsync();
+  },
+
+  loginWithPassword: async (email, password) => {
+    const res = await apiFetch<SessionResponse>("/auth/login", {
+      method: "POST",
+      body: { email: email.trim(), password },
+    });
+    await persist(set, toSession(res));
+    void registerForPushNotificationsAsync();
+  },
+
+  forgotPassword: (email) =>
+    apiFetch<ForgotPasswordResult>("/auth/forgot-password", {
+      method: "POST",
+      body: { email: email.trim() },
+    }),
+
+  resetPassword: async (token, newPassword) => {
+    const res = await apiFetch<SessionResponse>("/auth/reset-password", {
+      method: "POST",
+      body: { token, newPassword },
     });
     await persist(set, toSession(res));
     void registerForPushNotificationsAsync();
