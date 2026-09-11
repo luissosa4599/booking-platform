@@ -46,10 +46,23 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
-        // Brand wash / ink — no image on purpose. The mark *assembles* in
-        // `components/AnimatedSplash.tsx` (the handoff's "ensamble seco"), so
-        // the native splash is just the ground colour that covers the pre-JS
-        // gap; a static mark here would double-draw and fight the animation.
+        // Brand wash / ink — no *visible* image on purpose. The mark
+        // *assembles* in `components/AnimatedSplash.tsx` (the handoff's
+        // "ensamble seco"), so the native splash is just the ground colour
+        // that covers the pre-JS gap; a static mark here would double-draw
+        // and fight the animation.
+        //
+        // `image` still has to point at *something* — found the hard way via
+        // a real `eas build` failure: on Android 12+, this plugin always
+        // wires `windowSplashScreenAnimatedIcon` to `@drawable/splashscreen_logo`
+        // (that's how the OS's own SplashScreen API works, not something this
+        // config can turn off), but only generates that drawable when `image`
+        // is set — omitting it left a style referencing a drawable that was
+        // never created, so `processReleaseResources` failed to link
+        // ("resource drawable/splashscreen_logo ... not found"). A 1x1 fully
+        // transparent PNG satisfies the resource requirement while staying
+        // invisible, same as having no icon at all.
+        image: "./assets/images/splash-icon-transparent.png",
         backgroundColor: "#FBEFE8",
         dark: { backgroundColor: "#17110D" },
       },
