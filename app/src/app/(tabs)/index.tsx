@@ -416,7 +416,13 @@ export default function ExploreScreen() {
   return (
     <Screen bg="canvas" fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
-      <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
+      {/* No maxWidth cap — this column fills whatever the pane (fixed
+          380px, only mounted when paneOpen) doesn't take, so the row fills
+          the real browser width instead of leaving a dead strip on wide
+          monitors. Was capped at 760/1080px; see CLAUDE.md-adjacent PRs
+          #10/#11 for why a pane needs a fluid tool screen in the first
+          place — the cap itself just wasn't hooked up to the viewport. */}
+      <View style={{ flex: 1 }}>
       {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
           even while the list scrolls under it (a scrolled contentContainer
           top-padding would disappear). */}
