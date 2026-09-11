@@ -1,4 +1,4 @@
-import { Animated, Modal, Pressable, View } from "react-native";
+import { Animated, Modal, Pressable, View, type ViewStyle } from "react-native";
 
 import { useFadeTransition } from "@/lib/useFadeTransition";
 
@@ -41,8 +41,24 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
             style={{ transform: [{ scale }] }}
             className="w-full max-w-md"
           >
+            {/* Capped height + internal scroll — without this, a sheet with
+                tall content (many conflict alternatives, a big QR pass) filled
+                the whole viewport: no backdrop strip was left to click for
+                "close on outside tap", and the always-present 70%-opacity
+                scrim had no visible pixels to show it either. Both looked
+                broken for the same one reason. */}
             <Pressable
               className="gap-[22px] rounded-sheet bg-card px-5 py-6"
+              // Inline, not a `max-h-[85vh]` class — NativeWind's arbitrary-value
+              // utilities are unreliable on web in this project (same story as
+              // the max-width ones elsewhere, see CLAUDE.md); confirmed via
+              // getComputedStyle that the class alone generated no rule at all.
+              // `DimensionValue` has no CSS-unit string case, so "85vh" needs
+              // the cast — this file is web-only, no native code path to
+              // break.
+              style={
+                { maxHeight: "85vh", overflow: "scroll" } as unknown as ViewStyle
+              }
               onPress={(e) => e.stopPropagation()}
             >
               <View>{children}</View>
