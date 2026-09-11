@@ -46,10 +46,23 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
-        // Brand wash / ink — no image on purpose. The mark *assembles* in
-        // `components/AnimatedSplash.tsx` (the handoff's "ensamble seco"), so
-        // the native splash is just the ground colour that covers the pre-JS
-        // gap; a static mark here would double-draw and fight the animation.
+        // Brand wash / ink — no *visible* image on purpose. The mark
+        // *assembles* in `components/AnimatedSplash.tsx` (the handoff's
+        // "ensamble seco"), so the native splash is just the ground colour
+        // that covers the pre-JS gap; a static mark here would double-draw
+        // and fight the animation.
+        //
+        // `image` still has to point at *something* — found the hard way via
+        // a real `eas build` failure: on Android 12+, this plugin always
+        // wires `windowSplashScreenAnimatedIcon` to `@drawable/splashscreen_logo`
+        // (that's how the OS's own SplashScreen API works, not something this
+        // config can turn off), but only generates that drawable when `image`
+        // is set — omitting it left a style referencing a drawable that was
+        // never created, so `processReleaseResources` failed to link
+        // ("resource drawable/splashscreen_logo ... not found"). A 1x1 fully
+        // transparent PNG satisfies the resource requirement while staying
+        // invisible, same as having no icon at all.
+        image: "./assets/images/splash-icon-transparent.png",
         backgroundColor: "#FBEFE8",
         dark: { backgroundColor: "#17110D" },
       },
@@ -110,9 +123,17 @@ const config: ExpoConfig = {
   },
   extra: {
     eas: {
-      // Set once `eas init` has run — lib/notifications.ts reads this to get
-      // an Expo push token; until then, push registration silently no-ops.
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+      // From `eas init` (2026-09-11, @luissosa4599/tempo:
+      // https://expo.dev/accounts/luissosa4599/projects/tempo). Not a
+      // secret — it's a public app identifier, same as any other Expo
+      // project id — so it's fine to commit directly rather than route it
+      // through EXPO_PUBLIC_EAS_PROJECT_ID: `eas-cli` itself doesn't load
+      // `.env` the way `expo start`/Metro does, and dynamic app.config.ts
+      // can't be auto-patched by `eas init` the way app.json can.
+      // lib/notifications.ts reads this to get an Expo push token.
+      projectId:
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+        "d6605661-65b8-4772-9593-9cb4de23e3c4",
     },
   },
 };
