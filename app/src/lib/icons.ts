@@ -11,6 +11,7 @@ import {
   CalendarX as LCalendarX,
   Camera as LCamera,
   Check as LCheck,
+  ChevronLeft as LChevronLeft,
   ChevronRight as LChevronRight,
   Clock as LClock,
   Compass as LCompass,
@@ -60,6 +61,7 @@ export const CalendarClock = typed(LCalendarClock);
 export const CalendarX = typed(LCalendarX);
 export const Camera = typed(LCamera);
 export const Check = typed(LCheck);
+export const ChevronLeft = typed(LChevronLeft);
 export const ChevronRight = typed(LChevronRight);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
