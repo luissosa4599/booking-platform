@@ -15,6 +15,7 @@ import { ConflictSheet } from "@/components/ConflictSheet";
 import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
+import { RefreshButton } from "@/components/RefreshButton";
 import { Row } from "@/components/Row";
 import { ResourcePane } from "@/components/ResourcePane";
 import { Screen } from "@/components/Screen";
@@ -423,13 +424,19 @@ export default function ExploreScreen() {
       <View className="gap-5 px-4 pb-4 pt-3">
         <View className="flex-row items-end justify-between">
           <Text className="text-title-lg text-label-1">Ahora</Text>
-          <Text className="text-subhead text-label-4">
-            {locating
-              ? "Ubicando…"
-              : isRefreshing
-                ? "Actualizando…"
-                : formatHeaderDate(now)}
-          </Text>
+          <View className="flex-row items-center gap-1.5">
+            <RefreshButton
+              onPress={() => availabilityQuery.refetch()}
+              refreshing={isRefreshing}
+            />
+            <Text className="text-subhead text-label-4">
+              {locating
+                ? "Ubicando…"
+                : isRefreshing
+                  ? "Actualizando…"
+                  : formatHeaderDate(now)}
+            </Text>
+          </View>
         </View>
 
         {isWide && view === "list" && !isEmpty ? (
