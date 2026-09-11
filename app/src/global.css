@@ -89,8 +89,12 @@
   overflow: visible !important;
   padding: 0 !important;
 }
-.gm-style-iw-t::after {
-  display: none !important;
+/* The tail's actual visible triangle is this pseudo-element (not
+   `.gm-style-iw-t`, which only positions it) — Google hardcodes it to white,
+   which stands out against a dark card. Match the card's own theme colour
+   instead of hiding it, so it still visually connects the card to the pin. */
+.gm-style-iw-tc::after {
+  background-color: rgb(var(--color-card)) !important;
 }
 .gm-ui-hover-effect {
   display: none !important;

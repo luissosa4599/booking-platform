@@ -205,15 +205,18 @@ export default function ExploreScreen() {
         state: freeNow ? "free" : "soon",
         soonMinutes: freeNow ? null : minutesUntil,
         distanceLabel: meters != null ? formatDistance(meters) : null,
-        actionLabel: "Apartar",
+        actionLabel: "Ver detalles",
       });
     }
     return [...byResource.values()];
   }, [availableSlots, livePos, now]);
 
-  function bookByResource(resourceId: string) {
+  // The map's peek card opens the resource's detail screen (or the pane, on
+  // wide layouts) rather than booking directly — picking a slot/seats still
+  // needs the detail screen's context, same as tapping a "MÁS TARDE HOY" row.
+  function openResourceFromMap(resourceId: string) {
     const slot = availableSlots.find((s) => s.resourceId === resourceId);
-    if (slot) handleBook(slot);
+    if (slot) handleOpenResource(slot);
   }
 
   // "Ahora mismo" includes slots already in progress AND slots starting
@@ -554,7 +557,7 @@ export default function ExploreScreen() {
           places={mapPlaces}
           selectedId={selectedMapId}
           onSelect={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
-          onAction={bookByResource}
+          onAction={openResourceFromMap}
           userPosition={livePos}
         />
       ) : (
