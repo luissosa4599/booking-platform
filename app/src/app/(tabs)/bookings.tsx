@@ -16,6 +16,7 @@ import { BookingPassSheet } from "@/components/BookingPassSheet";
 import { Button } from "@/components/Button";
 import { Group } from "@/components/Group";
 import { Placeholder } from "@/components/Placeholder";
+import { RefreshButton } from "@/components/RefreshButton";
 import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -336,8 +337,9 @@ export default function BookingsScreen() {
     <Screen bg="canvas" fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
       <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
-      <View className="px-4 pt-3">
+      <View className="flex-row items-center justify-between px-4 pt-3">
         <Text className="text-title-lg text-label-1">Reservas</Text>
+        <RefreshButton onPress={handleRefresh} refreshing={isRefreshing} />
       </View>
 
       {/* `pb-4` keeps a gap below the control while the list scrolls under it. */}
