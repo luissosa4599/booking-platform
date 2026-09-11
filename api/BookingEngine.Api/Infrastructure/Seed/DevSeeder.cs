@@ -123,10 +123,22 @@ public static class DevSeeder
         var resources = new List<Resource>();
         var images = new List<ResourceImage>();
 
+        // A per-*type* counter (0, 1, 2, ... within Auditorio, within Salon,
+        // etc.) rather than the raw campus index — ResourceName below derives
+        // room numbers/labels from this. Deriving them from the raw campus
+        // index instead (the previous approach) meant two different modulo
+        // operations landed on the same result every few campuses — e.g.
+        // "Salón 112" and "Cubículo de estudio 6" each showing up at multiple,
+        // unrelated real campuses, which is exactly what reads as "generated
+        // test data" rather than a real directory of rooms.
+        var typeOrdinal = new Dictionary<string, int>();
+
         for (var i = 0; i < Campuses.Length; i++)
         {
             var campus = Campuses[i];
             var type = cycle[i % cycle.Length];
+            var ordinal = typeOrdinal.GetValueOrDefault(type.Name);
+            typeOrdinal[type.Name] = ordinal + 1;
 
             var location = new Location
             {
@@ -143,7 +155,7 @@ public static class DevSeeder
                 Id = Guid.NewGuid(),
                 ResourceType = type,
                 Location = location,
-                Name = ResourceName(type, i),
+                Name = ResourceName(type, ordinal),
                 Capacity = CapacityFor(type),
                 Description = DescriptionFor(type),
             };
@@ -212,31 +224,44 @@ public static class DevSeeder
         _ => string.Empty,
     };
 
-    // A few real, well-known names; generic-but-plausible for the rest, varied
-    // by the campus index so a screen of many auditorios doesn't read as a
-    // copy-paste.
-    private static string ResourceName(ResourceType type, int campusIndex) => type.Name switch
+    // A few real, well-known names; every other one is derived from `ordinal`
+    // (this type's own 0, 1, 2, ... counter — see the caller) so no two
+    // campuses of the same type ever end up with an identical resource name.
+    private static string ResourceName(ResourceType type, int ordinal) => type.Name switch
     {
-        "Auditorio" => campusIndex switch
+        // Ordinal 1 within Auditorio is campus index 4, Facultad de Derecho,
+        // UNAM (see Campuses below) — its real auditorium name.
+        "Auditorio" => ordinal switch
         {
-            7 => "Auditorio Javier Barros Sierra",   // Facultad de Ingenieria, UNAM
-            4 => "Auditorio Eduardo Garcia Maynez",  // Facultad de Derecho, UNAM
-            _ => $"Auditorio {AuditorioSuffix(campusIndex)}",
+            1 => "Auditorio Eduardo Garcia Maynez",
+            _ => $"Auditorio {AuditorioSuffix(ordinal)}",
         },
-        "Salon" => $"Salón {100 + (campusIndex % 6) * 10 + (campusIndex % 4) + 1}",
-        "Sala de lectura" => (campusIndex % 3) switch
-        {
-            0 => "Sala de lectura — Planta alta",
-            1 => "Sala de lectura Norte",
-            _ => "Sala de lectura central",
-        },
-        _ => $"Cubículo de estudio {1 + (campusIndex % 9)}",
+        "Salon" => SalonName(ordinal),
+        "Sala de lectura" => $"Sala de lectura {SalaLecturaSection(ordinal)}",
+        _ => $"Cubículo de estudio {ordinal + 1}",
     };
 
-    private static string AuditorioSuffix(int i)
+    // "Edificio {letter}, Salón {floor}{room}" — every (building, floor) pair
+    // is unique for the first 16 ordinals (4 buildings x 4 floors), so even
+    // before the room number varies, no two Salon-type campuses can collide.
+    private static string SalonName(int ordinal)
+    {
+        var building = (char)('A' + ordinal % 4);
+        var floor = 1 + ordinal / 4 % 4;
+        var room = 1 + ordinal * 3 % 8;
+        return $"Edificio {building}, Salón {floor}{room:D2}";
+    }
+
+    private static string SalaLecturaSection(int ordinal)
+    {
+        var sections = new[] { "— Planta alta", "Norte", "Central", "— Planta baja", "Sur" };
+        return sections[ordinal % sections.Length];
+    }
+
+    private static string AuditorioSuffix(int ordinal)
     {
         var letters = new[] { "A", "B", "C", "Principal", "II" };
-        return letters[(i / 4) % letters.Length];
+        return letters[ordinal % letters.Length];
     }
 
     private static readonly string[] AuditorioPhotos =
