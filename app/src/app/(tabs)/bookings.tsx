@@ -251,7 +251,6 @@ export default function BookingsScreen() {
     (hasPane && selectedId
       ? bookings.find((b) => b.id === selectedId)
       : undefined) ?? null;
-  const paneOpen = !!selectedBooking;
 
   function openInPane(booking: MyBooking) {
     haptics.selection();
@@ -336,7 +335,11 @@ export default function BookingsScreen() {
   return (
     <Screen bg="canvas" fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
-      <View style={{ flex: 1, maxWidth: paneOpen ? 760 : 1080 }}>
+      {/* No maxWidth cap — fills whatever the pane (fixed 380px, only
+          mounted when selectedBooking is set) doesn't take, so the row
+          fills the real browser width instead of leaving a dead strip on
+          wide monitors. */}
+      <View style={{ flex: 1 }}>
       <View className="flex-row items-center justify-between px-4 pt-3">
         <Text className="text-title-lg text-label-1">Reservas</Text>
         <RefreshButton onPress={handleRefresh} refreshing={isRefreshing} />

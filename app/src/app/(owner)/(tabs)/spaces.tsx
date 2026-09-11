@@ -33,7 +33,11 @@ export default function MySpacesScreen() {
   return (
     <Screen bg="canvas" edges={["top", "bottom"]} fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
-      <View style={{ flex: 1, maxWidth: paneId ? 760 : 1080 }}>
+      {/* No maxWidth cap — fills whatever the pane (fixed 380px, only
+          mounted when paneId is set) doesn't take, so the row fills the
+          real browser width instead of leaving a dead strip on wide
+          monitors. */}
+      <View style={{ flex: 1 }}>
       <View className="flex-1">
         <ScrollView
           contentContainerStyle={{
