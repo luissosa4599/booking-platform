@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 import { Image } from "expo-image";
+
+import { ChevronLeft, ChevronRight } from "@/lib/icons";
 
 interface PhotoCarouselProps {
   /**
@@ -38,6 +42,7 @@ export function PhotoCarousel({
 }: PhotoCarouselProps) {
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const uris = photos.length > 0 ? photos : [fallbackUrl];
 
@@ -50,6 +55,15 @@ export function PhotoCarousel({
     setPage(Math.round(e.nativeEvent.contentOffset.x / width));
   }
 
+  // Arrow buttons, web only — a touch swipe advances the pager fine on
+  // native/mobile web, but there's no equivalent gesture for a mouse on a
+  // laptop, so without these a multi-photo space is stuck on page one there.
+  function goTo(next: number) {
+    const clamped = Math.max(0, Math.min(uris.length - 1, next));
+    scrollRef.current?.scrollTo({ x: clamped * width, animated: true });
+    setPage(clamped);
+  }
+
   return (
     <View
       onLayout={onLayout}
@@ -59,6 +73,7 @@ export function PhotoCarousel({
       {width > 0 ? (
         <>
           <ScrollView
+            ref={scrollRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -96,6 +111,31 @@ export function PhotoCarousel({
               ))}
             </View>
           ) : null}
+
+          {uris.length > 1 && Platform.OS === "web" ? (
+            <>
+              {page > 0 ? (
+                <Pressable
+                  onPress={() => goTo(page - 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Foto anterior"
+                  style={[styles.arrow, styles.arrowLeft]}
+                >
+                  <ChevronLeft size={18} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
+              {page < uris.length - 1 ? (
+                <Pressable
+                  onPress={() => goTo(page + 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Foto siguiente"
+                  style={[styles.arrow, styles.arrowRight]}
+                >
+                  <ChevronRight size={18} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
         </>
       ) : null}
     </View>
@@ -115,5 +155,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 6,
+  },
+  arrow: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  arrowLeft: {
+    left: 12,
+  },
+  arrowRight: {
+    right: 12,
   },
 });
