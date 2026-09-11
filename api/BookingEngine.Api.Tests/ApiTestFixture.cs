@@ -25,6 +25,19 @@ public class ApiTestFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Must be a real process environment variable, set before the factory
+        // below ever builds the host — Program.cs reads RATE_LIMIT_PER_MINUTE
+        // eagerly (unlike ConnectionStrings:Default, which is read lazily
+        // inside AddDbContext's options lambda), so a WebApplicationFactory
+        // ConfigureAppConfiguration override arrives too late to be seen. The
+        // whole "Api" collection shares one TestServer/quota bucket (the
+        // global rate limiter partitions by client IP, and every in-process
+        // test request looks like the same IP) — same reasoning as the e2e
+        // suite/CI setting this high, see CLAUDE.md. Without it, enough tests
+        // in one run trip 429s that have nothing to do with the endpoint
+        // under test.
+        Environment.SetEnvironmentVariable("RATE_LIMIT_PER_MINUTE", "100000");
+
         await _container.StartAsync();
 
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>

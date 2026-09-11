@@ -19,6 +19,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.GoogleSub).HasMaxLength(255);
 
+        // "{iterations}.{saltBase64}.{hashBase64}" — comfortably under 200.
+        builder.Property(u => u.PasswordHash).HasMaxLength(200);
+
         builder.Property(u => u.DisplayName).HasMaxLength(200);
 
         builder.Property(u => u.AvatarUrl).HasMaxLength(1000);

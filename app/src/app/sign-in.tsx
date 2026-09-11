@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { Screen } from "@/components/Screen";
+import { ApiError } from "@/lib/api/client";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { useIsOffline } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
@@ -12,17 +13,24 @@ import { useAuthStore } from "@/lib/session";
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const googleReady = isGoogleAuthConfigured();
 
+type PasswordMode = "login" | "register";
+
 export default function SignInScreen() {
   const router = useRouter();
   const requestLink = useAuthStore((s) => s.requestLink);
   const verify = useAuthStore((s) => s.verify);
+  const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
+  const registerWithPassword = useAuthStore((s) => s.registerWithPassword);
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordMode, setPasswordMode] = useState<PasswordMode>("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const offline = useIsOffline();
 
   const emailValid = EMAIL_RE.test(email.trim());
+  const passwordValid = password.length >= 8;
 
   // Dev-only: no mail is sent, so we verify the token right away. The
   // /auth/request-link + /auth/verify endpoints only exist in Development.
@@ -35,6 +43,31 @@ export default function SignInScreen() {
       router.replace("/");
     } catch {
       setError("No pudimos entrar. Intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitPassword() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (passwordMode === "login") {
+        await loginWithPassword(email, password);
+      } else {
+        await registerWithPassword(email, password);
+      }
+      router.replace("/");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setError("Correo o contraseña incorrectos.");
+      } else if (e instanceof ApiError && e.status === 409) {
+        setError("Ya existe una cuenta con este correo.");
+      } else if (e instanceof ApiError && e.status === 400) {
+        setError("Revisa el correo y la contraseña (mínimo 8 caracteres).");
+      } else {
+        setError("No pudimos entrar. Intenta de nuevo.");
+      }
     } finally {
       setBusy(false);
     }
@@ -64,39 +97,87 @@ export default function SignInScreen() {
             />
           ) : null}
 
-          {__DEV__ ? (
-            <>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Correo (solo dev)"
-                placeholderTextColor="#8A8A8E"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
-                importantForAutofill="yes"
-                editable={!busy}
-                onSubmitEditing={() =>
-                  emailValid && continueWithDevLink(email.trim())
-                }
-                className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
-              />
-              <Button
-                variant={googleReady ? "gray" : "filled"}
-                disabled={!emailValid || busy || offline}
-                loading={busy}
-                onPress={() => continueWithDevLink(email.trim())}
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Correo"
+            placeholderTextColor="#8A8A8E"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            importantForAutofill="yes"
+            editable={!busy}
+            className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
+          />
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Contraseña"
+            placeholderTextColor="#8A8A8E"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete={passwordMode === "login" ? "current-password" : "new-password"}
+            textContentType={passwordMode === "login" ? "password" : "newPassword"}
+            editable={!busy}
+            onSubmitEditing={() =>
+              emailValid && passwordValid && submitPassword()
+            }
+            className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
+          />
+          <Button
+            variant={googleReady ? "gray" : "filled"}
+            disabled={!emailValid || !passwordValid || busy || offline}
+            loading={busy}
+            onPress={submitPassword}
+          >
+            {passwordMode === "login" ? "Entrar" : "Crear cuenta"}
+          </Button>
+
+          <View className="flex-row items-center justify-between">
+            <Pressable
+              disabled={busy}
+              onPress={() => {
+                setError(null);
+                setPasswordMode((m) => (m === "login" ? "register" : "login"));
+              }}
+              hitSlop={8}
+            >
+              <Text className="text-footnote text-tint">
+                {passwordMode === "login" ? "Crear una cuenta" : "Ya tengo cuenta"}
+              </Text>
+            </Pressable>
+            {passwordMode === "login" ? (
+              <Pressable
+                disabled={busy}
+                onPress={() => router.push("/forgot-password")}
+                hitSlop={8}
               >
-                Entrar con enlace de dev
-              </Button>
-            </>
+                <Text className="text-footnote text-label-3">
+                  ¿Olvidaste tu contraseña?
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {__DEV__ ? (
+            <Button
+              variant="plain"
+              disabled={!emailValid || busy || offline}
+              loading={busy}
+              onPress={() => continueWithDevLink(email.trim())}
+            >
+              Entrar con enlace de dev
+            </Button>
           ) : null}
 
-          <Text className="text-footnote text-center text-label-4">
-            {offline ? "Necesitas conexión para entrar." : "Sin contraseñas."}
-          </Text>
+          {offline ? (
+            <Text className="text-footnote text-center text-label-4">
+              Necesitas conexión para entrar.
+            </Text>
+          ) : null}
           {error ? (
             <Text className="text-footnote text-center text-state-error">
               {error}

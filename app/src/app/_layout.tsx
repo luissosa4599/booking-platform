@@ -46,7 +46,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 LogBox.ignoreLogs(["Cannot connect to Expo CLI", /Cannot connect to Metro/]);
 
 // Routes reachable without a session.
-const PUBLIC_SEGMENTS = new Set(["sign-in", "auth"]);
+const PUBLIC_SEGMENTS = new Set([
+  "sign-in",
+  "auth",
+  "forgot-password",
+  "reset-password",
+]);
 // A signed-in host may sit here without being bounced into their own nav group
 // (the become-host success sheet lives on this screen).
 const ROLE_NEUTRAL_SEGMENTS = new Set(["become-host"]);
