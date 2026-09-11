@@ -4,7 +4,14 @@ import { useFadeTransition } from "@/lib/useFadeTransition";
 
 import type { SheetProps } from "./Sheet.types";
 
-const TRANSITION_MS = 200;
+// Was 200ms — bumped for perceptibility, 2026-09-11 punch-list item 4 (the
+// user found the web app's transitions read as "fast-forward"). 300ms is the
+// low end of the standard modal/panel-open band (general UX guidance:
+// 300-500ms; Material Design 3's "transitions": 300-700ms). Web-only;
+// Sheet.native.tsx's own TRANSITION_MS (240) is untouched — native has never
+// been verified on a device, so there's nothing here to confirm the
+// complaint applies to it too.
+const TRANSITION_MS = 300;
 
 // Web gets a plain centered modal (legacy `Animated` + RN `Modal`). The
 // native sheet (Sheet.native.tsx) is a bottom-anchored slide-up built the

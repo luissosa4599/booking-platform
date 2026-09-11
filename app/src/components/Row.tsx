@@ -88,13 +88,18 @@ export function Row({
   // color out of (same class of gotcha as everywhere else in this app, see
   // CLAUDE.md). Fading in a `bg-tint-wash` overlay's opacity gets the same
   // visual result without needing a literal color value.
+  // Bumped 150ms -> 220ms for perceptibility (2026-09-11 punch-list item 4;
+  // the handoff's exact value read as too quick in practice on the live web
+  // app) — a deliberate deviation from the audited handoff number, not a
+  // bug. 220ms sits inside the standard "state change" band (general UX
+  // guidance + Material Design 3's "component animation" category: 200-300ms).
   const selectedProgress = useSharedValue(selected ? 1 : 0);
 
   useEffect(() => {
     selectedProgress.value = reduceMotion
       ? (selected ? 1 : 0)
       : withTiming(selected ? 1 : 0, {
-          duration: 150,
+          duration: 220,
           easing: Easing.out(Easing.ease),
         });
   }, [selected, selectedProgress, reduceMotion]);
@@ -223,6 +228,11 @@ export function Row({
 // in this app: the outer Animated.View owns the transform/opacity, the inner
 // plain View carries the `text-tint` color class (Animated.View doesn't
 // reliably apply `text-*` color classes, only `bg-*` ones).
+// Bumped 240ms -> 300ms for perceptibility (2026-09-11 punch-list item 4) —
+// a deliberate deviation from the audited handoff number, not a bug. 300ms
+// sits at the upper edge of the standard "component animation"/state-change
+// band (200-300ms) rather than deep into modal-transition territory, since
+// this is a small icon swap, not a surface opening.
 function CheckIcon() {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
@@ -231,7 +241,7 @@ function CheckIcon() {
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = reduceMotion ? 1 : withTiming(1, { duration: 240 });
+    progress.value = reduceMotion ? 1 : withTiming(1, { duration: 300 });
   }, [progress, reduceMotion]);
 
   const style = useAnimatedStyle(() => ({

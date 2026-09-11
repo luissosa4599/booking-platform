@@ -144,6 +144,11 @@ export function Button({
   // "Elige un horario" → "Apartar 14:00" as the user picks a slot. Held in
   // local state so the outgoing label stays on screen through the first half
   // of the fade instead of being replaced instantly by the incoming one.
+  // Total bumped 120ms -> 200ms for perceptibility (2026-09-11 punch-list
+  // item 4) — a deliberate deviation from the audited handoff number, not a
+  // bug. 200ms sits at the low end of the standard "state change" band
+  // (general UX guidance: 200-300ms) — deliberately the low end since this
+  // is just a label swap, the CTA itself never moves or resizes.
   const [displayChildren, setDisplayChildren] = useState(children);
   const [displaySubtitle, setDisplaySubtitle] = useState(subtitle);
   const labelCrossfade = useSharedValue(1);
@@ -164,13 +169,13 @@ export function Button({
       return;
     }
     labelCrossfade.value = withSequence(
-      withTiming(0, { duration: 60 }),
-      withTiming(1, { duration: 60 }),
+      withTiming(0, { duration: 100 }),
+      withTiming(1, { duration: 100 }),
     );
     const timeout = setTimeout(() => {
       setDisplayChildren(children);
       setDisplaySubtitle(subtitle);
-    }, 60);
+    }, 100);
     return () => clearTimeout(timeout);
   }, [children, subtitle, displayChildren, displaySubtitle, labelCrossfade, reduceMotion]);
 
