@@ -4,7 +4,10 @@ import {
   AdvancedMarker,
   APIProvider,
   ColorScheme,
+  InfoWindow,
   Map as GoogleMap,
+  Pin,
+  useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 
 import { useColorScheme } from "nativewind";
@@ -14,10 +17,30 @@ import { palette } from "@/lib/theme/palette";
 import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
 
 /**
- * The Explore map (PR #10) — one marker per available resource, coloured by
- * state (the block echoes the Tempo "T"). Web only: `@vis.gl/react-google-maps`
- * + the Maps JavaScript API (`EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY`, referrer-
- * restricted). Native falls back to the list — see `SpaceMap.native.tsx`.
+ * The Explore map (PR #10) — one marker per available resource, a plain
+ * Google `<Pin>` coloured by state (free now vs. opens soon). Web only:
+ * `@vis.gl/react-google-maps` + the Maps JavaScript API
+ * (`EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY`, referrer-restricted). Native falls
+ * back to the list — see `SpaceMap.native.tsx`.
+ *
+ * The original custom "T block" marker (matching the brand mark) was
+ * reverted to a plain `<Pin>` — it read as a map glitch once markers piled up
+ * or overlapped. A better custom marker + clustering is a separate follow-up.
+ *
+ * **The peek card is a real `<InfoWindow>`, not a second `<AdvancedMarker>`
+ * at the same position** (2026-09-11 fix). With this many markers on the
+ * map, Google renders `AdvancedMarker` content through a collision-managed
+ * path — clicking the *pin* itself still works (its `onClick` maps to one
+ * opaque hit region), but a `<button>` nested inside a second, content-only
+ * `AdvancedMarker` never receives its own click: the cursor turns into the
+ * map's drag-pan grab hand instead, and "Apartar" becomes unclickable.
+ * Confirmed via `document.elementFromPoint` — the marker content is placed in
+ * a slot literally named `…-internal-hidden-gmp-advanced-markers`. `InfoWindow`
+ * is Google's actual purpose-built mechanism for interactive marker popups —
+ * a real portalled DOM overlay outside that collision-management path, so
+ * nested buttons work exactly like normal HTML. Its default chrome (white
+ * bubble, shadow, tail, close ×) is stripped via the `.gm-style-iw-*`
+ * overrides in `global.css` — the card supplies its own styling instead.
  *
  * `AdvancedMarker` needs a vector map id; `DEMO_MAP_ID` is Google's public
  * dev id and works with no cloud setup. Set `EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID`
@@ -69,19 +92,14 @@ export function SpaceMap({
           style={{ width: "100%", height: "100%" }}
         >
           {places.map((p) => (
-            <AdvancedMarker
+            <PlaceMarker
               key={p.resourceId}
-              position={{ lat: p.lat, lng: p.lng }}
-              zIndex={p.resourceId === selectedId ? 20 : 1}
-              onClick={() => onSelect(p.resourceId)}
-            >
-              <Block
-                place={p}
-                selected={p.resourceId === selectedId}
-                colors={c}
-                onAction={() => onAction(p.resourceId)}
-              />
-            </AdvancedMarker>
+              place={p}
+              selected={p.resourceId === selectedId}
+              onSelect={onSelect}
+              onAction={onAction}
+              colors={c}
+            />
           ))}
 
           {userPosition ? (
@@ -104,95 +122,101 @@ export function SpaceMap({
   );
 }
 
-function Block({
+function PlaceMarker({
   place,
   selected,
+  onSelect,
+  onAction,
+  colors,
+}: {
+  place: MapPlace;
+  selected: boolean;
+  onSelect: (resourceId: string) => void;
+  onAction: (resourceId: string) => void;
+  colors: ReturnType<typeof palette>;
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef();
+  const free = place.state === "free";
+
+  return (
+    <>
+      <AdvancedMarker
+        ref={markerRef}
+        position={{ lat: place.lat, lng: place.lng }}
+        zIndex={selected ? 20 : 1}
+        onClick={() => onSelect(place.resourceId)}
+      >
+        <Pin
+          background={free ? colors.tint : colors.card}
+          borderColor={colors.tint}
+          glyphColor={free ? colors["on-tint"] : colors.tint}
+          glyph={!free && place.soonMinutes != null ? String(place.soonMinutes) : undefined}
+          scale={selected ? 1.15 : 1}
+        />
+      </AdvancedMarker>
+
+      {selected && marker ? (
+        <InfoWindow anchor={marker} disableAutoPan headerDisabled>
+          <PeekCard place={place} colors={colors} onAction={() => onAction(place.resourceId)} />
+        </InfoWindow>
+      ) : null}
+    </>
+  );
+}
+
+function PeekCard({
+  place,
   colors,
   onAction,
 }: {
   place: MapPlace;
-  selected: boolean;
   colors: ReturnType<typeof palette>;
   onAction: () => void;
 }) {
-  const free = place.state === "free";
   return (
-    <div style={{ position: "relative", transform: "translateY(13px)" }}>
+    <div
+      style={{
+        width: 208,
+        background: colors.card,
+        borderRadius: 14,
+        padding: 12,
+        border: `1px solid ${colors.hairline}`,
+        boxShadow: "0 10px 30px -8px rgba(0,0,0,.3)",
+      }}
+    >
       <div
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "SpaceGrotesk_500Medium, system-ui, sans-serif",
-          fontSize: 11,
-          fontWeight: 500,
-          background: free ? colors.tint : colors.card,
-          border: free ? "none" : `2px solid ${colors.tint}`,
-          color: colors["tint-press"],
-          boxShadow: selected
-            ? `0 0 0 3px ${colors.tint}, 0 2px 6px rgba(0,0,0,.3)`
-            : "0 1px 3px rgba(0,0,0,.3)",
+          fontSize: 14,
+          fontWeight: 700,
+          letterSpacing: "-0.01em",
+          color: colors["label-1"],
         }}
       >
-        {!free && place.soonMinutes != null ? place.soonMinutes : null}
+        {place.name}
       </div>
-
-      {selected ? (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            bottom: "calc(100% + 8px)",
-            transform: "translateX(-50%)",
-            width: 208,
-            background: colors.card,
-            borderRadius: 14,
-            padding: 12,
-            border: `1px solid ${colors.hairline}`,
-            boxShadow: "0 10px 30px -8px rgba(0,0,0,.3)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: "-0.01em",
-              color: colors["label-1"],
-            }}
-          >
-            {place.name}
-          </div>
-          <div style={{ fontSize: 12, color: colors["label-3"], margin: "2px 0 10px" }}>
-            {place.locationName}
-            {place.distanceLabel ? ` · a ${place.distanceLabel}` : ""}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction();
-            }}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "center",
-              background: colors.tint,
-              color: colors["on-tint"],
-              fontSize: 13,
-              fontWeight: 600,
-              border: "none",
-              borderRadius: 999,
-              padding: "8px 0",
-              cursor: "pointer",
-            }}
-          >
-            {place.actionLabel}
-          </button>
-        </div>
-      ) : null}
+      <div style={{ fontSize: 12, color: colors["label-3"], margin: "2px 0 10px" }}>
+        {place.locationName}
+        {place.distanceLabel ? ` · a ${place.distanceLabel}` : ""}
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "center",
+          background: colors.tint,
+          color: colors["on-tint"],
+          fontSize: 13,
+          fontWeight: 600,
+          border: "none",
+          borderRadius: 999,
+          padding: "8px 0",
+          cursor: "pointer",
+        }}
+      >
+        {place.actionLabel}
+      </button>
     </div>
   );
 }
