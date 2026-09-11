@@ -145,7 +145,14 @@ function PeekCard({
   onAction: () => void;
 }) {
   return (
-    <div style={{ paddingBottom: 40 }}>
+    // The map's drag-to-pan gesture starts on `pointerdown`, before a click
+    // ever fires — without stopping it here, the tiny mouse movement between
+    // press and release on a real click reads as "drag the map" instead of
+    // "click the button", so the cursor turns into a grab hand and the
+    // Apartar button becomes unclickable. Stopping propagation at the
+    // card's root (not just the button's onClick) fixes every interaction
+    // inside the card, not just the button.
+    <div style={{ paddingBottom: 40 }} onPointerDown={(e) => e.stopPropagation()}>
       <div
         style={{
           width: 208,
