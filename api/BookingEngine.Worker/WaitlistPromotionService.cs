@@ -15,7 +15,7 @@ namespace BookingEngine.Worker;
 public class WaitlistPromotionService(
     IServiceScopeFactory scopeFactory,
     ExpoPushClient pushClient,
-    ILogger<WaitlistPromotionService> logger) : BackgroundService
+    ILogger<WaitlistPromotionService> logger) : BackgroundService, IOneShotPass
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(15);
     private const int BatchSize = 20;
@@ -37,7 +37,7 @@ public class WaitlistPromotionService(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task RunOnceAsync(CancellationToken ct)
+    public async Task RunOnceAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();

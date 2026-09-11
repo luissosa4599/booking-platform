@@ -472,17 +472,22 @@ public static class DevSeeder
         {
             var slotIndex = 0;
 
-            // One slot starting 15-60 minutes from now, regardless of where
-            // that falls relative to the fixed daily grid below — this is
-            // what actually guarantees "Libre ahora mismo" has something the
-            // moment the seed finishes.
-            var nearTermStart = now + TimeSpan.FromMinutes(random.Next(15, 61));
+            // One slot that's ALREADY in progress — started a little while ago,
+            // still running for most of an hour. This is what guarantees
+            // "Libre ahora mismo" always has something, at any time of day: a
+            // future-starting slot falls outside Explore's default "hasta el
+            // fin de hoy" window when the seed runs late in the evening (and
+            // the fixed daily grid below is already spent), leaving the screen
+            // on its empty state. An in-progress slot satisfies both the API's
+            // `EndsAt >= from` filter and the client's "starts within the hour"
+            // grouping no matter the clock.
+            var inProgressStart = now - TimeSpan.FromMinutes(random.Next(10, 45));
             slots.Add(new AvailabilitySlot
             {
                 Id = Guid.NewGuid(),
                 Resource = resource,
-                StartsAt = nearTermStart,
-                EndsAt = nearTermStart + slotDuration,
+                StartsAt = inProgressStart,
+                EndsAt = inProgressStart + slotDuration,
                 // Always bookable — the whole point of this slot is to have
                 // something visible right away.
                 CapacityRemaining = random.Next(1, resource.Capacity + 1),

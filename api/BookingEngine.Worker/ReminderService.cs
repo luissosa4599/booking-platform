@@ -5,23 +5,34 @@ using Microsoft.EntityFrameworkCore;
 namespace BookingEngine.Worker;
 
 /// <summary>
-/// Polls every 60s for confirmed bookings starting in ~30 minutes and pushes a
-/// reminder to every device registered for that user. This is what actually
+/// Each sweep pushes a "your booking is soon" reminder for every confirmed
+/// booking whose start falls in the <see cref="WindowStart"/>..<see cref="WindowEnd"/>
+/// window, to every device registered for that user. This is what actually
 /// covers the one-tap Explore booking flow — the old client-local
 /// `expo-notifications` reminder (see app/src/lib/notifications.ts, removed in
-/// this same change) only ever fired for the long detail-screen flow.
+/// this same change) only ever fired for the long detail-screen flow. Runs on
+/// a 60s loop locally; deployed, a scheduler drives one sweep every ~20 min.
 /// </summary>
 public class ReminderService(
     IServiceScopeFactory scopeFactory,
     ExpoPushClient pushClient,
-    ILogger<ReminderService> logger) : BackgroundService
+    ILogger<ReminderService> logger) : BackgroundService, IOneShotPass
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
 
-    // A booking starting 28-32 minutes out is "reminder time" — a 4-minute
-    // window comfortably covers one poll's worth of drift either way.
-    private static readonly TimeSpan WindowStart = TimeSpan.FromMinutes(28);
-    private static readonly TimeSpan WindowEnd = TimeSpan.FromMinutes(32);
+    // "Reminder time" is a window, not a point: a sweep fires the reminder for
+    // any booking whose start falls in [now + WindowStart, now + WindowEnd].
+    // The window MUST be wider than the gap between sweeps (plus scheduler
+    // jitter) or a booking can start in the dead space between two sweeps and
+    // never get a reminder. Deployed, sweeps are a Cloud Scheduler job every
+    // ~20 min (not the 60s local loop) — so 22-50 (28 min wide) leaves a
+    // comfortable overlap. SentNotification (keyed by bookingId) makes the
+    // repeated matches across overlapping sweeps a no-op.
+    //   NOTE: push delivery itself is inert until EAS is wired
+    //   (EXPO_PUBLIC_EAS_PROJECT_ID — roadmap §4). Retune this window + the
+    //   copy below against real device testing when that lands.
+    private static readonly TimeSpan WindowStart = TimeSpan.FromMinutes(22);
+    private static readonly TimeSpan WindowEnd = TimeSpan.FromMinutes(50);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -41,7 +52,7 @@ public class ReminderService(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task RunOnceAsync(CancellationToken ct)
+    public async Task RunOnceAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
@@ -90,7 +101,7 @@ public class ReminderService(
                 var outcome = await pushClient.SendAsync(
                     token.ExpoPushToken,
                     booking.AvailabilitySlot.Resource.Name,
-                    "Tu reserva empieza en 30 minutos.",
+                    "Tu reserva empieza pronto.",
                     ct);
 
                 if (outcome == PushOutcome.TokenInvalid)

@@ -76,6 +76,11 @@ services:
         condition: service_started
     environment:
       ConnectionStrings__Default: "Host=postgres;Database=bookingengine;Username=booking;Password=booking"
+      # Unset here -> the worker runs as three always-on BackgroundServices
+      # (this is the shape compose demonstrates). Deployed, it's instead run as
+      # `WORKER_ONESHOT=true` on a schedule (Cloud Scheduler -> Cloud Run job):
+      # one sweep of each, then exit, so nothing stays running between sweeps.
+      WORKER_ONESHOT: "false"
 
 volumes:
   postgres-data:
