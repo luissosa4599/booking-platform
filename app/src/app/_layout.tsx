@@ -25,6 +25,7 @@ import { OfflineNotice } from "@/components/OfflineNotice";
 import { Toast } from "@/components/Toast";
 import { persistOptions } from "@/lib/api/persist";
 import { queryClient } from "@/lib/api/queryClient";
+import { useLocationStore } from "@/lib/locationStore";
 import { wireConnectivity } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
 import { useReduceMotion } from "@/lib/useReduceMotion";
@@ -232,6 +233,10 @@ export default function RootLayout() {
   const [cacheRestored, setCacheRestored] = useState(false);
   useEffect(() => {
     wireConnectivity();
+    // Ask for location on app start (not lazily on a sort tap) so Explore can
+    // default to "nearest" and its map can open centred on the user. A denial
+    // here is cached (`lib/location.ts`) and never re-prompted this session.
+    void useLocationStore.getState().bootstrap();
     const t = setTimeout(() => setCacheRestored(true), 2500);
     return () => clearTimeout(t);
   }, []);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -35,7 +35,7 @@ import { haptics } from "@/lib/haptics";
 import { CalendarX, Heart, List, Map as MapIcon, Search } from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
-import { formatDistance, type Coords } from "@/lib/maps";
+import { formatDistance } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
 import { useColor } from "@/lib/theme/useColor";
 import { useHasDetailPane, useIsWide } from "@/lib/useBreakpoint";
@@ -86,15 +86,20 @@ export default function ExploreScreen() {
   const isWide = useIsWide();
   const { selectedId: paneId, select, clear } = useDetailSelection();
   const [sort, setSort] = useState<AvailabilitySort>("soonest");
-  const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
   // Live device position (updates as you move) drives the per-row distance
-  // label; `sortAnchor` (a lagging copy) keys the server sort so the list order
-  // doesn't churn while you walk.
+  // label and the map's initial centre; `sortAnchor` (a lagging copy) keys the
+  // server sort so the list order doesn't churn while you walk. `bootstrap()`
+  // (called once from `_layout.tsx` on app start) fills these in before the
+  // user ever taps a sort option — see `locationStore.ts`.
   const livePos = useLocationStore((s) => s.position);
   const sortAnchor = useLocationStore((s) => s.sortAnchor);
+  const locationStatus = useLocationStore((s) => s.status);
   const ensureWatching = useLocationStore((s) => s.ensureWatching);
   const stopWatching = useLocationStore((s) => s.stop);
+  // Only auto-switch to "nearest" once, and never once the user has picked a
+  // sort themselves (including explicitly picking "nearest" or opting out).
+  const sortTouched = useRef(false);
   // Set from the empty state's primary action ("Ver disponibilidad") — extends
   // the query window past today so `emptyContext.nextAvailableAt` actually
   // shows up in the list.
@@ -116,8 +121,8 @@ export default function ExploreScreen() {
   const endOfToday = useMemo(() => endOfDay(now), [now]);
   const to = horizon ?? endOfToday;
 
-  // The one-shot fix or, once a watch is running, the lagging sort anchor.
-  const queryCoords = sortAnchor ?? coords;
+  // The bootstrap fix or, once a watch is running, the lagging sort anchor.
+  const queryCoords = sortAnchor ?? livePos;
   const resourceTypesQuery = useResourceTypes();
   const availabilityQuery = useAvailability({
     resourceTypeId: selectedResourceTypeId,
@@ -280,7 +285,12 @@ export default function ExploreScreen() {
   }
 
   async function enableNearest() {
-    if (coords) {
+    sortTouched.current = true;
+    // `bootstrap()` (app start) already resolved this most of the time — only
+    // fall back to asking again if it hasn't (e.g. the store hasn't finished
+    // yet, or something cleared `position`). `requestAndGetPosition` itself
+    // no-ops without re-prompting once the user has denied this session.
+    if (livePos) {
       setSort("nearest");
       ensureWatching();
       return;
@@ -289,7 +299,7 @@ export default function ExploreScreen() {
     const pos = await requestAndGetPosition();
     setLocating(false);
     if (pos) {
-      setCoords(pos);
+      useLocationStore.setState({ position: pos, sortAnchor: pos });
       setSort("nearest");
       ensureWatching();
     } else {
@@ -301,6 +311,7 @@ export default function ExploreScreen() {
   }
 
   function handleSortChange(next: AvailabilitySort) {
+    sortTouched.current = true;
     if (next === "nearest") {
       void enableNearest();
     } else {
@@ -308,6 +319,16 @@ export default function ExploreScreen() {
       stopWatching();
     }
   }
+
+  // `bootstrap()` (app start, `_layout.tsx`) resolves in the background — once
+  // it grants a fix, default to "nearest" (falling back to "soonest" already
+  // happened, it's the initial state). Skipped once the user has touched the
+  // sort control themselves, in either direction.
+  useEffect(() => {
+    if (sortTouched.current || locationStatus !== "granted") return;
+    setSort("nearest");
+    ensureWatching();
+  }, [locationStatus, ensureWatching]);
 
   // Stop the watcher when leaving Explore.
   useEffect(() => () => stopWatching(), [stopWatching]);
