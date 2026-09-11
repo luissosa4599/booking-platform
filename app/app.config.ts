@@ -110,9 +110,17 @@ const config: ExpoConfig = {
   },
   extra: {
     eas: {
-      // Set once `eas init` has run — lib/notifications.ts reads this to get
-      // an Expo push token; until then, push registration silently no-ops.
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+      // From `eas init` (2026-09-11, @luissosa4599/tempo:
+      // https://expo.dev/accounts/luissosa4599/projects/tempo). Not a
+      // secret — it's a public app identifier, same as any other Expo
+      // project id — so it's fine to commit directly rather than route it
+      // through EXPO_PUBLIC_EAS_PROJECT_ID: `eas-cli` itself doesn't load
+      // `.env` the way `expo start`/Metro does, and dynamic app.config.ts
+      // can't be auto-patched by `eas init` the way app.json can.
+      // lib/notifications.ts reads this to get an Expo push token.
+      projectId:
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+        "d6605661-65b8-4772-9593-9cb4de23e3c4",
     },
   },
 };
