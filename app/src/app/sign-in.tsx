@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
@@ -7,8 +7,10 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { Screen } from "@/components/Screen";
 import { ApiError } from "@/lib/api/client";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
+import { Eye, EyeOff } from "@/lib/icons";
 import { useIsOffline } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
+import { useColor } from "@/lib/theme/useColor";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const googleReady = isGoogleAuthConfigured();
@@ -24,10 +26,12 @@ export default function SignInScreen() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordMode, setPasswordMode] = useState<PasswordMode>("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const offline = useIsOffline();
+  const iconColor = useColor("label-4");
 
   const emailValid = EMAIL_RE.test(email.trim());
   const passwordValid = password.length >= 8;
@@ -75,6 +79,14 @@ export default function SignInScreen() {
 
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
+      <KeyboardAvoidingView
+        // "height" (not "padding"/undefined) on Android — Expo SDK 57's
+        // edge-to-edge default breaks the native adjustResize keyboard
+        // behavior, so the keyboard covered the password field on a real
+        // device without this (2026-09-14). Verify again on a real build.
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
       <View className="flex-1 justify-center gap-10 px-6">
         <View className="h-[60px] w-[60px] items-center justify-center rounded-logo bg-tint">
           <View className="h-[22px] w-[22px] rounded-[7px] bg-on-tint" />
@@ -111,22 +123,36 @@ export default function SignInScreen() {
             editable={!busy}
             className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
           />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Contraseña"
-            placeholderTextColor="#8A8A8E"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete={passwordMode === "login" ? "current-password" : "new-password"}
-            textContentType={passwordMode === "login" ? "password" : "newPassword"}
-            editable={!busy}
-            onSubmitEditing={() =>
-              emailValid && passwordValid && submitPassword()
-            }
-            className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
-          />
+          <View className="justify-center">
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Contraseña"
+              placeholderTextColor="#8A8A8E"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete={passwordMode === "login" ? "current-password" : "new-password"}
+              textContentType={passwordMode === "login" ? "password" : "newPassword"}
+              editable={!busy}
+              onSubmitEditing={() =>
+                emailValid && passwordValid && submitPassword()
+              }
+              className="h-[52px] rounded-button bg-fill px-4 pr-12 text-body text-label-1"
+            />
+            <Pressable
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={8}
+              className="absolute right-3"
+              accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={iconColor} />
+              ) : (
+                <Eye size={20} color={iconColor} />
+              )}
+            </Pressable>
+          </View>
           <Button
             variant={googleReady ? "gray" : "filled"}
             disabled={!emailValid || !passwordValid || busy || offline}
@@ -185,6 +211,7 @@ export default function SignInScreen() {
           ) : null}
         </View>
       </View>
+      </KeyboardAvoidingView>
 
       {/* App Store Review 4.8: Apple sign-in is required on iOS when other
             social logins exist. Wired as a dev demo entry for now — a real

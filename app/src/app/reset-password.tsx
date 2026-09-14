@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { Placeholder } from "@/components/Placeholder";
 import { Screen } from "@/components/Screen";
 import { ApiError } from "@/lib/api/client";
-import { CalendarX } from "@/lib/icons";
+import { CalendarX, Eye, EyeOff } from "@/lib/icons";
 import { useIsOffline } from "@/lib/net";
 import { useAuthStore } from "@/lib/session";
+import { useColor } from "@/lib/theme/useColor";
 
 // Landing route for the forgot-password link (real email, or the __DEV__
 // shortcut from forgot-password.tsx). Sets a new password and signs in
@@ -20,9 +21,11 @@ export default function ResetPasswordScreen() {
   const offline = useIsOffline();
 
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [invalidToken, setInvalidToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const iconColor = useColor("label-4");
 
   const passwordValid = password.length >= 8;
 
@@ -65,6 +68,11 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
+      <KeyboardAvoidingView
+        // "height" (not "padding"/undefined) on Android — see sign-in.tsx.
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
       <View className="flex-1 justify-center gap-6 px-6">
         <View className="gap-3">
           <Text className="text-title-lg text-label-1">
@@ -76,20 +84,34 @@ export default function ResetPasswordScreen() {
         </View>
 
         <View className="gap-3">
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Nueva contraseña"
-            placeholderTextColor="#8A8A8E"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            editable={!busy}
-            onSubmitEditing={() => passwordValid && submit()}
-            className="h-[52px] rounded-button bg-fill px-4 text-body text-label-1"
-          />
+          <View className="justify-center">
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Nueva contraseña"
+              placeholderTextColor="#8A8A8E"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              editable={!busy}
+              onSubmitEditing={() => passwordValid && submit()}
+              className="h-[52px] rounded-button bg-fill px-4 pr-12 text-body text-label-1"
+            />
+            <Pressable
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={8}
+              className="absolute right-3"
+              accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={iconColor} />
+              ) : (
+                <Eye size={20} color={iconColor} />
+              )}
+            </Pressable>
+          </View>
           <Button
             disabled={!passwordValid || busy || offline}
             loading={busy}
@@ -109,6 +131,7 @@ export default function ResetPasswordScreen() {
           ) : null}
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }

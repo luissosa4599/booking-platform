@@ -6,7 +6,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { BRAND, BRAND_TAGLINE } from "@/lib/brand";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
-// Handoff "Splash A — Ensamble seco", 620 ms, single curve.
+// Handoff "Splash A — Ensamble seco", single curve. Originally 620ms total;
+// doubled 2026-09-14 for demo pacing (~1240ms) — see the timing comment below.
 const EASE = Easing.bezier(0.16, 1, 0.3, 1);
 const STEM_H = 80;
 
@@ -63,33 +64,38 @@ export function AnimatedSplash({ appReady, onFinish }: AnimatedSplashProps) {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
 
+    // Durations/delays are 2x the handoff's original "Ensamble seco" spec
+    // (340/340/340/240ms, delays 0/60/100/240) — real-device demo feedback
+    // (2026-09-14) read the original timing as too quick for someone other
+    // than the developer watching it play out. `m` still collapses everything
+    // to 0ms for reduced motion.
     const m = reduceMotion ? 0 : 1;
     const seq = Animated.parallel([
       Animated.timing(blockL, {
         toValue: 1,
-        duration: 340 * m,
+        duration: 680 * m,
         delay: 0,
         easing: EASE,
         useNativeDriver: false,
       }),
       Animated.timing(blockR, {
         toValue: 1,
-        duration: 340 * m,
-        delay: 60 * m,
+        duration: 680 * m,
+        delay: 120 * m,
         easing: EASE,
         useNativeDriver: false,
       }),
       Animated.timing(stem, {
         toValue: 1,
-        duration: 340 * m,
-        delay: 100 * m,
+        duration: 680 * m,
+        delay: 200 * m,
         easing: EASE,
         useNativeDriver: false,
       }),
       Animated.timing(lockup, {
         toValue: 1,
-        duration: 240 * m,
-        delay: 240 * m,
+        duration: 480 * m,
+        delay: 480 * m,
         easing: EASE,
         useNativeDriver: false,
       }),

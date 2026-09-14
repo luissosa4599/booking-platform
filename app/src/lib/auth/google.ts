@@ -3,7 +3,15 @@ import { Platform } from "react-native";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 
-// Finishes the auth session when the browser redirects back (web + native).
+import type { GoogleAuth } from "./google.types";
+
+// **Web only** — `google.native.ts` overrides this on iOS/Android (Metro's
+// platform-suffix resolution, see tsconfig `moduleSuffixes`). The
+// browser-redirect flow here relies on a custom-URI-scheme redirect back
+// into the app, which Google has deprecated/blocked for "Android"/"iOS"
+// OAuth client types (real "Error 400: invalid_request" hit 2026-09-14 on
+// the first Android build) — it only ever worked, and still works, for the
+// Web client type used here.
 WebBrowser.maybeCompleteAuthSession();
 
 const clientIds = {
@@ -26,13 +34,6 @@ export function isGoogleAuthConfigured(): boolean {
         ? clientIds.androidClientId
         : clientIds.webClientId;
   return Boolean(idForPlatform);
-}
-
-export interface GoogleAuth {
-  /** The auth request is built — safe to call `signIn`. */
-  ready: boolean;
-  /** Opens Google's consent flow. Resolves the ID token, or null if cancelled/dismissed. */
-  signIn: () => Promise<string | null>;
 }
 
 export function useGoogleAuth(): GoogleAuth {

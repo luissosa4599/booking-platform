@@ -74,6 +74,23 @@ const config: ExpoConfig = {
     // Persists the signed-in user id on native (web falls back to localStorage
     // in lib/session.ts).
     "expo-secure-store",
+    // Native Google Sign-In (Android/iOS) — lib/auth/google.native.ts.
+    // expo-auth-session's browser-redirect flow (lib/auth/google.ts, web-only
+    // now) can't be used on native: Google deprecated custom-URI-scheme
+    // redirects for Android/iOS OAuth client types (2026-09-14, real "Error
+    // 400: invalid_request" hit on the first Android build). This SDK talks
+    // to Google Play Services / the native iOS SDK directly instead.
+    [
+      "@react-native-google-signin/google-signin",
+      {
+        // iOS only — the reversed "iOS" OAuth client id, used as the redirect
+        // URL scheme. Not used on Android (Play Services verifies the app via
+        // its package name + SHA-1, already registered as the "Android"
+        // OAuth client in Google Cloud Console — see the Google Cloud gotcha
+        // further down).
+        iosUrlScheme: "com.googleusercontent.apps.308532152683-ffkj7gca9gkj8i516dijvoj4bsohbqs9",
+      },
+    ],
     // "Añadir al calendario" on the ConfirmedScreen. Without the plugin the
     // native calendar-permission string is missing / defaults to English even
     // on a Spanish device. NOTE: config-plugin permission strings only take

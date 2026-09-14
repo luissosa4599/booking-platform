@@ -15,6 +15,8 @@ import {
   ChevronRight as LChevronRight,
   Clock as LClock,
   Compass as LCompass,
+  Eye as LEye,
+  EyeOff as LEyeOff,
   Heart as LHeart,
   List as LList,
   LogOut as LLogOut,
@@ -66,6 +68,8 @@ export const ChevronLeft = typed(LChevronLeft);
 export const ChevronRight = typed(LChevronRight);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
+export const Eye = typed(LEye);
+export const EyeOff = typed(LEyeOff);
 export const Heart = typed(LHeart);
 export const List = typed(LList);
 export const LogOut = typed(LLogOut);
