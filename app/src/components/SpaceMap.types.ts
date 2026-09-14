@@ -10,6 +10,9 @@ export interface MapPlace {
   soonMinutes: number | null;
   distanceLabel: string | null;
   actionLabel: string;
+  /** Redesign handoff §"SelectedPinCard" — stock photo by resource type,
+   * same fallback as the Explore list cards. */
+  imageUri: string;
 }
 
 export interface SpaceMapProps {

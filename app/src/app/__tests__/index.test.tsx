@@ -110,7 +110,7 @@ test("renders ExploreScreen without crashing", async () => {
   const { getByText } = await renderScreen();
 
   await waitFor(() => {
-    expect(getByText("Ahora")).toBeTruthy();
+    expect(getByText("Hola,")).toBeTruthy();
   });
 });
 

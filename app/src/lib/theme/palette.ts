@@ -51,6 +51,9 @@ const DARK: Record<keyof typeof LIGHT, string> = {
   "state-last": "#E0B341",
   "state-error": "#FF6B5E",
   "state-waiting": "#6FA8F5",
+  // Was missing — fell through to the light value (#B9B9BE) via the spread,
+  // too light against a near-black canvas. Explore redesign (2026-09-14).
+  "disabled-label": "#55555A",
   tint: "#E8A883",
   "tint-press": "#C2571F",
   "tint-soft": "#C2571F",

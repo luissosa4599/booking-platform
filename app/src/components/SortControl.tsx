@@ -25,10 +25,17 @@ const SHORT: Record<AvailabilitySort, string> = {
 interface SortControlProps {
   value: AvailabilitySort;
   onChange: (sort: AvailabilitySort) => void;
+  /** Externally controlled sheet — lets another trigger (the redesigned
+   * search bar's filter button) open the same sheet. Falls back to internal
+   * state when omitted, so every existing call site is unaffected. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SortControl({ value, onChange }: SortControlProps) {
-  const [open, setOpen] = useState(false);
+export function SortControl({ value, onChange, open: openProp, onOpenChange }: SortControlProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const triggerColor = useColor("label-2");
   const checkColor = useColor("tint");
 

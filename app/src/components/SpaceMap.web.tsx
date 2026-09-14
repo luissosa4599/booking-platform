@@ -173,10 +173,18 @@ function PeekCard({
   colors: ReturnType<typeof palette>;
   onAction: () => void;
 }) {
+  const free = place.state === "free";
+  const statusColor = colors["state-free"];
+  const statusLabel = free
+    ? "Libre"
+    : `Libre en ${place.soonMinutes} min`;
+
   return (
     <div
       style={{
-        width: 208,
+        width: 224,
+        display: "flex",
+        gap: 12,
         background: colors.card,
         borderRadius: 14,
         padding: 12,
@@ -184,39 +192,63 @@ function PeekCard({
         boxShadow: "0 10px 30px -8px rgba(0,0,0,.3)",
       }}
     >
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          letterSpacing: "-0.01em",
-          color: colors["label-1"],
-        }}
-      >
-        {place.name}
+      {/* Redesign handoff §"SelectedPinCard" reuses ResourceCard's `row`
+          look; this stays a plain HTML img (not the RN component) — the
+          InfoWindow content is a real portalled DOM node, not RN-rendered.
+          See SpaceMap.web.tsx's file comment for why InfoWindow at all. */}
+      <img
+        src={place.imageUri}
+        alt=""
+        style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
+            color: colors["label-1"],
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {place.name}
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            margin: "2px 0 8px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+          <span style={{ color: colors["label-3"] }}>
+            {place.distanceLabel ? ` · a ${place.distanceLabel}` : ""}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onAction}
+          style={{
+            display: "block",
+            width: "100%",
+            textAlign: "center",
+            background: colors.tint,
+            color: colors["on-tint"],
+            fontSize: 13,
+            fontWeight: 600,
+            border: "none",
+            borderRadius: 999,
+            padding: "7px 0",
+            cursor: "pointer",
+          }}
+        >
+          {place.actionLabel}
+        </button>
       </div>
-      <div style={{ fontSize: 12, color: colors["label-3"], margin: "2px 0 10px" }}>
-        {place.locationName}
-        {place.distanceLabel ? ` · a ${place.distanceLabel}` : ""}
-      </div>
-      <button
-        type="button"
-        onClick={onAction}
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "center",
-          background: colors.tint,
-          color: colors["on-tint"],
-          fontSize: 13,
-          fontWeight: 600,
-          border: "none",
-          borderRadius: 999,
-          padding: "8px 0",
-          cursor: "pointer",
-        }}
-      >
-        {place.actionLabel}
-      </button>
     </div>
   );
 }

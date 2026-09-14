@@ -15,7 +15,7 @@ import { haptics } from "@/lib/haptics";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
 export type ButtonVariant = "filled" | "dark" | "gray" | "plain" | "pill";
-export type ButtonPillTone = "filled" | "wash";
+export type ButtonPillTone = "filled" | "wash" | "on-tint";
 
 interface ButtonProps {
   variant?: ButtonVariant;
@@ -73,6 +73,9 @@ const SPINNER_BORDER_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
 const PILL_CONTAINER_CLASS: Record<ButtonPillTone, string> = {
   filled: "bg-tint",
   wash: "bg-tint-wash",
+  // NextBookingBanner's "Ver pase" — the pill sits on the tint-filled banner
+  // itself, so it needs to read as a surface, not another patch of tint.
+  "on-tint": "bg-card",
 };
 
 // "wash" is 3.99:1 with plain `text-tint` on `bg-tint-wash` — under the 4.5:1
@@ -82,11 +85,13 @@ const PILL_CONTAINER_CLASS: Record<ButtonPillTone, string> = {
 const PILL_LABEL_CLASS: Record<ButtonPillTone, string> = {
   filled: "text-on-tint",
   wash: "text-tint-press",
+  "on-tint": "text-tint",
 };
 
 const PILL_SPINNER_BORDER_CLASS: Record<ButtonPillTone, string> = {
   filled: "border-on-tint",
   wash: "border-tint-press",
+  "on-tint": "border-tint",
 };
 
 export function Spinner({ borderClassName }: { borderClassName: string }) {

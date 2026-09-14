@@ -4,6 +4,7 @@ import type { ColorToken } from "@/lib/theme/palette";
 import { useColor } from "@/lib/theme/useColor";
 
 export type StatusTone = "free" | "last" | "waiting" | "error";
+export type StatusBadgeVariant = "inline" | "onPhoto" | "compact";
 
 const TOKEN: Record<StatusTone, ColorToken> = {
   free: "state-free",
@@ -12,24 +13,53 @@ const TOKEN: Record<StatusTone, ColorToken> = {
   error: "state-error",
 };
 
-// Handoff § "Nuevos (2) · StatusBadge" — read-only status pill: height 32,
-// px 14, radius full, fill = the state colour at ~16% opacity, an 8px dot +
-// 15/600 text in the full state colour. Not tappable.
-export function StatusBadge({ tone, label }: { tone: StatusTone; label: string }) {
+// Handoff § "Nuevos (2) · StatusBadge" (original) + Explore redesign handoff
+// §5/§6 (variants). Always a dot + text — the color is never the only signal.
+//
+// - `inline` (default): the original — height 32, px 14, wash fill (~16%
+//   alpha), 15/600 text. For badges sitting on a `card` background (detail
+//   screen, map pin card).
+// - `onPhoto`: sits over a photo, where a translucent wash can't guarantee
+//   4.5:1 against an arbitrary image — solid `card` background instead.
+// - `compact`: the desktop row variant — smaller text/padding, keeps the wash
+//   fill (the row already sits on `card`, same contrast case as `inline`).
+export function StatusBadge({
+  tone,
+  label,
+  variant = "inline",
+}: {
+  tone: StatusTone;
+  label: string;
+  variant?: StatusBadgeVariant;
+}) {
   const color = useColor(TOKEN[tone]);
+  const cardColor = useColor("card");
+
+  const onPhoto = variant === "onPhoto";
+  const compact = variant === "compact";
+
   return (
     <View
-      className="flex-row items-center gap-2 self-start"
+      className="flex-row items-center self-start"
       style={{
-        height: 32,
-        paddingHorizontal: 14,
+        gap: compact ? 6 : 8,
+        height: onPhoto ? 28 : compact ? 22 : 32,
+        paddingHorizontal: onPhoto ? 10 : compact ? 9 : 14,
+        paddingVertical: compact ? 3 : undefined,
         borderRadius: 9999,
-        backgroundColor: withAlpha(color, 0.16),
+        backgroundColor: onPhoto ? cardColor : withAlpha(color, compact ? 0.16 : 0.16),
       }}
     >
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+      <View
+        style={{
+          width: compact ? 6 : 8,
+          height: compact ? 6 : 8,
+          borderRadius: compact ? 3 : 4,
+          backgroundColor: color,
+        }}
+      />
       <Text
-        style={{ color, fontSize: 15, fontWeight: "600" }}
+        style={{ color, fontSize: compact ? 12 : onPhoto ? 13 : 15, fontWeight: "600" }}
         numberOfLines={1}
       >
         {label}

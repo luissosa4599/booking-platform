@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -11,39 +11,68 @@ import {
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { Avatar } from "@/components/Avatar";
+import { BookingPassSheet } from "@/components/BookingPassSheet";
+import { CategoryCircles, type CategoryOption } from "@/components/CategoryCircles";
 import { ConflictSheet } from "@/components/ConflictSheet";
-import { FilterPills, type FilterPillOption } from "@/components/FilterPills";
 import { Group } from "@/components/Group";
+import { MapListFab } from "@/components/MapListFab";
+import { NextBookingBanner } from "@/components/NextBookingBanner";
 import { Placeholder } from "@/components/Placeholder";
 import { RefreshButton } from "@/components/RefreshButton";
-import { Row } from "@/components/Row";
+import { ResourceCard } from "@/components/ResourceCard";
 import { ResourcePane } from "@/components/ResourcePane";
 import { Screen } from "@/components/Screen";
 import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
+import type { StatusTone } from "@/components/StatusBadge";
 import { SpaceMap } from "@/components/SpaceMap";
 import type { MapPlace } from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
-import { Timeline } from "@/components/Timeline";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
-import { useCreateBooking } from "@/lib/api/bookings";
+import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
-import type { AvailabilitySlot } from "@/lib/api/types";
+import type { AvailabilitySlot, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
 import { haptics } from "@/lib/haptics";
-import { CalendarX, Heart, List, Map as MapIcon, Search } from "@/lib/icons";
+import {
+  BookOpen,
+  CalendarX,
+  Compass,
+  Heart,
+  List,
+  Map as MapIcon,
+  PanelBottom,
+  Presentation,
+  Search,
+  SlidersHorizontal,
+  Theater,
+} from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { formatDistance } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
+import { useAuthStore, useUserId } from "@/lib/session";
+import { stockImageUrl } from "@/lib/stockImages";
 import { useColor } from "@/lib/theme/useColor";
 import { useHasDetailPane, useIsWide } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useToastStore } from "@/lib/toastStore";
+
+// Redesign handoff §4 — the category-icon mapping, keyed by the resource
+// type's internal ASCII `name` (never the display label — see `ResourceType`
+// in lib/api/types.ts). "Cualquiera" isn't a real type, so it's added
+// separately in `categoryOptions` below.
+const CATEGORY_ICON_BY_TYPE_NAME: Record<string, typeof BookOpen> = {
+  Salon: Presentation,
+  "Cubiculo de estudio": PanelBottom,
+  "Sala de lectura": BookOpen,
+  Auditorio: Theater,
+};
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", {
@@ -106,9 +135,6 @@ export default function ExploreScreen() {
   // shows up in the list.
   const [horizon, setHorizon] = useState<Date | null>(null);
   const [pendingSlotIds, setPendingSlotIds] = useState<Set<string>>(new Set());
-  const [confirmedSlotIds, setConfirmedSlotIds] = useState<Set<string>>(
-    new Set(),
-  );
   const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(
     new Set(),
   );
@@ -138,11 +164,18 @@ export default function ExploreScreen() {
   const { ids: favoriteIds } = useFavorites();
   const toggleFavorite = useToggleFavorite();
   const offline = useIsOffline();
+  const userId = useUserId();
+  const session = useAuthStore((s) => s.session);
+  const upcomingBookings = useMyBookings("upcoming", userId);
+  const nextBooking = upcomingBookings.data?.[0] ?? null;
+  const [passBooking, setPassBooking] = useState<MyBooking | null>(null);
+  const [sortSheetOpen, setSortSheetOpen] = useState(false);
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
   const segOnColor = useColor("label-1");
   const segOffColor = useColor("label-3");
+  const filterIconColor = useColor("on-tint");
 
   useEffect(() => {
     if (createBooking.isConflict) {
@@ -154,9 +187,17 @@ export default function ExploreScreen() {
   const isRefreshing =
     availabilityQuery.isFetching && !availabilityQuery.isLoading;
 
-  const filterOptions: FilterPillOption[] = useMemo(
+  // ASCII internal name (never the display label) — the category-icon lookup
+  // needs it, the stock-photo fallback needs it (`stockImageUrl`).
+  const resourceTypeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const type of resourceTypesQuery.data ?? []) map.set(type.id, type.name);
+    return map;
+  }, [resourceTypesQuery.data]);
+
+  const categoryOptions: CategoryOption[] = useMemo(
     () => [
-      { id: null, label: "Cualquiera" },
+      { id: null, label: "Cualquiera", icon: Compass },
       ...(resourceTypesQuery.data ?? []).map((type) => ({
         id: type.id,
         // The user-facing plural, never the internal `name` (which is ASCII-only
@@ -164,10 +205,44 @@ export default function ExploreScreen() {
         label:
           type.labels.plural.charAt(0).toUpperCase() +
           type.labels.plural.slice(1),
+        icon: CATEGORY_ICON_BY_TYPE_NAME[type.name] ?? Compass,
       })),
     ],
     [resourceTypesQuery.data],
   );
+
+  const imageForSlot = useCallback((slot: AvailabilitySlot): string => {
+    return stockImageUrl(resourceTypeNameById.get(slot.resourceTypeId), {
+      width: 400,
+      height: 300,
+    });
+  }, [resourceTypeNameById]);
+
+  // Redesign handoff §6 "Badge de estado" — status shows in BOTH groups; the
+  // "later" group's label carries the countdown, the "now" group's doesn't
+  // (it's already free).
+  function statusFor(
+    slot: AvailabilitySlot,
+    isLater: boolean,
+  ): { tone: StatusTone; label: string } {
+    const last = slot.capacityRemaining === 1;
+    if (!isLater) {
+      return last ? { tone: "last", label: "Último lugar" } : { tone: "free", label: "Libre" };
+    }
+    const minutes = Math.max(
+      0,
+      Math.round((new Date(slot.startsAt).getTime() - now.getTime()) / 60_000),
+    );
+    return last
+      ? { tone: "last", label: `Último lugar · en ${minutes} min` }
+      : { tone: "free", label: `Libre en ${minutes} min` };
+  }
+
+  function timeWindowFor(slot: AvailabilitySlot, isLater: boolean): string {
+    return isLater
+      ? `${formatTime(slot.startsAt)} – ${formatTime(slot.endsAt)}`
+      : `hasta ${formatTime(slot.endsAt)}`;
+  }
 
   const availableSlots = availabilityQuery.slots.filter(
     (slot) =>
@@ -205,12 +280,13 @@ export default function ExploreScreen() {
         lng: slot.locationLongitude,
         state: freeNow ? "free" : "soon",
         soonMinutes: freeNow ? null : minutesUntil,
+        imageUri: imageForSlot(slot),
         distanceLabel: meters != null ? formatDistance(meters) : null,
         actionLabel: "Ver detalles",
       });
     }
     return [...byResource.values()];
-  }, [availableSlots, livePos, now]);
+  }, [availableSlots, livePos, now, imageForSlot]);
 
   // The map's peek card opens the resource's detail screen (or the pane, on
   // wide layouts) rather than booking directly — picking a slot/seats still
@@ -270,12 +346,10 @@ export default function ExploreScreen() {
           setPendingSlotIds((prev) => withoutId(prev, slot.id));
         },
         onSuccess: () => {
-          setConfirmedSlotIds((prev) => withId(prev, slot.id));
-
-          // Pause on the checkmark (per handoff: 400ms) before the row exits.
+          // Brief pause (400ms) before the card exits — gives the tap a
+          // moment to register before the row vanishes from under it.
           setTimeout(() => {
             setDismissedSlotIds((prev) => withId(prev, slot.id));
-            setConfirmedSlotIds((prev) => withoutId(prev, slot.id));
             useToastStore
               .getState()
               .show(
@@ -437,6 +511,8 @@ export default function ExploreScreen() {
   }
 
   const paneOpen = hasPane && !!paneId;
+  const cardVariant: "stacked" | "row" = hasPane ? "row" : "stacked";
+  const firstName = session?.displayName?.trim().split(/\s+/)[0] ?? null;
 
   return (
     <Screen bg="canvas" fluid>
@@ -448,18 +524,24 @@ export default function ExploreScreen() {
           #10/#11 for why a pane needs a fluid tool screen in the first
           place — the cap itself just wasn't hooked up to the viewport. */}
       <View style={{ flex: 1 }}>
-      {/* Fixed header — the `pb-4` keeps a gap between the pills and the list
-          even while the list scrolls under it (a scrolled contentContainer
-          top-padding would disappear). */}
-      <View className="gap-5 px-4 pb-4 pt-3">
-        <View className="flex-row items-end justify-between">
-          <Text className="text-title-lg text-label-1">Ahora</Text>
+      {/* Fixed header — the `pb-4` keeps a gap between the controls and the
+          list even while the list scrolls under it (a scrolled
+          contentContainer top-padding would disappear). */}
+      <View className="gap-4 px-4 pb-4 pt-3">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-3">
+            <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
+            <View>
+              <Text className="text-body-emph text-label-3">Hola,</Text>
+              <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+            </View>
+          </View>
           <View className="flex-row items-center gap-1.5">
             <RefreshButton
               onPress={() => availabilityQuery.refetch()}
               refreshing={isRefreshing}
             />
-            <Text className="text-subhead text-label-4">
+            <Text className="text-footnote text-label-3">
               {locating
                 ? "Ubicando…"
                 : isRefreshing
@@ -469,12 +551,8 @@ export default function ExploreScreen() {
           </View>
         </View>
 
-        {isWide && view === "list" && !isEmpty ? (
-          <Timeline slots={availableSlots} now={now} />
-        ) : null}
-
-        <View className="h-[38px] flex-row items-center gap-2 rounded-control bg-fill px-3 text-label-4">
-          <Search size={13} color={searchIconColor} />
+        <View className="h-[52px] flex-row items-center gap-2.5 rounded-full bg-fill pl-4 pr-1.5">
+          <Search size={18} strokeWidth={2} color={searchIconColor} />
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
@@ -482,20 +560,33 @@ export default function ExploreScreen() {
             placeholderTextColor="#8A8A8E"
             returnKeyType="search"
             clearButtonMode="while-editing"
-            className="flex-1 text-body text-label-1"
+            className="flex-1 text-subhead text-label-1"
           />
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              setSortSheetOpen(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Filtros"
+            className="h-10 w-10 items-center justify-center rounded-full bg-tint"
+          >
+            <SlidersHorizontal size={18} strokeWidth={2} color={filterIconColor} />
+          </Pressable>
         </View>
 
-        <FilterPills
-          options={filterOptions}
+        <CategoryCircles
+          options={categoryOptions}
           selectedId={selectedResourceTypeId}
           onSelect={setSelectedResourceTypeId}
-          removable={isEmpty && !!selectedResourceTypeId}
+          circleSize={hasPane ? 48 : 54}
         />
+
+        <NextBookingBanner booking={nextBooking} onOpenPass={() => setPassBooking(nextBooking)} />
 
         <StaleStamp dataUpdatedAt={availabilityQuery.dataUpdatedAt} className="pl-1 text-footnote text-label-4" />
 
-        {mapAvailable ? (
+        {mapAvailable && isWide ? (
           <View className="h-9 flex-row rounded-control bg-fill p-[3px]">
             {(["list", "map"] as const).map((v) => {
               const on = view === v;
@@ -534,7 +625,12 @@ export default function ExploreScreen() {
         ) : null}
 
         <View className="flex-row items-center justify-between">
-          <SortControl value={sort} onChange={handleSortChange} />
+          <SortControl
+            value={sort}
+            onChange={handleSortChange}
+            open={sortSheetOpen}
+            onOpenChange={setSortSheetOpen}
+          />
           <Pressable
             onPress={() => {
               haptics.selection();
@@ -565,6 +661,7 @@ export default function ExploreScreen() {
         </View>
       </View>
 
+      <View style={{ flex: 1 }}>
       {view === "map" && mapAvailable ? (
         <SpaceMap
           places={mapPlaces}
@@ -579,7 +676,7 @@ export default function ExploreScreen() {
         contentContainerStyle={{
           gap: 20,
           paddingHorizontal: 16,
-          paddingBottom: 16,
+          paddingBottom: isWide ? 16 : 96,
         }}
         refreshControl={
           <RefreshControl
@@ -603,64 +700,76 @@ export default function ExploreScreen() {
           ) : null}
 
           {!showSkeleton && nowGroup.length > 0 ? (
-            <Group header="LIBRE AHORA MISMO">
-              {nowGroup.map((slot) => (
-                <Animated.View
-                  key={slot.id}
-                  layout={LinearTransition.springify()}
-                  exiting={FadeOut}
-                >
-                  <Row
-                    title={slot.resourceName}
-                    subtitle={
-                      slotDistance(slot)
-                        ? `${slot.locationName} · a ${slotDistance(slot)}`
-                        : `${slot.locationName} · hasta ${formatTime(slot.endsAt)}`
-                    }
-                    meta={
-                      slot.capacityRemaining === 1
-                        ? `Último lugar · hasta ${formatTime(slot.endsAt)}`
-                        : undefined
-                    }
-                    metaTone={slot.capacityRemaining === 1 ? "last" : "default"}
-                    trailing={
-                      confirmedSlotIds.has(slot.id) ? "check" : "action"
-                    }
-                    actionLabel="Apartar"
-                    actionTone="wash"
-                    actionLoading={pendingSlotIds.has(slot.id)}
-                    actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
-                    onActionPress={() => handleBook(slot)}
-                    favorite={favoriteIds.has(slot.resourceId)}
-                    onFavoriteToggle={() => handleToggleFavorite(slot)}
-                    onPress={() => handleOpenResource(slot)}
-                    accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible hasta ${formatTime(slot.endsAt)}`}
-                  />
-                </Animated.View>
-              ))}
-            </Group>
+            <View className="gap-3">
+              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+                LIBRE AHORA MISMO
+              </Text>
+              <View style={{ gap: 14 }}>
+                {nowGroup.map((slot) => {
+                  const status = statusFor(slot, false);
+                  return (
+                    <Animated.View
+                      key={slot.id}
+                      layout={LinearTransition.springify()}
+                      exiting={FadeOut}
+                    >
+                      <ResourceCard
+                        variant={cardVariant}
+                        name={slot.resourceName}
+                        imageUri={imageForSlot(slot)}
+                        locationName={slot.locationName}
+                        capacityLabel={String(slot.capacityRemaining)}
+                        statusTone={status.tone}
+                        statusLabel={status.label}
+                        timeLabel={timeWindowFor(slot, false)}
+                        distanceLabel={slotDistance(slot)}
+                        isFavorite={favoriteIds.has(slot.resourceId)}
+                        onToggleFavorite={() => handleToggleFavorite(slot)}
+                        onBook={() => handleBook(slot)}
+                        onPress={() => handleOpenResource(slot)}
+                        bookLoading={pendingSlotIds.has(slot.id)}
+                        selected={paneId === slot.resourceId}
+                        actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
+                      />
+                    </Animated.View>
+                  );
+                })}
+              </View>
+            </View>
           ) : null}
 
           {!showSkeleton && laterGroup.length > 0 ? (
-            <Group header={laterHeader}>
-              {laterGroup.map((slot) => (
-                <Row
-                  key={slot.id}
-                  title={slot.resourceName}
-                  subtitle={
-                    slotDistance(slot)
-                      ? `${slot.locationName} · a ${slotDistance(slot)}`
-                      : slot.locationName
-                  }
-                  trailing="chevron"
-                  trailingText={formatTime(slot.startsAt)}
-                  favorite={favoriteIds.has(slot.resourceId)}
-                  onFavoriteToggle={() => handleToggleFavorite(slot)}
-                  onPress={() => handleOpenResource(slot)}
-                  accessibilityLabel={`${slot.resourceName}, ${slot.locationName}, disponible a las ${formatTime(slot.startsAt)}`}
-                />
-              ))}
-            </Group>
+            <View className="gap-3">
+              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+                {laterHeader}
+              </Text>
+              <View style={{ gap: 14 }}>
+                {laterGroup.map((slot) => {
+                  const status = statusFor(slot, true);
+                  return (
+                    <ResourceCard
+                      key={slot.id}
+                      variant={cardVariant}
+                      name={slot.resourceName}
+                      imageUri={imageForSlot(slot)}
+                      locationName={slot.locationName}
+                      capacityLabel={String(slot.capacityRemaining)}
+                      statusTone={status.tone}
+                      statusLabel={status.label}
+                      timeLabel={timeWindowFor(slot, true)}
+                      distanceLabel={slotDistance(slot)}
+                      isFavorite={favoriteIds.has(slot.resourceId)}
+                      onToggleFavorite={() => handleToggleFavorite(slot)}
+                      onBook={() => handleBook(slot)}
+                      onPress={() => handleOpenResource(slot)}
+                      bookLoading={pendingSlotIds.has(slot.id)}
+                      selected={paneId === slot.resourceId}
+                      actionAccessibilityLabel={`Apartar ${slot.resourceName}, ${formatTime(slot.startsAt)}`}
+                    />
+                  );
+                })}
+              </View>
+            </View>
           ) : null}
 
           {isEmpty ? (
@@ -684,6 +793,18 @@ export default function ExploreScreen() {
         </View>
       </ScrollView>
       )}
+
+      {!isWide && mapAvailable ? (
+        <MapListFab
+          view={view}
+          onToggle={() => {
+            haptics.selection();
+            setView((v) => (v === "list" ? "map" : "list"));
+          }}
+          bottomOffset={96}
+        />
+      ) : null}
+      </View>
       </View>
 
       {paneOpen ? (
@@ -705,6 +826,18 @@ export default function ExploreScreen() {
         slotStartsAt={conflictSlot?.startsAt ?? null}
         technicalMessage={createBooking.conflict?.message}
         alternatives={createBooking.conflict?.alternatives ?? []}
+      />
+      <BookingPassSheet
+        isOpen={!!passBooking}
+        onClose={() => setPassBooking(null)}
+        code={passBooking?.code ?? null}
+        resourceName={passBooking?.resourceName ?? null}
+        schedule={
+          passBooking
+            ? `${formatTime(passBooking.startsAt)} – ${formatTime(passBooking.endsAt)}`
+            : null
+        }
+        checkedInAt={passBooking?.checkedInAt ?? null}
       />
     </Screen>
   );

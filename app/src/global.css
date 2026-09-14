@@ -72,6 +72,10 @@
   --color-state-last: 224 179 65; /* #E0B341 */
   --color-state-error: 255 107 94; /* #FF6B5E */
   --color-state-waiting: 111 168 245; /* #6FA8F5 */
+
+  /* Was missing entirely — fell through to the light value (#B9B9BE), too
+     light against a near-black canvas. Explore redesign handoff (2026-09-14). */
+  --color-disabled-label: 85 85 90; /* #55555A */
 }
 
 /* Google Maps InfoWindow chrome, stripped — SpaceMap.web.tsx (the Explore
