@@ -32,7 +32,10 @@ const TRANSITION_MS = 240;
 export function Sheet({ isOpen, onClose, children }: SheetProps) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const cardColor = useColor("card");
+  // `sheet`, not `card` — they were the same value in dark mode, leaving a
+  // floating sheet with nothing to visually pop against its own scrim
+  // (2026-09-14 report). See global.css's matching comment.
+  const sheetColor = useColor("sheet");
   const grabberColor = useColor("chevron");
   const scrimColor = useColor("scrim");
 
@@ -81,7 +84,7 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
             style={[
               styles.sheet,
               {
-                backgroundColor: cardColor,
+                backgroundColor: sheetColor,
                 paddingBottom: Math.max(insets.bottom, 16) + 18,
               },
             ]}

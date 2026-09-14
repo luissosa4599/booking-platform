@@ -58,7 +58,14 @@
   --color-fill: 44 44 46; /* #2C2C2E */
   --color-hairline: 56 56 58; /* #38383A */
   --color-hairline-inset: 44 44 46; /* #2C2C2E */
-  --color-sheet: 28 28 30; /* #1C1C1E */
+  /* Was identical to `card` (#1C1C1E) — a floating Sheet over its own scrim
+     (also #1C1C1E-ish) had nothing to visually pop against in dark mode,
+     reading as one flat, muddy surface (2026-09-14 report). One step up the
+     existing tonal scale (same value as `fill`) gives it real elevation
+     contrast, the conventional dark-theme "elevated surfaces get lighter"
+     move. `Sheet.web.tsx`/`Sheet.native.tsx` were also fixed to actually use
+     this token instead of `card` — it existed but was never wired up. */
+  --color-sheet: 44 44 46; /* #2C2C2E */
   --glass: rgba(28, 28, 30, 0.94);
   --color-label-1: 255 255 255; /* #FFFFFF */
   /* Values below are the handoff's "tema oscuro" table (hifi/final). They

@@ -1,5 +1,6 @@
 import { Animated, Modal, Pressable, View, type ViewStyle } from "react-native";
 
+import { useColor } from "@/lib/theme/useColor";
 import { useFadeTransition } from "@/lib/useFadeTransition";
 
 import type { SheetProps } from "./Sheet.types";
@@ -27,6 +28,12 @@ const TRANSITION_MS = 300;
 // both turned out not to work for this, independently, in this project.
 export function Sheet({ isOpen, onClose, children }: SheetProps) {
   const { mounted, opacity } = useFadeTransition(isOpen, TRANSITION_MS);
+  // `useColor`, not the `bg-sheet` class — that class silently generated no
+  // rule at all (confirmed via getComputedStyle: transparent background),
+  // likely `sheet` colliding with the unrelated `rounded-sheet` radius key
+  // in NativeWind's class generation. Same "className silently no-ops"
+  // story as everywhere else in this project.
+  const sheetColor = useColor("sheet");
 
   if (!mounted) {
     return null;
@@ -55,16 +62,24 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
                 scrim had no visible pixels to show it either. Both looked
                 broken for the same one reason. */}
             <Pressable
-              className="gap-[22px] rounded-sheet bg-card px-5 py-6"
-              // Inline, not a `max-h-[85vh]` class — NativeWind's arbitrary-value
-              // utilities are unreliable on web in this project (same story as
-              // the max-width ones elsewhere, see CLAUDE.md); confirmed via
-              // getComputedStyle that the class alone generated no rule at all.
-              // `DimensionValue` has no CSS-unit string case, so "85vh" needs
-              // the cast — this file is web-only, no native code path to
-              // break.
+              className="gap-[22px] rounded-sheet px-5 py-6"
+              // Inline, not `max-h-[85vh]`/`bg-sheet` classes — both silently
+              // generated no rule at all on this project's NativeWind setup
+              // (confirmed via getComputedStyle: max-height was "none", the
+              // background was transparent) — `bg-sheet` most likely from
+              // `sheet` colliding with the unrelated `rounded-sheet` radius
+              // key. `DimensionValue` has no CSS-unit string case, so "85vh"
+              // needs the cast — this file is web-only, no native code path
+              // to break. "auto" (not "scroll") only shows the scrollbar when
+              // content actually overflows the cap (2026-09-14 report — a
+              // short sheet like SortControl's 4 options was always showing
+              // OS scrollbar chrome for no reason with "scroll").
               style={
-                { maxHeight: "85vh", overflow: "scroll" } as unknown as ViewStyle
+                {
+                  maxHeight: "85vh",
+                  overflow: "auto",
+                  backgroundColor: sheetColor,
+                } as unknown as ViewStyle
               }
               onPress={(e) => e.stopPropagation()}
             >

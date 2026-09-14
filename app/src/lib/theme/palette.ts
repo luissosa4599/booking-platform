@@ -40,7 +40,10 @@ const DARK: Record<keyof typeof LIGHT, string> = {
   fill: "#2C2C2E",
   hairline: "#38383A",
   "hairline-inset": "#2C2C2E",
-  sheet: "#1C1C1E",
+  // Was identical to `card` — see global.css's matching comment. One step
+  // up the tonal scale (same as `fill`) for real elevation contrast against
+  // the scrim in dark mode.
+  sheet: "#2C2C2E",
   glass: "rgba(28,28,30,0.94)",
   "label-1": "#FFFFFF",
   "label-2": "#EBEBF0",
