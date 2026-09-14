@@ -102,7 +102,10 @@ export default function ResetPasswordScreen() {
             <Pressable
               onPress={() => setShowPassword((v) => !v)}
               hitSlop={8}
-              className="absolute right-3"
+              // Inline style, not `className="absolute right-3"` — see
+              // sign-in.tsx's identical fix for why (that class silently
+              // didn't generate a `right` rule).
+              style={{ position: "absolute", right: 12, top: 16 }}
               accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
             >
               {showPassword ? (

@@ -182,7 +182,12 @@ export default function SignInScreen() {
             <Pressable
               onPress={() => setShowPassword((v) => !v)}
               hitSlop={8}
-              className="absolute right-3"
+              // Inline style, not `className="absolute right-3"` — that class
+              // silently didn't generate a `right` rule (confirmed via
+              // getComputedStyle: only `position:absolute; left:0` landed),
+              // same class of NativeWind gotcha documented elsewhere in this
+              // project. `top: 16` = (52px field height − 20px icon) / 2.
+              style={{ position: "absolute", right: 12, top: 16 }}
               accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
             >
               {showPassword ? (
