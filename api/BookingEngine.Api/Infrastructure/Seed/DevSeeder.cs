@@ -160,8 +160,19 @@ public static class DevSeeder
                 Description = DescriptionFor(type),
             };
 
-            // Two photos from this type's pool, rotated by index so different
-            // campuses of the same type don't all lead with the same picture.
+            // Two photos from this type's pool, rotated by the per-TYPE
+            // ordinal (not the raw campus index `i`) so different campuses of
+            // the same type don't all lead with the same picture. `i` cycles
+            // through all 4 types with period `cycle.Length`, so every
+            // resource of a given type shares the same `i % cycle.Length` —
+            // rotating by `i` instead of `ordinal` collapses to one constant
+            // pool offset whenever a pool's length shares a factor with
+            // `cycle.Length` (2026-09-14 report: "los auditorios la foto es
+            // igual para todos" — AuditorioPhotos was expanded to exactly 4,
+            // matching cycle.Length, so `i` was ALWAYS ≡ 0 mod 4 for every
+            // Auditorio). `ordinal` increments by exactly 1 per same-type
+            // resource regardless of pool size or cycle length, so this stays
+            // correct no matter how any pool is resized in the future.
             var pool = PhotoPool(type);
             for (var p = 0; p < 2; p++)
             {
@@ -169,7 +180,7 @@ public static class DevSeeder
                 {
                     Id = Guid.NewGuid(),
                     ResourceId = resource.Id,
-                    Url = pool[(i + p) % pool.Length],
+                    Url = pool[(ordinal + p) % pool.Length],
                     Position = p,
                     CreatedAt = now,
                 });
