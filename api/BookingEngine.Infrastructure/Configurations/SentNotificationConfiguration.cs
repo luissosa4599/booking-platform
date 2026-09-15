@@ -20,9 +20,17 @@ public class SentNotificationConfiguration : IEntityTypeConfiguration<SentNotifi
 
         builder.Property(s => s.SentAt).IsRequired();
 
+        builder.Property(s => s.ResourceName).HasMaxLength(200);
+
+        builder.Property(s => s.IsRead).IsRequired().HasDefaultValue(false);
+
         // Dedupe lookups: "did I already remind this user about this booking?" /
         // "...already tell this user a spot opened on this slot?".
         builder.HasIndex(s => new { s.UserId, s.Type, s.BookingId });
         builder.HasIndex(s => new { s.UserId, s.Type, s.AvailabilitySlotId });
+
+        // The in-app notification feed's own query: this user's rows, newest
+        // first.
+        builder.HasIndex(s => new { s.UserId, s.SentAt });
     }
 }

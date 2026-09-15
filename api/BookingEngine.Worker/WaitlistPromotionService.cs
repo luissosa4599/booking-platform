@@ -126,6 +126,8 @@ public class WaitlistPromotionService(
                 UserId = next.UserId,
                 Type = SentNotificationType.WaitlistSlotOpened,
                 AvailabilitySlotId = evt.AvailabilitySlotId,
+                ResourceName = slot.Resource.Name,
+                SlotStartsAt = slot.StartsAt,
                 SentAt = DateTimeOffset.UtcNow,
             });
             promoted++;
@@ -207,6 +209,8 @@ public class WaitlistPromotionService(
                     Type = SentNotificationType.BookingCancelledByHost,
                     BookingId = booking.Id,
                     AvailabilitySlotId = evt.AvailabilitySlotId,
+                    ResourceName = slot.Resource.Name,
+                    SlotStartsAt = slot.StartsAt,
                     SentAt = DateTimeOffset.UtcNow,
                 });
                 notified++;

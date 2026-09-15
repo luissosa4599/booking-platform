@@ -21,6 +21,8 @@ import { FilterSheet } from "@/components/FilterSheet";
 import { Group } from "@/components/Group";
 import { MapListFab } from "@/components/MapListFab";
 import { NextBookingBanner } from "@/components/NextBookingBanner";
+import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { Placeholder } from "@/components/Placeholder";
 import { RefreshButton } from "@/components/RefreshButton";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -35,6 +37,7 @@ import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
+import { useMarkNotificationsRead, useNotifications } from "@/lib/api/notifications";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -225,6 +228,10 @@ export default function ExploreScreen() {
   // ordenamientos abren el mismo modal") — sort changes order, this changes
   // which results show up at all.
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { notifications, unreadCount: unreadNotificationCount } = useNotifications();
+  const { markRead: markNotificationsRead } = useMarkNotificationsRead();
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
@@ -638,6 +645,14 @@ export default function ExploreScreen() {
                 </View>
               </View>
               <View className="flex-row items-center gap-1.5">
+                <NotificationBell
+                  unreadCount={unreadNotificationCount}
+                  onPress={() => {
+                    haptics.selection();
+                    setNotificationsOpen(true);
+                    void markNotificationsRead();
+                  }}
+                />
                 <RefreshButton
                   onPress={() => availabilityQuery.refetch()}
                   refreshing={isRefreshing}
@@ -1009,6 +1024,11 @@ export default function ExploreScreen() {
           setMinCapacity(0);
           setMaxDistanceKm(null);
         }}
+      />
+      <NotificationsSheet
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        notifications={notifications}
       />
     </Screen>
   );

@@ -88,14 +88,14 @@ public class ReminderService(
                 .Where(t => t.UserId == booking.UserId)
                 .ToListAsync(ct);
 
-            // No device registered yet — don't mark it sent, so a token
-            // registered in the next poll or two still gets the reminder
-            // before the 4-minute window closes.
-            if (tokens.Count == 0)
-            {
-                continue;
-            }
-
+            // Recorded even with zero tokens — same reasoning as
+            // WaitlistPromotionService below: "we told this person" for the
+            // in-app notification center is true regardless of whether a
+            // push could physically be delivered, and most users don't have
+            // a push token registered at all yet (EAS push isn't fully wired
+            // — roadmap §4). This used to skip entirely when tokens.Count==0,
+            // which meant the in-app feed would never show a reminder for
+            // those users.
             foreach (var token in tokens)
             {
                 var outcome = await pushClient.SendAsync(
@@ -116,6 +116,9 @@ public class ReminderService(
                 UserId = booking.UserId,
                 Type = SentNotificationType.Reminder,
                 BookingId = booking.Id,
+                AvailabilitySlotId = booking.AvailabilitySlotId,
+                ResourceName = booking.AvailabilitySlot.Resource.Name,
+                SlotStartsAt = booking.AvailabilitySlot.StartsAt,
                 SentAt = now,
             });
             sent++;

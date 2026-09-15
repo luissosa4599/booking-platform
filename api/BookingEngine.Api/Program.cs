@@ -206,6 +206,7 @@ try
     app.MapBookingsEndpoints();
     app.MapWaitlistEndpoints();
     app.MapDevicesEndpoints();
+    app.MapNotificationsEndpoints();
     app.MapCalendarEndpoints();
     app.MapFavoritesEndpoints();
     app.MapGeocodeEndpoints();

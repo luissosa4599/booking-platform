@@ -5,6 +5,7 @@ import {
   ArrowUp as LArrowUp,
   ArrowUpDown as LArrowUpDown,
   Ban as LBan,
+  Bell as LBell,
   ImagePlus as LImagePlus,
   BookOpen as LBookOpen,
   Calendar as LCalendar,
@@ -65,6 +66,7 @@ export const ArrowLeft = typed(LArrowLeft);
 export const ArrowUp = typed(LArrowUp);
 export const ArrowUpDown = typed(LArrowUpDown);
 export const Ban = typed(LBan);
+export const Bell = typed(LBell);
 export const ImagePlus = typed(LImagePlus);
 export const BookOpen = typed(LBookOpen);
 export const Calendar = typed(LCalendar);
