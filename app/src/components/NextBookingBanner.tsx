@@ -31,8 +31,12 @@ export function NextBookingBanner({ booking, onOpenPass }: NextBookingBannerProp
 
   return (
     <View
-      className="flex-row items-center justify-between rounded-[22px] bg-tint"
-      style={{ paddingVertical: 16, paddingHorizontal: 18 }}
+      className="flex-row items-center justify-between bg-tint"
+      // Inline, not `rounded-[22px]` — confirmed via getComputedStyle that
+      // the class generated no border-radius at all (0px), same class of
+      // NativeWind arbitrary-value gotcha as elsewhere in this project
+      // (2026-09-14 report: "le falta redondeado").
+      style={{ paddingVertical: 16, paddingHorizontal: 18, borderRadius: 22 }}
     >
       <View className="flex-1 gap-2 pr-3.5">
         <Text className="text-footnote text-on-tint-sub" numberOfLines={1}>
@@ -47,7 +51,14 @@ export function NextBookingBanner({ booking, onOpenPass }: NextBookingBannerProp
           </Button>
         </View>
       </View>
-      <QrCode size={62} strokeWidth={1.5} color={onTintColor} />
+      {/* Decorative only (no real pass data here — see the file comment) —
+          full-opacity `on-tint` read as a heavy, "unconvincing" dark shape
+          in dark mode (2026-09-14 report: #40200B on the peach `tint`).
+          Half-opacity turns it into a soft accent instead of competing with
+          the real content, in both themes. */}
+      <View style={{ opacity: 0.5 }}>
+        <QrCode size={62} strokeWidth={1.5} color={onTintColor} />
+      </View>
     </View>
   );
 }
