@@ -576,7 +576,16 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        <View className="h-[52px] flex-row items-center gap-2.5 rounded-full bg-fill pl-4 pr-1.5">
+        <View
+          className="h-[52px] flex-row items-center gap-2.5 rounded-full bg-fill"
+          // Inline, not `pl-4 pr-1.5` — confirmed via getComputedStyle that
+          // combination generated no padding at all (0px both sides), the
+          // same class of NativeWind gotcha as elsewhere in this project —
+          // left the search icon flush against the pill's rounded edge
+          // instead of the intended 16px/6px breathing room (2026-09-14
+          // report).
+          style={{ paddingLeft: 16, paddingRight: 6 }}
+        >
           <Search size={18} strokeWidth={2} color={searchIconColor} />
           <TextInput
             value={searchInput}
