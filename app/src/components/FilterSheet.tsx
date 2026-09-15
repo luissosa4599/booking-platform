@@ -2,18 +2,14 @@ import { Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Sheet } from "@/components/Sheet";
+import { Slider } from "@/components/Slider";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
-import { Minus, Plus } from "@/lib/icons";
-import { useColor } from "@/lib/theme/useColor";
 
-const DISTANCE_OPTIONS_KM: { value: number | null; label: string }[] = [
-  { value: null, label: "Cualquiera" },
-  { value: 1, label: "1 km" },
-  { value: 3, label: "3 km" },
-  { value: 5, label: "5 km" },
-  { value: 10, label: "10 km" },
-];
+const MIN_CAPACITY = 1;
+const MAX_CAPACITY = 100;
+const MIN_DISTANCE_KM = 1;
+const MAX_DISTANCE_KM = 100;
 
 export interface FilterSheetProps {
   isOpen: boolean;
@@ -24,7 +20,7 @@ export interface FilterSheetProps {
    * known — a real value with no location just silently filters nothing. */
   maxDistanceKm: number | null;
   onMaxDistanceKmChange: (value: number | null) => void;
-  /** Whether device location is available — greys out the distance options
+  /** Whether device location is available — greys out the distance slider
    * with an explanatory line instead of silently doing nothing. */
   locationAvailable: boolean;
   onClear: () => void;
@@ -37,6 +33,13 @@ export interface FilterSheetProps {
 // `distanceMeters`/coords are already in every `AvailabilitySlot`); capacity
 // uses `/availability`'s existing `minCapacity` query param, already wired,
 // just never exposed in the UI before.
+//
+// Both are real draggable sliders (2026-09-14 report: "haz que sean slides
+// deslizables de ambos sentidos, km 1 a 100km, aforo de 1 a 100 personas") —
+// replaced the earlier +-stepper / preset-pill controls. `minCapacity`/
+// `maxDistanceKm` at their unset value (0 / null) still means "no filter";
+// the slider itself only ever shows/produces a real 1-100 value, and a
+// "Cualquiera" chip is the way back to unset.
 export function FilterSheet({
   isOpen,
   onClose,
@@ -47,7 +50,6 @@ export function FilterSheet({
   locationAvailable,
   onClear,
 }: FilterSheetProps) {
-  const stepperIconColor = useColor("label-1");
   const hasFilters = minCapacity > 0 || maxDistanceKm != null;
 
   return (
@@ -55,85 +57,83 @@ export function FilterSheet({
       <View style={{ gap: 24 }}>
         <Text className="text-title-sm text-label-1">Filtros</Text>
 
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 12 }}>
           <View className="flex-row items-center justify-between">
             <Text className="text-body-emph text-label-1">Aforo mínimo</Text>
-            <View
-              className="flex-row items-center rounded-control border border-hairline"
-              style={{ padding: 3 }}
+            <Text
+              className="text-body-emph text-label-1"
+              style={{ fontVariant: ["tabular-nums"] }}
             >
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  onMinCapacityChange(Math.max(0, minCapacity - 1));
-                }}
-                disabled={minCapacity <= 0}
-                accessibilityRole="button"
-                accessibilityLabel="Reducir aforo mínimo"
-                className={cn(
-                  "items-center justify-center rounded-control-inner bg-fill",
-                  minCapacity <= 0 ? "opacity-40" : undefined,
-                )}
-                style={{ width: 34, height: 30 }}
-              >
-                <Minus size={16} color={stepperIconColor} />
-              </Pressable>
-              <Text
-                className="text-center text-body-emph text-label-1"
-                style={{ width: 44, fontVariant: ["tabular-nums"] }}
-              >
-                {minCapacity > 0 ? minCapacity : "—"}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  onMinCapacityChange(minCapacity + 1);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Aumentar aforo mínimo"
-                className="items-center justify-center rounded-control-inner bg-fill"
-                style={{ width: 34, height: 30 }}
-              >
-                <Plus size={16} color={stepperIconColor} />
-              </Pressable>
-            </View>
+              {minCapacity > 0 ? `${minCapacity} ${minCapacity === 1 ? "persona" : "personas"}` : "Cualquiera"}
+            </Text>
           </View>
-          <Text className="text-footnote text-label-3">
-            {minCapacity > 0
-              ? `Solo lugares con al menos ${minCapacity} ${minCapacity === 1 ? "persona" : "personas"}.`
-              : "Sin mínimo — muestra lugares de cualquier tamaño."}
-          </Text>
+          <Slider
+            min={MIN_CAPACITY}
+            max={MAX_CAPACITY}
+            value={minCapacity > 0 ? minCapacity : MIN_CAPACITY}
+            onChange={(v) => {
+              haptics.selection();
+              onMinCapacityChange(v);
+            }}
+            accessibilityLabel="Aforo mínimo"
+          />
+          <View className="flex-row items-center justify-between">
+            <Text className="text-footnote text-label-3">{MIN_CAPACITY}</Text>
+            {minCapacity > 0 ? (
+              <Pressable onPress={() => onMinCapacityChange(0)}>
+                <Text className="text-footnote text-label-3" style={{ textDecorationLine: "underline" }}>
+                  Cualquiera
+                </Text>
+              </Pressable>
+            ) : null}
+            <Text className="text-footnote text-label-3">{MAX_CAPACITY}</Text>
+          </View>
         </View>
 
-        <View style={{ gap: 10 }}>
-          <Text className="text-body-emph text-label-1">Distancia</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {DISTANCE_OPTIONS_KM.map((opt) => {
-              const active = opt.value === maxDistanceKm;
-              return (
-                <Pressable
-                  key={opt.label}
-                  onPress={() => {
-                    haptics.selection();
-                    onMaxDistanceKmChange(opt.value);
-                  }}
-                  disabled={!locationAvailable}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  className={cn(
-                    "h-[34px] flex-row items-center justify-center rounded-full px-[14px]",
-                    !locationAvailable ? "opacity-40" : undefined,
-                    active ? "bg-label-1" : "bg-fill",
-                  )}
-                >
-                  <Text
-                    className={cn("text-subhead", active ? "text-canvas" : "text-label-2")}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+        <View style={{ gap: 12 }}>
+          <View className="flex-row items-center justify-between">
+            <Text className={cn("text-body-emph text-label-1", !locationAvailable ? "opacity-40" : undefined)}>
+              Distancia
+            </Text>
+            <Text
+              className={cn(
+                "text-body-emph text-label-1",
+                !locationAvailable ? "opacity-40" : undefined,
+              )}
+              style={{ fontVariant: ["tabular-nums"] }}
+            >
+              {maxDistanceKm != null ? `${maxDistanceKm} km` : "Cualquiera"}
+            </Text>
+          </View>
+          <Slider
+            min={MIN_DISTANCE_KM}
+            max={MAX_DISTANCE_KM}
+            value={maxDistanceKm ?? MIN_DISTANCE_KM}
+            disabled={!locationAvailable}
+            onChange={(v) => {
+              haptics.selection();
+              onMaxDistanceKmChange(v);
+            }}
+            accessibilityLabel="Distancia máxima"
+          />
+          <View className="flex-row items-center justify-between">
+            <Text
+              className={cn("text-footnote text-label-3", !locationAvailable ? "opacity-40" : undefined)}
+            >
+              {MIN_DISTANCE_KM} km
+            </Text>
+            {maxDistanceKm != null ? (
+              <Pressable onPress={() => onMaxDistanceKmChange(null)}>
+                <Text className="text-footnote text-label-3" style={{ textDecorationLine: "underline" }}>
+                  Cualquiera
+                </Text>
+              </Pressable>
+            ) : null}
+            <Text
+              className={cn("text-footnote text-label-3", !locationAvailable ? "opacity-40" : undefined)}
+            >
+              {MAX_DISTANCE_KM} km
+            </Text>
           </View>
           {!locationAvailable ? (
             <Text className="text-footnote text-label-3">
