@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
 import type { StatusTone } from "@/components/StatusBadge";
 import { SpaceMap } from "@/components/SpaceMap";
-import type { MapPlace } from "@/components/SpaceMap.types";
+import { MAP_TOGGLE_BOTTOM, type MapPlace } from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
@@ -867,12 +867,16 @@ export default function ExploreScreen() {
             haptics.selection();
             setView((v) => (v === "list" ? "map" : "list"));
           }}
-          // Fixed, not coupled to the selected-place card's position — the
-          // reference design keeps the toggle anchored near the tab bar and
-          // the card near the top instead, the opposite of the coupled
-          // "sits right above the card" arrangement tried first (2026-09-14
-          // report: "el objetivo es el toggle abajo y la card arriba").
-          bottomOffset={96}
+          // In map view the toggle always docks at the same small distance
+          // above the tab bar (clears Google's attribution strip), whether
+          // or not a place is selected — the selected-place card is what
+          // moves, coupling itself to sit right above the toggle
+          // (SpaceMap.web.tsx's SELECTED_CARD_BOTTOM), matching the
+          // reference exactly (2026-09-14 report). In list view this is the
+          // ScrollView's own paddingBottom (96, below) instead — unrelated
+          // to the tab bar, just clearance so the FAB never covers the last
+          // visible card.
+          bottomOffset={view === "map" ? MAP_TOGGLE_BOTTOM : 96}
         />
       ) : null}
       </View>
