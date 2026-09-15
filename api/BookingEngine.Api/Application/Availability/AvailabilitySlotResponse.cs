@@ -17,4 +17,11 @@ public record AvailabilitySlotResponse(
     // The resource's location, so the client can recompute distance live as the
     // device moves without re-hitting this endpoint. Null when unset.
     double? LocationLatitude = null,
-    double? LocationLongitude = null);
+    double? LocationLongitude = null,
+    // First seeded/uploaded photo (ResourceImage, ordered by Position), so
+    // Explore/Map cards can show a real per-resource photo instead of one
+    // fixed stock image per resource TYPE (`lib/stockImages.ts`'s
+    // client-side fallback). Null for a host-published space with no photos
+    // yet — the client falls back to the stock image in that case, same as
+    // it already does for the detail screen's PhotoCarousel.
+    string? ImageUrl = null);

@@ -33,6 +33,10 @@ export interface AvailabilitySlot {
   /** The resource's location, so the client can recompute distance live. */
   locationLatitude?: number | null;
   locationLongitude?: number | null;
+  /** First seeded/uploaded photo for this specific resource. Null for a
+   * host-published space with no photos yet — fall back to
+   * `stockImageUrl()` in that case, same as the detail screen already does. */
+  imageUrl?: string | null;
 }
 
 export interface Booking {

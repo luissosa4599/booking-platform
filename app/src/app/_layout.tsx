@@ -52,6 +52,8 @@ const PUBLIC_SEGMENTS = new Set([
   "auth",
   "forgot-password",
   "reset-password",
+  "privacy",
+  "terms",
 ]);
 // A signed-in host may sit here without being bounced into their own nav group
 // (the become-host success sheet lives on this screen).

@@ -264,11 +264,16 @@ public static class DevSeeder
         return letters[ordinal % letters.Length];
     }
 
+    // Pools expanded 3 -> 4-6 per type (2026-09-14 report: "de preferencia
+    // con imagenes variadas, las actuales solo hay 5") — each new id was
+    // both HTTP-verified (200) and visually subject-checked (downloaded +
+    // reviewed) before being added, same bar as the originals.
     private static readonly string[] AuditorioPhotos =
     {
         Photo("1519452575417-564c1401ecc0"),
         Photo("1540575467063-178a50c2df87"),
         Photo("1505373877841-8d25f7d46678"),
+        Photo("1592280771190-3e2e4d571952"),
     };
 
     private static readonly string[] SalonPhotos =
@@ -283,6 +288,9 @@ public static class DevSeeder
         Photo("1568667256549-094345857637"),
         Photo("1498243691581-b145c3f54a5a"),
         Photo("1481627834876-b7833e8f5570"),
+        Photo("1523240795612-9a054b0db644"),
+        Photo("1524995997946-a1c2e315a42f"),
+        Photo("1497633762265-9d179a990aa6"),
     };
 
     private static readonly string[] CubiculoPhotos =
@@ -290,6 +298,8 @@ public static class DevSeeder
         Photo("1434030216411-0b793f4b4173"),
         Photo("1531482615713-2afd69097998"),
         Photo("1587560699334-cc4ff634909a"),
+        Photo("1522202176988-66273c2fd55f"),
+        Photo("1543269865-cbf427effbad"),
     };
 
     private static string[] PhotoPool(ResourceType type) => type.Name switch

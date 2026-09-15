@@ -266,11 +266,20 @@ export default function ExploreScreen() {
     [resourceTypesQuery.data],
   );
 
+  // A real per-resource photo (`/availability`'s `imageUrl`, from the
+  // resource's own seeded/uploaded `ResourceImage`s) when there is one —
+  // falls back to one fixed stock image per resource TYPE otherwise. Every
+  // card in a category showing the exact same photo read as "solo hay 5
+  // imagenes" (2026-09-14 report) even though the seeder already attaches 2
+  // distinct photos per resource; this was never wired through to Explore.
   const imageForSlot = useCallback((slot: AvailabilitySlot): string => {
-    return stockImageUrl(resourceTypeNameById.get(slot.resourceTypeId), {
-      width: 400,
-      height: 300,
-    });
+    return (
+      slot.imageUrl ??
+      stockImageUrl(resourceTypeNameById.get(slot.resourceTypeId), {
+        width: 400,
+        height: 300,
+      })
+    );
   }, [resourceTypeNameById]);
 
   // Redesign handoff §6 "Badge de estado" — status shows in BOTH groups; the

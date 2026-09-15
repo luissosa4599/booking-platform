@@ -100,6 +100,10 @@ public static class AvailabilityEndpoints
                     s.RowVersion,
                     Lat = s.Resource.Location.Latitude,
                     Lng = s.Resource.Location.Longitude,
+                    ImageUrl = s.Resource.Images
+                        .OrderBy(i => i.Position)
+                        .Select(i => i.Url)
+                        .FirstOrDefault(),
                 })
                 .ToListAsync();
 
@@ -118,7 +122,8 @@ public static class AvailabilityEndpoints
                         ? HaversineMeters(originLat, originLng, r.Lat.Value, r.Lng.Value)
                         : null,
                     r.Lat,
-                    r.Lng))
+                    r.Lng,
+                    r.ImageUrl))
                 .ToList();
 
             EmptyContextResponse? emptyContext = slots.Count > 0
