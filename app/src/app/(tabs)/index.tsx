@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated as RNAnimated,
   Platform,
   Pressable,
   RefreshControl,
@@ -63,6 +64,7 @@ import { useHasDetailPane, useIsWide } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 import { useToastStore } from "@/lib/toastStore";
 
 // Redesign handoff §4 — the category-icon mapping, keyed by the resource
@@ -145,6 +147,51 @@ export default function ExploreScreen() {
 
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
   const searchIconColor = useColor("label-4");
+
+  // Collapses the greeting row as soon as the list starts scrolling, so the
+  // search bar takes its place at the top (2026-09-14 report: "al comenzar
+  // el slide se puede ocultar el header y que el search quede arriba"). Map
+  // view already hides the greeting outright (see below) — this only ever
+  // runs against the list ScrollView. Legacy `Animated` (not Reanimated),
+  // same "this is what actually works on web" pattern as the resource
+  // detail hero's scroll-driven collapse (`lib/useCollapsingHero.ts`).
+  const reduceMotion = useReduceMotion();
+  const [greetingCollapsed, setGreetingCollapsed] = useState(false);
+  // Measured via onLayout, not hardcoded — the two-line "Hola, <name>" block
+  // can run taller than the 44px avatar depending on font metrics. 44 is
+  // just a sane pre-measurement fallback so there's no 0-height flash.
+  const [greetingHeight, setGreetingHeight] = useState(44);
+  const greetingCollapse = useState(() => new RNAnimated.Value(0))[0];
+  useEffect(() => {
+    RNAnimated.timing(greetingCollapse, {
+      toValue: greetingCollapsed ? 1 : 0,
+      duration: reduceMotion ? 0 : 200,
+      useNativeDriver: false,
+    }).start();
+  }, [greetingCollapsed, greetingCollapse, reduceMotion]);
+  const handleListScroll = useCallback(
+    (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      const y = e.nativeEvent.contentOffset.y;
+      setGreetingCollapsed((collapsed) => (collapsed ? y > 0 : y > 8));
+    },
+    [],
+  );
+  // Coming back from map view should start expanded again — the ScrollView
+  // resets to the top on remount, but this boolean lives on the screen
+  // component itself and would otherwise stay stuck collapsed from before
+  // the switch. "Adjusting state when a prop changes" via a state-based
+  // previous-value comparison during render, not `useEffect` (trips
+  // `react-hooks/set-state-in-effect`) and not a ref (`react-hooks/refs`
+  // forbids reading/writing `.current` during render in this project) —
+  // same derived-state-from-a-changed-value pattern `ConflictSheet` already
+  // uses for its own retained value.
+  const [prevView, setPrevView] = useState(view);
+  if (prevView !== view) {
+    setPrevView(view);
+    if (view === "list" && greetingCollapsed) {
+      setGreetingCollapsed(false);
+    }
+  }
 
   // Captured once per mount — a slight drift against a live clock over a long
   // session is fine, the query itself refetches every 60s regardless.
@@ -547,35 +594,58 @@ export default function ExploreScreen() {
       {/* Fixed header — the `pb-4` keeps a gap between the controls and the
           list even while the list scrolls under it (a scrolled
           contentContainer top-padding would disappear). */}
-      <View className="gap-4 px-4 pb-4 pt-3">
+      <View className="px-4 pb-4 pt-3">
         {/* Redesign handoff §"Mapa · teléfono" (2026-09-14 report: "el header
             de hola se esconde") — the greeting gives up its vertical space to
-            the map entirely, not a scroll-driven collapse. */}
+            the map entirely, not a scroll-driven collapse there. In list
+            view it instead collapses as soon as scrolling starts, so the
+            search bar takes its place at the top (2026-09-14 report: "al
+            comenzar el slide se puede ocultar el header y que el search
+            quede arriba") — height/opacity/margin all animate together via
+            `greetingCollapse`, and the real height is measured via
+            `onLayout` rather than guessed, since the two-line name block
+            can run taller than the 44px avatar depending on font metrics. */}
         {view !== "map" ? (
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3">
-              <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
-              <View>
-                <Text className="text-body-emph text-label-3">Hola,</Text>
-                <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+          <RNAnimated.View
+            style={{
+              opacity: greetingCollapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              height: greetingCollapse.interpolate({
+                inputRange: [0, 1],
+                outputRange: [greetingHeight, 0],
+              }),
+              marginBottom: greetingCollapse.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+              overflow: "hidden",
+            }}
+          >
+            <View
+              onLayout={(e) => setGreetingHeight(e.nativeEvent.layout.height)}
+              className="flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-3">
+                <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
+                <View>
+                  <Text className="text-body-emph text-label-3">Hola,</Text>
+                  <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+                </View>
+              </View>
+              <View className="flex-row items-center gap-1.5">
+                <RefreshButton
+                  onPress={() => availabilityQuery.refetch()}
+                  refreshing={isRefreshing}
+                />
+                <Text className="text-footnote text-label-3">
+                  {locating
+                    ? "Ubicando…"
+                    : isRefreshing
+                      ? "Actualizando…"
+                      : formatHeaderDate(now)}
+                </Text>
               </View>
             </View>
-            <View className="flex-row items-center gap-1.5">
-              <RefreshButton
-                onPress={() => availabilityQuery.refetch()}
-                refreshing={isRefreshing}
-              />
-              <Text className="text-footnote text-label-3">
-                {locating
-                  ? "Ubicando…"
-                  : isRefreshing
-                    ? "Actualizando…"
-                    : formatHeaderDate(now)}
-              </Text>
-            </View>
-          </View>
+          </RNAnimated.View>
         ) : null}
 
+        <View className="gap-4">
         <View
           className="h-[52px] flex-row items-center gap-2.5 rounded-full bg-fill"
           // Inline, not `pl-4 pr-1.5` — confirmed via getComputedStyle that
@@ -725,6 +795,7 @@ export default function ExploreScreen() {
             </Pressable>
           </View>
         ) : null}
+        </View>
       </View>
 
       <View style={{ flex: 1 }}>
@@ -744,6 +815,8 @@ export default function ExploreScreen() {
           paddingHorizontal: 16,
           paddingBottom: isWide ? 16 : 96,
         }}
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
