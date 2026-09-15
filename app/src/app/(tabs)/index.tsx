@@ -29,11 +29,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
 import type { StatusTone } from "@/components/StatusBadge";
 import { SpaceMap } from "@/components/SpaceMap";
-import {
-  SELECTED_CARD_BOTTOM,
-  SELECTED_CARD_HEIGHT,
-  type MapPlace,
-} from "@/components/SpaceMap.types";
+import type { MapPlace } from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
@@ -871,15 +867,12 @@ export default function ExploreScreen() {
             haptics.selection();
             setView((v) => (v === "list" ? "map" : "list"));
           }}
-          // Coupled to the selected-place card (SpaceMap.web.tsx), not an
-          // independent fixed value — sits right above the card with a 12px
-          // gap whenever one is showing, so the two always move together
-          // instead of drifting out of sync (2026-09-14 report).
-          bottomOffset={
-            view === "map" && selectedMapId
-              ? SELECTED_CARD_BOTTOM + SELECTED_CARD_HEIGHT + 12
-              : 96
-          }
+          // Fixed, not coupled to the selected-place card's position — the
+          // reference design keeps the toggle anchored near the tab bar and
+          // the card near the top instead, the opposite of the coupled
+          // "sits right above the card" arrangement tried first (2026-09-14
+          // report: "el objetivo es el toggle abajo y la card arriba").
+          bottomOffset={96}
         />
       ) : null}
       </View>

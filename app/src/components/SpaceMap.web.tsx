@@ -12,7 +12,7 @@ import { useColorScheme } from "nativewind";
 import { Button } from "@/components/Button";
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 import { palette } from "@/lib/theme/palette";
-import { SELECTED_CARD_BOTTOM, type MapPlace, type SpaceMapProps } from "./SpaceMap.types";
+import { SELECTED_CARD_TOP, type MapPlace, type SpaceMapProps } from "./SpaceMap.types";
 
 /**
  * The Explore map (PR #10, redesigned 2026-09-14 per the Direction A
@@ -26,7 +26,7 @@ import { SELECTED_CARD_BOTTOM, type MapPlace, type SpaceMapProps } from "./Space
  * ambiguous.
  *
  * **The selected place's card is a real RN `View`, absolutely positioned at
- * the bottom of the map container — not an `InfoWindow` anchored to the pin.**
+ * the top of the map container — not an `InfoWindow` anchored to the pin.**
  * This is simpler than the previous approach, not just prettier: it sits
  * completely outside `AdvancedMarker`'s collision-managed rendering path (the
  * thing that made a nested "Apartar" button unclickable in the very first
@@ -164,8 +164,11 @@ function CircleMarker({
 }
 
 // Redesign handoff §"SelectedPinCard" — a horizontal card anchored to the
-// bottom of the map, reusing the same visual language as `ResourceCard`'s
-// row variant (photo thumbnail + text + compact CTA) at a smaller size.
+// TOP of the map (2026-09-14 report: "el objetivo es el toggle abajo y la
+// card arriba, como en el design" — not bottom-anchored + coupled to the
+// Mapa/Lista toggle like an earlier attempt), reusing the same visual
+// language as `ResourceCard`'s row variant (photo thumbnail + text +
+// compact CTA) at a smaller size.
 function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () => void }) {
   const statusLabel = place.state === "free" ? "Libre" : `Libre en ${place.soonMinutes} min`;
 
@@ -176,12 +179,7 @@ function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () 
         position: "absolute",
         left: 16,
         right: 16,
-        // MapListFab (index.tsx) reads SELECTED_CARD_BOTTOM/HEIGHT and moves
-        // up to sit right above this card whenever one is showing — the two
-        // are a coupled group now, not independently-fixed offsets that
-        // could drift apart (2026-09-14 report: "la alineación... se ve
-        // rara").
-        bottom: SELECTED_CARD_BOTTOM,
+        top: SELECTED_CARD_TOP,
         borderRadius: 16,
         padding: 10,
         flexDirection: "row",
