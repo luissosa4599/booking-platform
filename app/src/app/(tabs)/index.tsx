@@ -867,16 +867,17 @@ export default function ExploreScreen() {
             haptics.selection();
             setView((v) => (v === "list" ? "map" : "list"));
           }}
-          // In map view the toggle always docks at the same small distance
-          // above the tab bar (clears Google's attribution strip), whether
-          // or not a place is selected — the selected-place card is what
-          // moves, coupling itself to sit right above the toggle
-          // (SpaceMap.web.tsx's SELECTED_CARD_BOTTOM), matching the
-          // reference exactly (2026-09-14 report). In list view this is the
-          // ScrollView's own paddingBottom (96, below) instead — unrelated
-          // to the tab bar, just clearance so the FAB never covers the last
-          // visible card.
-          bottomOffset={view === "map" ? MAP_TOGGLE_BOTTOM : 96}
+          // Same small distance above the tab bar in both views — list
+          // view's toggle ("Mapa") was left at the old, too-high 96 offset
+          // when only the map view's ("Lista") got fixed, which is exactly
+          // what "mapa mantiene la posicion original" (2026-09-14 report)
+          // called out: measured live, it left the same ~97px dead gap
+          // above the tab bar that map view had before that fix. The
+          // ScrollView's own paddingBottom (96, below) is unrelated to
+          // this — it only needs to clear the FAB's own height so the last
+          // visible card isn't covered, and MAP_TOGGLE_BOTTOM plus the
+          // FAB's height still fits comfortably inside it.
+          bottomOffset={MAP_TOGGLE_BOTTOM}
         />
       ) : null}
       </View>
