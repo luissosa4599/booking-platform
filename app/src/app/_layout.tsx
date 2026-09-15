@@ -138,7 +138,17 @@ function AuthGate() {
           headerShown: false,
           contentStyle: { backgroundColor: canvas },
         }}
-      />
+      >
+        {/* Explicit override for just this one route — `animation` only has
+            an effect on Android (iOS's native-stack already slides by
+            default regardless; Web ignores it, see the "Web animations"
+            note in CLAUDE.md) — so this gives Android the Instagram-style
+            slide the sheet-based version didn't have, without touching the
+            push transition for every other screen via `screenOptions`.
+            2026-09-15 report: "que con una animacion de slide te lleva a
+            una pagina de pantalla completa". */}
+        <Stack.Screen name="notifications" options={{ animation: "slide_from_right" }} />
+      </Stack>
     </NavThemeProvider>
   );
 }

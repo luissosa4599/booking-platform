@@ -22,7 +22,6 @@ import { Group } from "@/components/Group";
 import { MapListFab } from "@/components/MapListFab";
 import { NextBookingBanner } from "@/components/NextBookingBanner";
 import { NotificationBell } from "@/components/NotificationBell";
-import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { Placeholder } from "@/components/Placeholder";
 import { RefreshButton } from "@/components/RefreshButton";
 import { ResourceCard } from "@/components/ResourceCard";
@@ -37,7 +36,7 @@ import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
 import { useFavorites, useToggleFavorite } from "@/lib/api/favorites";
-import { useMarkNotificationsRead, useNotifications } from "@/lib/api/notifications";
+import { useNotifications } from "@/lib/api/notifications";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -229,9 +228,7 @@ export default function ExploreScreen() {
   // which results show up at all.
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { notifications, unreadCount: unreadNotificationCount } = useNotifications();
-  const { markRead: markNotificationsRead } = useMarkNotificationsRead();
+  const { unreadCount: unreadNotificationCount } = useNotifications();
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
@@ -649,21 +646,23 @@ export default function ExploreScreen() {
                   unreadCount={unreadNotificationCount}
                   onPress={() => {
                     haptics.selection();
-                    setNotificationsOpen(true);
-                    void markNotificationsRead();
+                    router.push("/notifications");
                   }}
                 />
                 <RefreshButton
                   onPress={() => availabilityQuery.refetch()}
                   refreshing={isRefreshing}
                 />
-                <Text className="text-footnote text-label-3">
-                  {locating
-                    ? "Ubicando…"
-                    : isRefreshing
-                      ? "Actualizando…"
-                      : formatHeaderDate(now)}
-                </Text>
+                {/* No idle-state date/time here on purpose (2026-09-15
+                    report: "la hora en el header no tiene mucho sentido, ya
+                    que la barra del sistema con la hora esta al lado") —
+                    only real transient status, which the system clock can't
+                    show. */}
+                {locating || isRefreshing ? (
+                  <Text className="text-footnote text-label-3">
+                    {locating ? "Ubicando…" : "Actualizando…"}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </RNAnimated.View>
@@ -1025,23 +1024,6 @@ export default function ExploreScreen() {
           setMaxDistanceKm(null);
         }}
       />
-      <NotificationsSheet
-        isOpen={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        notifications={notifications}
-      />
     </Screen>
   );
-}
-
-function formatHeaderDate(date: Date) {
-  const formatted = date.toLocaleDateString("es-MX", {
-    weekday: "short",
-    day: "numeric",
-  });
-  const time = date.toLocaleTimeString("es-MX", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${formatted} · ${time}`;
 }

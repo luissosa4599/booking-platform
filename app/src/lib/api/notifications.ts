@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useUserId } from "@/lib/session";
@@ -44,25 +45,33 @@ export function useNotifications() {
 export function useMarkNotificationsRead() {
   const qc = useQueryClient();
   const userId = useUserId();
-  const key = ["notifications", userId] as const;
 
-  return {
-    markRead: async () => {
-      // Optimistic — opening the sheet should clear the badge instantly, not
-      // after a round trip.
-      qc.setQueryData<NotificationsResponse>(key, (prev) =>
-        prev
-          ? {
-              unreadCount: 0,
-              notifications: prev.notifications.map((n) => ({ ...n, isRead: true })),
-            }
-          : prev,
-      );
-      try {
-        await apiFetch<void>("/notifications/read-all", { method: "POST" });
-      } finally {
-        await qc.invalidateQueries({ queryKey: key });
-      }
-    },
-  };
+  // Stable identity — the notifications screen calls this once on mount via
+  // a `useEffect([markRead])`; a fresh function every render (the previous
+  // shape here) would put a different value in that dependency array each
+  // time and loop the effect forever. `key` is built from `userId` *inside*
+  // the callback rather than closed over from an outer `const key = [...]`,
+  // so the exhaustive-deps check has an actual stable dependency (`userId`)
+  // instead of a new array literal every render.
+  const markRead = useCallback(async () => {
+    const key = ["notifications", userId] as const;
+
+    // Optimistic — opening the screen should clear the badge instantly, not
+    // after a round trip.
+    qc.setQueryData<NotificationsResponse>(key, (prev) =>
+      prev
+        ? {
+            unreadCount: 0,
+            notifications: prev.notifications.map((n) => ({ ...n, isRead: true })),
+          }
+        : prev,
+    );
+    try {
+      await apiFetch<void>("/notifications/read-all", { method: "POST" });
+    } finally {
+      await qc.invalidateQueries({ queryKey: key });
+    }
+  }, [qc, userId]);
+
+  return { markRead };
 }
