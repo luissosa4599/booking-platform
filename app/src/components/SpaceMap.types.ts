@@ -13,6 +13,8 @@ export interface MapPlace {
   /** Redesign handoff §"SelectedPinCard" — stock photo by resource type,
    * same fallback as the Explore list cards. */
   imageUri: string;
+  /** Already abbreviated (e.g. "48"), no "lugares" word. */
+  capacityLabel: string;
 }
 
 export interface SpaceMapProps {

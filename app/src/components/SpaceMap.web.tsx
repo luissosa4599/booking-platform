@@ -1,46 +1,37 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import {
   AdvancedMarker,
   APIProvider,
   ColorScheme,
-  InfoWindow,
   Map as GoogleMap,
-  Pin,
-  useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 
 import { useColorScheme } from "nativewind";
 
+import { Button } from "@/components/Button";
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 import { palette } from "@/lib/theme/palette";
 import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
 
 /**
- * The Explore map (PR #10) — one marker per available resource, a plain
- * Google `<Pin>` coloured by state (free now vs. opens soon). Web only:
- * `@vis.gl/react-google-maps` + the Maps JavaScript API
- * (`EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY`, referrer-restricted). Native falls
- * back to the list — see `SpaceMap.native.tsx`.
+ * The Explore map (PR #10, redesigned 2026-09-14 per the Direction A
+ * reference). Web only: `@vis.gl/react-google-maps` + the Maps JavaScript
+ * API (`EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY`, referrer-restricted). Native
+ * falls back to the list — see `SpaceMap.native.tsx`.
  *
- * The original custom "T block" marker (matching the brand mark) was
- * reverted to a plain `<Pin>` — it read as a map glitch once markers piled up
- * or overlapped. A better custom marker + clustering is a separate follow-up.
+ * **Markers are plain colored circles**, not Google's `<Pin>` teardrop —
+ * matches the reference exactly (2026-09-14 report). Selected gets its own
+ * distinct color (not just a scale bump) so "which one did I tap" is never
+ * ambiguous.
  *
- * **The peek card is a real `<InfoWindow>`, not a second `<AdvancedMarker>`
- * at the same position** (2026-09-11 fix). With this many markers on the
- * map, Google renders `AdvancedMarker` content through a collision-managed
- * path — clicking the *pin* itself still works (its `onClick` maps to one
- * opaque hit region), but a `<button>` nested inside a second, content-only
- * `AdvancedMarker` never receives its own click: the cursor turns into the
- * map's drag-pan grab hand instead, and "Apartar" becomes unclickable.
- * Confirmed via `document.elementFromPoint` — the marker content is placed in
- * a slot literally named `…-internal-hidden-gmp-advanced-markers`. `InfoWindow`
- * is Google's actual purpose-built mechanism for interactive marker popups —
- * a real portalled DOM overlay outside that collision-management path, so
- * nested buttons work exactly like normal HTML. Its default chrome (white
- * bubble, shadow, tail, close ×) is stripped via the `.gm-style-iw-*`
- * overrides in `global.css` — the card supplies its own styling instead.
+ * **The selected place's card is a real RN `View`, absolutely positioned at
+ * the bottom of the map container — not an `InfoWindow` anchored to the pin.**
+ * This is simpler than the previous approach, not just prettier: it sits
+ * completely outside `AdvancedMarker`'s collision-managed rendering path (the
+ * thing that made a nested "Apartar" button unclickable in the very first
+ * version of this map — see git history), so there's no special-casing
+ * needed to keep it interactive.
  *
  * `AdvancedMarker` needs a vector map id; `DEMO_MAP_ID` is Google's public
  * dev id and works with no cloud setup. Set `EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID`
@@ -50,6 +41,8 @@ import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
  */
 const MAP_ID = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 const MEXICO_CITY = { lat: 19.4326, lng: -99.1332 };
+const CIRCLE_SIZE = 22;
+const CIRCLE_SIZE_SELECTED = 26;
 
 export function SpaceMap({
   places,
@@ -69,6 +62,8 @@ export function SpaceMap({
     const lng = places.reduce((s, p) => s + p.lng, 0) / places.length;
     return { lat, lng };
   }, [places, userPosition]);
+
+  const selected = places.find((p) => p.resourceId === selectedId) ?? null;
 
   if (!GOOGLE_MAPS_STATIC_KEY) {
     return (
@@ -92,12 +87,11 @@ export function SpaceMap({
           style={{ width: "100%", height: "100%" }}
         >
           {places.map((p) => (
-            <PlaceMarker
+            <CircleMarker
               key={p.resourceId}
               place={p}
               selected={p.resourceId === selectedId}
               onSelect={onSelect}
-              onAction={onAction}
               colors={c}
             />
           ))}
@@ -118,137 +112,108 @@ export function SpaceMap({
           ) : null}
         </GoogleMap>
       </APIProvider>
+
+      {selected ? (
+        <SelectedPlaceCard place={selected} onAction={() => onAction(selected.resourceId)} />
+      ) : null}
     </View>
   );
 }
 
-function PlaceMarker({
+function CircleMarker({
   place,
   selected,
   onSelect,
-  onAction,
   colors,
 }: {
   place: MapPlace;
   selected: boolean;
   onSelect: (resourceId: string) => void;
-  onAction: (resourceId: string) => void;
   colors: ReturnType<typeof palette>;
 }) {
-  const [markerRef, marker] = useAdvancedMarkerRef();
   const free = place.state === "free";
+  // Selected gets its own color — never just a size bump — so which pin is
+  // "the one I tapped" is unambiguous even among several free/soon pins.
+  const background = selected ? colors["state-waiting"] : free ? colors.tint : colors.card;
+  const size = selected ? CIRCLE_SIZE_SELECTED : CIRCLE_SIZE;
 
   return (
-    <>
-      <AdvancedMarker
-        ref={markerRef}
-        position={{ lat: place.lat, lng: place.lng }}
-        zIndex={selected ? 20 : 1}
-        onClick={() => onSelect(place.resourceId)}
-      >
-        <Pin
-          background={free ? colors.tint : colors.card}
-          borderColor={colors.tint}
-          glyphColor={free ? colors["on-tint"] : colors.tint}
-          glyph={!free && place.soonMinutes != null ? String(place.soonMinutes) : undefined}
-          scale={selected ? 1.15 : 1}
-        />
-      </AdvancedMarker>
-
-      {selected && marker ? (
-        <InfoWindow anchor={marker} disableAutoPan headerDisabled>
-          <PeekCard place={place} colors={colors} onAction={() => onAction(place.resourceId)} />
-        </InfoWindow>
-      ) : null}
-    </>
+    <AdvancedMarker
+      position={{ lat: place.lat, lng: place.lng }}
+      zIndex={selected ? 20 : 1}
+      onClick={() => onSelect(place.resourceId)}
+    >
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background,
+          border: `3px solid ${colors.card}`,
+          boxShadow: selected
+            ? `0 4px 10px rgba(11,11,12,0.2)`
+            : "0 1px 4px rgba(11,11,12,0.25)",
+        }}
+      />
+    </AdvancedMarker>
   );
 }
 
-function PeekCard({
-  place,
-  colors,
-  onAction,
-}: {
-  place: MapPlace;
-  colors: ReturnType<typeof palette>;
-  onAction: () => void;
-}) {
-  const free = place.state === "free";
-  const statusColor = colors["state-free"];
-  const statusLabel = free
-    ? "Libre"
-    : `Libre en ${place.soonMinutes} min`;
+// Redesign handoff §"SelectedPinCard" — a horizontal card anchored to the
+// bottom of the map, reusing the same visual language as `ResourceCard`'s
+// row variant (photo thumbnail + text + compact CTA) at a smaller size.
+function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () => void }) {
+  const statusLabel = place.state === "free" ? "Libre" : `Libre en ${place.soonMinutes} min`;
 
   return (
-    <div
+    <View
+      className="border border-hairline bg-card"
       style={{
-        width: 224,
-        display: "flex",
+        position: "absolute",
+        left: 16,
+        right: 16,
+        // Clears the Lista/Mapa FAB (bottom 96 + its own 44px height = a
+        // 140px top edge) with a 16px gap — was 88, which overlapped it
+        // (2026-09-14 report, confirmed via screenshot).
+        bottom: 156,
+        borderRadius: 16,
+        padding: 10,
+        flexDirection: "row",
+        alignItems: "center",
         gap: 12,
-        background: colors.card,
-        borderRadius: 14,
-        padding: 12,
-        border: `1px solid ${colors.hairline}`,
-        boxShadow: "0 10px 30px -8px rgba(0,0,0,.3)",
+        shadowColor: "#0B0B0C",
+        shadowOpacity: 0.14,
+        shadowRadius: 30,
+        shadowOffset: { width: 0, height: 12 },
+        elevation: 6,
       }}
     >
-      {/* Redesign handoff §"SelectedPinCard" reuses ResourceCard's `row`
-          look; this stays a plain HTML img (not the RN component) — the
-          InfoWindow content is a real portalled DOM node, not RN-rendered.
-          See SpaceMap.web.tsx's file comment for why InfoWindow at all. */}
-      <img
-        src={place.imageUri}
-        alt=""
-        style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
+      <Image
+        source={{ uri: place.imageUri }}
+        style={{ width: 56, height: 56, borderRadius: 10 }}
+        resizeMode="cover"
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
-            color: colors["label-1"],
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text numberOfLines={1} className="text-body-emph text-label-1">
           {place.name}
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            margin: "2px 0 8px",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
-          <span style={{ color: colors["label-3"] }}>
-            {place.distanceLabel ? ` · a ${place.distanceLabel}` : ""}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onAction}
-          style={{
-            display: "block",
-            width: "100%",
-            textAlign: "center",
-            background: colors.tint,
-            color: colors["on-tint"],
-            fontSize: 13,
-            fontWeight: 600,
-            border: "none",
-            borderRadius: 999,
-            padding: "7px 0",
-            cursor: "pointer",
-          }}
-        >
+        </Text>
+        <Text numberOfLines={1} className="text-footnote text-label-3">
+          {place.locationName} · {place.capacityLabel}
+        </Text>
+        <Text numberOfLines={1} className="text-footnote">
+          <Text
+            className={place.state === "free" ? "text-state-free" : "text-state-last"}
+            style={{ fontWeight: "600" }}
+          >
+            {statusLabel}
+          </Text>
+        </Text>
+      </View>
+      <Pressable onPress={(e) => e.stopPropagation()}>
+        <Button variant="pill" tone="filled" onPress={onAction}>
           {place.actionLabel}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Pressable>
+    </View>
   );
 }

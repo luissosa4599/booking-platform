@@ -15,6 +15,7 @@ import { Avatar } from "@/components/Avatar";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
 import { CategoryCircles, type CategoryOption } from "@/components/CategoryCircles";
 import { ConflictSheet } from "@/components/ConflictSheet";
+import { FilterPills } from "@/components/FilterPills";
 import { FilterSheet } from "@/components/FilterSheet";
 import { Group } from "@/components/Group";
 import { MapListFab } from "@/components/MapListFab";
@@ -299,6 +300,7 @@ export default function ExploreScreen() {
         state: freeNow ? "free" : "soon",
         soonMinutes: freeNow ? null : minutesUntil,
         imageUri: imageForSlot(slot),
+        capacityLabel: String(slot.capacityRemaining),
         distanceLabel: meters != null ? formatDistance(meters) : null,
         actionLabel: "Ver detalles",
       });
@@ -546,28 +548,33 @@ export default function ExploreScreen() {
           list even while the list scrolls under it (a scrolled
           contentContainer top-padding would disappear). */}
       <View className="gap-4 px-4 pb-4 pt-3">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-3">
-            <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
-            <View>
-              <Text className="text-body-emph text-label-3">Hola,</Text>
-              <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+        {/* Redesign handoff §"Mapa · teléfono" (2026-09-14 report: "el header
+            de hola se esconde") — the greeting gives up its vertical space to
+            the map entirely, not a scroll-driven collapse. */}
+        {view !== "map" ? (
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-3">
+              <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
+              <View>
+                <Text className="text-body-emph text-label-3">Hola,</Text>
+                <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+              </View>
+            </View>
+            <View className="flex-row items-center gap-1.5">
+              <RefreshButton
+                onPress={() => availabilityQuery.refetch()}
+                refreshing={isRefreshing}
+              />
+              <Text className="text-footnote text-label-3">
+                {locating
+                  ? "Ubicando…"
+                  : isRefreshing
+                    ? "Actualizando…"
+                    : formatHeaderDate(now)}
+              </Text>
             </View>
           </View>
-          <View className="flex-row items-center gap-1.5">
-            <RefreshButton
-              onPress={() => availabilityQuery.refetch()}
-              refreshing={isRefreshing}
-            />
-            <Text className="text-footnote text-label-3">
-              {locating
-                ? "Ubicando…"
-                : isRefreshing
-                  ? "Actualizando…"
-                  : formatHeaderDate(now)}
-            </Text>
-          </View>
-        </View>
+        ) : null}
 
         <View className="h-[52px] flex-row items-center gap-2.5 rounded-full bg-fill pl-4 pr-1.5">
           <Search size={18} strokeWidth={2} color={searchIconColor} />
@@ -606,16 +613,38 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
 
-        <CategoryCircles
-          options={categoryOptions}
-          selectedId={selectedResourceTypeId}
-          onSelect={setSelectedResourceTypeId}
-          circleSize={hasPane ? 48 : 54}
-        />
+        {/* Redesign handoff §"Mapa · teléfono" (2026-09-14 report: "filtros
+            pierden el ícono") — categories are plain text pills on the map,
+            not the icon circles the list uses. Same selection state either
+            way (`FilterPills` and `CategoryCircles` share that API on
+            purpose), so switching view never resets the filter. */}
+        {view === "map" ? (
+          <FilterPills
+            options={categoryOptions}
+            selectedId={selectedResourceTypeId}
+            onSelect={setSelectedResourceTypeId}
+          />
+        ) : (
+          <CategoryCircles
+            options={categoryOptions}
+            selectedId={selectedResourceTypeId}
+            onSelect={setSelectedResourceTypeId}
+            circleSize={hasPane ? 48 : 54}
+          />
+        )}
 
-        <NextBookingBanner booking={nextBooking} onOpenPass={() => setPassBooking(nextBooking)} />
-
-        <StaleStamp dataUpdatedAt={availabilityQuery.dataUpdatedAt} className="pl-1 text-footnote text-label-4" />
+        {view !== "map" ? (
+          <>
+            <NextBookingBanner
+              booking={nextBooking}
+              onOpenPass={() => setPassBooking(nextBooking)}
+            />
+            <StaleStamp
+              dataUpdatedAt={availabilityQuery.dataUpdatedAt}
+              className="pl-1 text-footnote text-label-4"
+            />
+          </>
+        ) : null}
 
         {mapAvailable && isWide ? (
           <View className="h-9 flex-row rounded-control bg-fill p-[3px]">
@@ -655,36 +684,38 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        <View className="flex-row items-center justify-between">
-          <SortControl value={sort} onChange={handleSortChange} />
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              setFavoritesOnly((v) => !v);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Mostrar solo favoritos"
-            accessibilityState={{ selected: favoritesOnly }}
-            className={cn(
-              "h-[34px] flex-row items-center gap-1.5 rounded-full px-[14px]",
-              favoritesOnly ? "bg-label-1" : "bg-card",
-            )}
-          >
-            <Heart
-              size={13}
-              color={favoritesOnly ? favoriteChipActiveColor : favoriteChipRestColor}
-              fill={favoritesOnly ? favoriteChipActiveColor : "none"}
-            />
-            <Text
+        {view !== "map" ? (
+          <View className="flex-row items-center justify-between">
+            <SortControl value={sort} onChange={handleSortChange} />
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                setFavoritesOnly((v) => !v);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Mostrar solo favoritos"
+              accessibilityState={{ selected: favoritesOnly }}
               className={cn(
-                "text-subhead",
-                favoritesOnly ? "text-canvas" : "text-label-2",
+                "h-[34px] flex-row items-center gap-1.5 rounded-full px-[14px]",
+                favoritesOnly ? "bg-label-1" : "bg-card",
               )}
             >
-              Favoritos
-            </Text>
-          </Pressable>
-        </View>
+              <Heart
+                size={13}
+                color={favoritesOnly ? favoriteChipActiveColor : favoriteChipRestColor}
+                fill={favoritesOnly ? favoriteChipActiveColor : "none"}
+              />
+              <Text
+                className={cn(
+                  "text-subhead",
+                  favoritesOnly ? "text-canvas" : "text-label-2",
+                )}
+              >
+                Favoritos
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ flex: 1 }}>

@@ -85,28 +85,7 @@
   --color-disabled-label: 85 85 90; /* #55555A */
 }
 
-/* Google Maps InfoWindow chrome, stripped — SpaceMap.web.tsx (the Explore
-   map) renders its own peek-card styling as the InfoWindow's content; the
-   library's default white bubble/shadow/tail/close-X would otherwise double
-   up with it. Only present on web while an InfoWindow is open; classes are
-   Google's own, stable across Maps JS API versions. */
-.gm-style-iw-c {
-  padding: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-}
-.gm-style-iw-d {
-  overflow: visible !important;
-  padding: 0 !important;
-}
-/* The tail's actual visible triangle is this pseudo-element (not
-   `.gm-style-iw-t`, which only positions it) — Google hardcodes it to white,
-   which stands out against a dark card. Match the card's own theme colour
-   instead of hiding it, so it still visually connects the card to the pin. */
-.gm-style-iw-tc::after {
-  background-color: rgb(var(--color-card)) !important;
-}
-.gm-ui-hover-effect {
-  display: none !important;
-}
+/* The `.gm-style-iw-*` InfoWindow chrome overrides that used to live here are
+   gone (2026-09-14 map redesign) — the selected-place card is a plain RN
+   View anchored to the map container now, not a Google InfoWindow. See
+   SpaceMap.web.tsx's file comment. */
