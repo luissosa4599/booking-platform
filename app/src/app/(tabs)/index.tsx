@@ -29,7 +29,11 @@ import { Skeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
 import type { StatusTone } from "@/components/StatusBadge";
 import { SpaceMap } from "@/components/SpaceMap";
-import type { MapPlace } from "@/components/SpaceMap.types";
+import {
+  SELECTED_CARD_BOTTOM,
+  SELECTED_CARD_HEIGHT,
+  type MapPlace,
+} from "@/components/SpaceMap.types";
 import { StaleStamp } from "@/components/StaleStamp";
 import { useAvailability, type AvailabilitySort } from "@/lib/api/availability";
 import { useCreateBooking, useMyBookings } from "@/lib/api/bookings";
@@ -867,7 +871,15 @@ export default function ExploreScreen() {
             haptics.selection();
             setView((v) => (v === "list" ? "map" : "list"));
           }}
-          bottomOffset={96}
+          // Coupled to the selected-place card (SpaceMap.web.tsx), not an
+          // independent fixed value — sits right above the card with a 12px
+          // gap whenever one is showing, so the two always move together
+          // instead of drifting out of sync (2026-09-14 report).
+          bottomOffset={
+            view === "map" && selectedMapId
+              ? SELECTED_CARD_BOTTOM + SELECTED_CARD_HEIGHT + 12
+              : 96
+          }
         />
       ) : null}
       </View>

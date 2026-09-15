@@ -12,7 +12,7 @@ import { useColorScheme } from "nativewind";
 import { Button } from "@/components/Button";
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 import { palette } from "@/lib/theme/palette";
-import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
+import { SELECTED_CARD_BOTTOM, type MapPlace, type SpaceMapProps } from "./SpaceMap.types";
 
 /**
  * The Explore map (PR #10, redesigned 2026-09-14 per the Direction A
@@ -41,8 +41,9 @@ import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
  */
 const MAP_ID = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 const MEXICO_CITY = { lat: 19.4326, lng: -99.1332 };
-const CIRCLE_SIZE = 22;
-const CIRCLE_SIZE_SELECTED = 26;
+// Bumped from 22/26 to match the reference's larger pins (2026-09-14 report).
+const CIRCLE_SIZE = 32;
+const CIRCLE_SIZE_SELECTED = 38;
 
 export function SpaceMap({
   places,
@@ -134,7 +135,10 @@ function CircleMarker({
   const free = place.state === "free";
   // Selected gets its own color — never just a size bump — so which pin is
   // "the one I tapped" is unambiguous even among several free/soon pins.
-  const background = selected ? colors["state-waiting"] : free ? colors.tint : colors.card;
+  // `tint-soft` (a lighter shade of the same brand color), not an unrelated
+  // hue like `state-waiting` blue — stays inside the app's own color
+  // language instead of introducing a new accent (2026-09-14 report).
+  const background = selected ? colors["tint-soft"] : free ? colors.tint : colors.card;
   const size = selected ? CIRCLE_SIZE_SELECTED : CIRCLE_SIZE;
 
   return (
@@ -172,10 +176,12 @@ function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () 
         position: "absolute",
         left: 16,
         right: 16,
-        // Clears the Lista/Mapa FAB (bottom 96 + its own 44px height = a
-        // 140px top edge) with a 16px gap — was 88, which overlapped it
-        // (2026-09-14 report, confirmed via screenshot).
-        bottom: 156,
+        // MapListFab (index.tsx) reads SELECTED_CARD_BOTTOM/HEIGHT and moves
+        // up to sit right above this card whenever one is showing — the two
+        // are a coupled group now, not independently-fixed offsets that
+        // could drift apart (2026-09-14 report: "la alineación... se ve
+        // rara").
+        bottom: SELECTED_CARD_BOTTOM,
         borderRadius: 16,
         padding: 10,
         flexDirection: "row",
