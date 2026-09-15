@@ -2,7 +2,6 @@ import { Pressable, Text } from "react-native";
 
 import { haptics } from "@/lib/haptics";
 import { List, Map as MapIcon } from "@/lib/icons";
-import { useColor } from "@/lib/theme/useColor";
 
 interface MapListFabProps {
   view: "list" | "map";
@@ -15,9 +14,20 @@ interface MapListFabProps {
 // on phone width only; desktop keeps the SegmentedControl (no FAB there — see
 // 07-desktop.md §"Mapa en escritorio"). The label names the destination
 // ("Mapa" while viewing the list), not the current view.
+//
+// Fixed dark pill + white text/icon, literal hex — NOT `useColor`/theme
+// tokens, and NOT conditioned on `view` (2026-09-14 report: "consistencia
+// en el tema del toggle, uno lo veo negro y otro blanco" — the previous
+// version flipped bg/fg based on which label was showing, e.g. black-on-
+// white for "Lista" but white-on-black for "Mapa" in light mode). Every
+// reference screenshot shows this pill as the same solid dark shape
+// regardless of state or app theme — same "always dark regardless of the
+// app's own theme" convention `Toast` already uses (CLAUDE.md, "bg-label-1
+// is the wrong choice for an always-dark surface").
+const FAB_BG = "#1C1C1E";
+const FAB_FG = "#FFFFFF";
+
 export function MapListFab({ view, onToggle, bottomOffset }: MapListFabProps) {
-  const fg = useColor(view === "list" ? "on-tint" : "label-1");
-  const bg = useColor(view === "list" ? "label-1" : "card");
   const Icon = view === "list" ? MapIcon : List;
   const label = view === "list" ? "Mapa" : "Lista";
 
@@ -39,7 +49,7 @@ export function MapListFab({ view, onToggle, bottomOffset }: MapListFabProps) {
         height: 44,
         paddingHorizontal: 20,
         borderRadius: 9999,
-        backgroundColor: bg,
+        backgroundColor: FAB_BG,
         shadowColor: "#0B0B0C",
         shadowOpacity: 0.25,
         shadowRadius: 24,
@@ -47,8 +57,8 @@ export function MapListFab({ view, onToggle, bottomOffset }: MapListFabProps) {
         elevation: 6,
       }}
     >
-      <Icon size={16} color={fg} />
-      <Text style={{ color: fg, fontSize: 15, fontWeight: "600" }}>{label}</Text>
+      <Icon size={16} color={FAB_FG} />
+      <Text style={{ color: FAB_FG, fontSize: 15, fontWeight: "600" }}>{label}</Text>
     </Pressable>
   );
 }
