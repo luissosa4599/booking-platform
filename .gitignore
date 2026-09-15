@@ -24,10 +24,10 @@ obj/
 gcs-*.json
 
 # --- Local-only notes ---
-docs/session-log.md
-docs/roadmap.md
-docs/google-cloud-setup.md
+docs/
 CLAUDE.md
+app/CLAUDE.md
+app/.claude/
 
 # --- Playwright e2e ---
 app/test-results/
