@@ -26,6 +26,12 @@ interface NextBookingBannerProps {
 // rendered here) — BookingPassSheet (opened by "Ver pase") has the real one.
 export function NextBookingBanner({ booking, onOpenPass }: NextBookingBannerProps) {
   const onTintColor = useColor("on-tint");
+  // Inline, not `text-on-tint-sub` — confirmed via a stylesheet-rule scan
+  // that the class generates NO CSS rule at all (unlike `text-on-tint`,
+  // which does), so the subtitle fell through to the browser's default
+  // black text on the orange banner (2026-09-14 report: "el texto negro
+  // en la card naranja").
+  const onTintSubColor = useColor("on-tint-sub");
 
   if (!booking) return null;
 
@@ -39,7 +45,7 @@ export function NextBookingBanner({ booking, onOpenPass }: NextBookingBannerProp
       style={{ paddingVertical: 16, paddingHorizontal: 18, borderRadius: 22 }}
     >
       <View className="flex-1 gap-2 pr-3.5">
-        <Text className="text-footnote text-on-tint-sub" numberOfLines={1}>
+        <Text className="text-footnote" style={{ color: onTintSubColor }} numberOfLines={1}>
           Tu próxima reserva · {bannerTimeLabel(booking.startsAt)}
         </Text>
         <Text className="text-body-emph text-on-tint" numberOfLines={1}>

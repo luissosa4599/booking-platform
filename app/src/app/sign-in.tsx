@@ -327,7 +327,12 @@ export default function SignInScreen() {
               >
                 {heroTitle}
               </Text>
-              <Text className="text-on-tint-sub" style={{ fontSize: 15, marginTop: 10 }}>
+              {/* Fixed white, not `text-on-tint-sub` (a themeable token tied to
+                  `tint`, wrong fit for a fixed-dark photo gradient regardless
+                  of theme) — also confirmed via a stylesheet-rule scan that
+                  the class generates no CSS rule at all, so this rendered as
+                  invisible black-on-near-black before this fix. */}
+              <Text style={{ color: "#FFFFFF", opacity: 0.85, fontSize: 15, marginTop: 10 }}>
                 UNAM · IPN · reservas por horas
               </Text>
             </View>
