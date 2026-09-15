@@ -280,11 +280,12 @@ function RowTrailingContent({
   onActionPress?: () => void;
 }) {
   const chevronColor = useColor("chevron");
+  const waitingColor = useColor("state-waiting");
 
   switch (trailing) {
     case "text":
       if (trailingLoading) {
-        return <Spinner borderClassName="border-state-waiting" />;
+        return <Spinner borderColor={waitingColor} />;
       }
       return (
         <Text

@@ -9,9 +9,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { useColorScheme } from "nativewind";
 
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
+import { palette, type ColorToken } from "@/lib/theme/palette";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
 export type ButtonVariant = "filled" | "dark" | "gray" | "plain" | "pill";
@@ -33,8 +35,9 @@ interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-// Shape (height/radius/padding) is separate from background so `disabled`
-// can swap just the color and keep the button's size/shape intact.
+// Shape (height/radius/padding) is separate from color — plain structural
+// classes, safe as NativeWind classNames (no theme-variable dependency, see
+// the color tables below for why those can't be).
 const CONTAINER_SHAPE_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
   filled: "h-[52px] rounded-button px-4",
   dark: "h-[52px] rounded-button px-4",
@@ -42,11 +45,23 @@ const CONTAINER_SHAPE_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
   plain: "h-[48px] px-4",
 };
 
-const CONTAINER_BG_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
-  filled: "bg-tint",
-  dark: "bg-label-1",
-  gray: "bg-fill",
-  plain: "",
+// Resolved via `palette()` + inline `style`, NOT NativeWind classNames like
+// `bg-tint`/`text-tint` — those are the 6 "themeable" tokens, injected as CSS
+// custom properties on a `ThemeProvider` wrapper `vars()` on web. `Button` is
+// used inside `Sheet`/other RN `Modal` content, and react-native-web's
+// `Modal` renders its children through a DOM portal — a *React* child but
+// not a *DOM* descendant of that wrapper, so the CSS custom properties never
+// reach it. Confirmed via getComputedStyle: `bg-tint` resolved to a fully
+// transparent background on a Button rendered inside a Sheet (2026-09-14
+// report) — the same class of bug already existed, unnoticed, in
+// HostUpgradedSheet/ScanResultSheet/SlotSheet. Resolving through `palette()`
+// (a plain JS lookup, not a CSS variable) sidesteps the portal entirely and
+// works everywhere, sheet or not.
+const CONTAINER_BG_TOKEN: Record<Exclude<ButtonVariant, "pill">, ColorToken | null> = {
+  filled: "tint",
+  dark: "label-1",
+  gray: "fill",
+  plain: null,
 };
 
 // Label color also doubles as the spinner's ring color while loading — both
@@ -56,45 +71,32 @@ const CONTAINER_BG_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
 // #40200B in dark — see ThemeProvider). `dark` sits on `label-1`, which is
 // near-black in light and *white* in dark, so its label follows `canvas`
 // (the inverse) rather than a fixed white that would vanish in dark mode.
-const LABEL_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
-  filled: "text-on-tint",
-  dark: "text-canvas",
-  gray: "text-label-2",
-  plain: "text-tint",
+const LABEL_TOKEN: Record<Exclude<ButtonVariant, "pill">, ColorToken> = {
+  filled: "on-tint",
+  dark: "canvas",
+  gray: "label-2",
+  plain: "tint",
 };
 
-const SPINNER_BORDER_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
-  filled: "border-on-tint",
-  dark: "border-canvas",
-  gray: "border-label-2",
-  plain: "border-tint",
-};
-
-const PILL_CONTAINER_CLASS: Record<ButtonPillTone, string> = {
-  filled: "bg-tint",
-  wash: "bg-tint-wash",
+const PILL_CONTAINER_TOKEN: Record<ButtonPillTone, ColorToken> = {
+  filled: "tint",
+  wash: "tint-wash",
   // NextBookingBanner's "Ver pase" — the pill sits on the tint-filled banner
   // itself, so it needs to read as a surface, not another patch of tint.
-  "on-tint": "bg-card",
+  "on-tint": "card",
 };
 
-// "wash" is 3.99:1 with plain `text-tint` on `bg-tint-wash` — under the 4.5:1
-// AA floor for 15px text. `text-tint-press` is the same combination Row's
-// selected state and the day pills already use for AA (5.55:1) on this exact
+// "wash" is 3.99:1 with plain `tint` on `tint-wash` — under the 4.5:1 AA
+// floor for 15px text. `tint-press` is the same combination Row's selected
+// state and the day pills already use for AA (5.55:1) on this exact
 // background.
-const PILL_LABEL_CLASS: Record<ButtonPillTone, string> = {
-  filled: "text-on-tint",
-  wash: "text-tint-press",
-  "on-tint": "text-tint",
+const PILL_LABEL_TOKEN: Record<ButtonPillTone, ColorToken> = {
+  filled: "on-tint",
+  wash: "tint-press",
+  "on-tint": "tint",
 };
 
-const PILL_SPINNER_BORDER_CLASS: Record<ButtonPillTone, string> = {
-  filled: "border-on-tint",
-  wash: "border-tint-press",
-  "on-tint": "border-tint",
-};
-
-export function Spinner({ borderClassName }: { borderClassName: string }) {
+export function Spinner({ borderColor }: { borderColor: string }) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
 
   const rotation = useSharedValue(0);
@@ -112,11 +114,11 @@ export function Spinner({ borderClassName }: { borderClassName: string }) {
 
   return (
     <Animated.View
-      style={style}
-      className={cn(
-        "h-[18px] w-[18px] rounded-full border-2 border-t-transparent",
-        borderClassName,
-      )}
+      style={[
+        style,
+        { borderColor, borderTopColor: "transparent" },
+      ]}
+      className="h-[18px] w-[18px] rounded-full border-2"
     />
   );
 }
@@ -133,6 +135,9 @@ export function Button({
   accessibilityLabel,
 }: ButtonProps) {
   "use no memo"; // React Compiler doesn't know Reanimated shared values are safe to mutate.
+
+  const { colorScheme } = useColorScheme();
+  const colors = palette(colorScheme === "dark" ? "dark" : "light");
 
   const reduceMotion = useReduceMotion();
   const pressProgress = useSharedValue(0);
@@ -212,16 +217,11 @@ export function Button({
   };
 
   const shapeClass = isPill ? "h-[38px] rounded-full px-4" : CONTAINER_SHAPE_CLASS[variant];
-  const bgClass = disabled
-    ? "bg-fill"
-    : isPill
-      ? PILL_CONTAINER_CLASS[tone]
-      : CONTAINER_BG_CLASS[variant];
+  const bgToken = isPill ? PILL_CONTAINER_TOKEN[tone] : CONTAINER_BG_TOKEN[variant];
+  const bgColor = disabled ? colors.fill : bgToken ? colors[bgToken] : "transparent";
 
-  const labelClass = isPill ? PILL_LABEL_CLASS[tone] : LABEL_CLASS[variant];
-  const spinnerBorderClass = isPill
-    ? PILL_SPINNER_BORDER_CLASS[tone]
-    : SPINNER_BORDER_CLASS[variant];
+  const labelToken = isPill ? PILL_LABEL_TOKEN[tone] : LABEL_TOKEN[variant];
+  const labelColor = disabled ? colors["disabled-label"] : colors[labelToken];
   const labelSizeClass = isPill ? "text-[15px] font-semibold" : "text-body-emph";
 
   return (
@@ -241,36 +241,24 @@ export function Button({
         accessibilityState={{ disabled: !interactive, busy: loading }}
         // Pill is 38pt tall — under the 44×44pt minimum touch target.
         hitSlop={isPill ? { top: 6, bottom: 6 } : undefined}
-        className={cn(
-          "flex-row items-center justify-center",
-          shapeClass,
-          bgClass,
-          className,
-        )}
+        style={{ backgroundColor: bgColor }}
+        className={cn("flex-row items-center justify-center", shapeClass, className)}
       >
         <View className="relative flex-row items-center justify-center">
           <Animated.View
             style={labelStyle}
             className="flex-col items-center justify-center gap-px"
           >
-            <Text
-              className={cn(
-                labelSizeClass,
-                disabled ? "text-disabled-label" : labelClass,
-              )}
-            >
+            <Text className={labelSizeClass} style={{ color: labelColor }}>
               {displayChildren}
             </Text>
             {displaySubtitle ? (
               <Text
-                className={cn(
-                  "text-[12px]",
-                  disabled
-                    ? "text-disabled-label"
-                    : variant === "filled"
-                      ? "text-on-tint opacity-80"
-                      : labelClass,
-                )}
+                className="text-[12px]"
+                style={{
+                  color: labelColor,
+                  opacity: disabled ? 1 : variant === "filled" ? 0.8 : 1,
+                }}
               >
                 {displaySubtitle}
               </Text>
@@ -282,7 +270,7 @@ export function Button({
               style={[spinnerStyle, { pointerEvents: "none" }]}
               className="absolute inset-0 items-center justify-center"
             >
-              <Spinner borderClassName={spinnerBorderClass} />
+              <Spinner borderColor={labelColor} />
             </Animated.View>
           ) : null}
         </View>

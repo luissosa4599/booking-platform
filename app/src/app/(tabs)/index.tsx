@@ -15,6 +15,7 @@ import { Avatar } from "@/components/Avatar";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
 import { CategoryCircles, type CategoryOption } from "@/components/CategoryCircles";
 import { ConflictSheet } from "@/components/ConflictSheet";
+import { FilterSheet } from "@/components/FilterSheet";
 import { Group } from "@/components/Group";
 import { MapListFab } from "@/components/MapListFab";
 import { NextBookingBanner } from "@/components/NextBookingBanner";
@@ -138,6 +139,8 @@ export default function ExploreScreen() {
   const [dismissedSlotIds, setDismissedSlotIds] = useState<Set<string>>(
     new Set(),
   );
+  const [minCapacity, setMinCapacity] = useState(0);
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
   const searchIconColor = useColor("label-4");
@@ -156,6 +159,7 @@ export default function ExploreScreen() {
     from: now,
     to,
     q: debouncedSearch || undefined,
+    minCapacity: minCapacity > 0 ? minCapacity : undefined,
     sort,
     lat: queryCoords?.lat,
     lng: queryCoords?.lng,
@@ -169,7 +173,10 @@ export default function ExploreScreen() {
   const upcomingBookings = useMyBookings("upcoming", userId);
   const nextBooking = upcomingBookings.data?.[0] ?? null;
   const [passBooking, setPassBooking] = useState<MyBooking | null>(null);
-  const [sortSheetOpen, setSortSheetOpen] = useState(false);
+  // Separate from SortControl's own sheet (2026-09-14 report: "filtros y
+  // ordenamientos abren el mismo modal") — sort changes order, this changes
+  // which results show up at all.
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const favoriteChipActiveColor = useColor("canvas");
   const favoriteChipRestColor = useColor("label-2");
@@ -244,12 +251,23 @@ export default function ExploreScreen() {
       : `hasta ${formatTime(slot.endsAt)}`;
   }
 
-  const availableSlots = availabilityQuery.slots.filter(
-    (slot) =>
-      slot.capacityRemaining > 0 &&
-      !dismissedSlotIds.has(slot.id) &&
-      (!favoritesOnly || favoriteIds.has(slot.resourceId)),
-  );
+  // Client-side, not a backend query param — every AvailabilitySlot already
+  // carries coords/distanceMeters, and this only ever applies once the
+  // device position is known (FilterSheet greys the options out otherwise).
+  const maxDistanceMeters = maxDistanceKm != null ? maxDistanceKm * 1000 : null;
+  const availableSlots = availabilityQuery.slots.filter((slot) => {
+    if (slot.capacityRemaining <= 0) return false;
+    if (dismissedSlotIds.has(slot.id)) return false;
+    if (favoritesOnly && !favoriteIds.has(slot.resourceId)) return false;
+    if (maxDistanceMeters != null) {
+      const meters =
+        distanceToMeters(livePos, slot.locationLatitude, slot.locationLongitude) ??
+        slot.distanceMeters ??
+        null;
+      if (meters == null || meters > maxDistanceMeters) return false;
+    }
+    return true;
+  });
 
   // One marker per resource for the map — the earliest bookable slot decides
   // its state (`free` if starting within the hour, else `soon` + minutes).
@@ -565,13 +583,26 @@ export default function ExploreScreen() {
           <Pressable
             onPress={() => {
               haptics.selection();
-              setSortSheetOpen(true);
+              setFilterSheetOpen(true);
             }}
             accessibilityRole="button"
             accessibilityLabel="Filtros"
             className="h-10 w-10 items-center justify-center rounded-full bg-tint"
           >
             <SlidersHorizontal size={18} strokeWidth={2} color={filterIconColor} />
+            {minCapacity > 0 || maxDistanceKm != null ? (
+              <View
+                className="bg-state-error"
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                }}
+              />
+            ) : null}
           </Pressable>
         </View>
 
@@ -625,12 +656,7 @@ export default function ExploreScreen() {
         ) : null}
 
         <View className="flex-row items-center justify-between">
-          <SortControl
-            value={sort}
-            onChange={handleSortChange}
-            open={sortSheetOpen}
-            onOpenChange={setSortSheetOpen}
-          />
+          <SortControl value={sort} onChange={handleSortChange} />
           <Pressable
             onPress={() => {
               haptics.selection();
@@ -838,6 +864,19 @@ export default function ExploreScreen() {
             : null
         }
         checkedInAt={passBooking?.checkedInAt ?? null}
+      />
+      <FilterSheet
+        isOpen={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        minCapacity={minCapacity}
+        onMinCapacityChange={setMinCapacity}
+        maxDistanceKm={maxDistanceKm}
+        onMaxDistanceKmChange={setMaxDistanceKm}
+        locationAvailable={!!livePos}
+        onClear={() => {
+          setMinCapacity(0);
+          setMaxDistanceKm(null);
+        }}
       />
     </Screen>
   );
