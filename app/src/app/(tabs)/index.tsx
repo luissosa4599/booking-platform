@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated as RNAnimated,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,7 +17,6 @@ import { CategoryCircles, type CategoryOption } from "@/components/CategoryCircl
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { FilterPills } from "@/components/FilterPills";
 import { FilterSheet } from "@/components/FilterSheet";
-import { Group } from "@/components/Group";
 import { MapListFab } from "@/components/MapListFab";
 import { NextBookingBanner } from "@/components/NextBookingBanner";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -27,7 +25,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { ResourceCard } from "@/components/ResourceCard";
 import { ResourcePane } from "@/components/ResourcePane";
 import { Screen } from "@/components/Screen";
-import { Skeleton } from "@/components/Skeleton";
+import { ResourceCardSkeleton } from "@/components/Skeleton";
 import { SortControl } from "@/components/SortControl";
 import type { StatusTone } from "@/components/StatusBadge";
 import { SpaceMap } from "@/components/SpaceMap";
@@ -105,6 +103,35 @@ function withoutId(set: Set<string>, id: string) {
   return next;
 }
 
+interface GroupedResourceSlot {
+  slot: AvailabilitySlot;
+  /** How many *other* slots for this same resource also qualify for this
+   * list section (e.g. the seeded "already in progress" slot + a fresh grid
+   * block both starting within the next hour). Shown as a single card for
+   * `slot` (whichever sorted first) plus a "+N horarios" hint, instead of
+   * one near-identical card per slot — the latter read as a duplicate/bug
+   * rather than "two real times to choose from" (2026-09-17 report,
+   * screenshot of "Sala de lectura Norte" appearing twice). The hidden
+   * slot(s) stay reachable: tapping the card opens the resource detail,
+   * which already lists every slot for the day. */
+  extraCount: number;
+}
+
+function dedupeByResource(slots: AvailabilitySlot[]): GroupedResourceSlot[] {
+  const byResource = new Map<string, GroupedResourceSlot>();
+  const order: string[] = [];
+  for (const slot of slots) {
+    const existing = byResource.get(slot.resourceId);
+    if (existing) {
+      existing.extraCount += 1;
+    } else {
+      byResource.set(slot.resourceId, { slot, extraCount: 0 });
+      order.push(slot.resourceId);
+    }
+  }
+  return order.map((id) => byResource.get(id)!);
+}
+
 export default function ExploreScreen() {
   const router = useRouter();
   const [selectedResourceTypeId, setSelectedResourceTypeId] = useState<
@@ -112,8 +139,9 @@ export default function ExploreScreen() {
   >(null);
   const [searchInput, setSearchInput] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  // List vs map (PR #10). Web only — native keeps the list (see SpaceMap.native).
-  const mapAvailable = Platform.OS === "web";
+  // List vs map (PR #10). Native gained a real `react-native-maps` map
+  // (see SpaceMap.native) — no longer gated to web only.
+  const mapAvailable = true;
   const [view, setView] = useState<"list" | "map">("list");
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   // Desktop master–detail: the selected resource shows in a pane, the list
@@ -399,21 +427,22 @@ export default function ExploreScreen() {
   // in the past) would never appear here.
   const nowMs = now.getTime();
   const nowGroupCutoffMs = nowMs + 60 * 60 * 1000;
-  const nowGroup = availableSlots.filter(
-    (slot) => new Date(slot.startsAt).getTime() <= nowGroupCutoffMs,
+  const nowGroup = dedupeByResource(
+    availableSlots.filter((slot) => new Date(slot.startsAt).getTime() <= nowGroupCutoffMs),
   );
   const laterGroupUnsorted = availableSlots.filter(
     (slot) => new Date(slot.startsAt).getTime() > nowGroupCutoffMs,
   );
   // The server already ordered the flat list for the chosen sort; only re-sort
   // by time when we're on the default "soonest".
-  const laterGroup =
+  const laterGroupSorted =
     sort === "soonest"
       ? [...laterGroupUnsorted].sort(
           (a, b) =>
             new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
         )
       : laterGroupUnsorted;
+  const laterGroup = dedupeByResource(laterGroupSorted);
 
   const laterHeader = horizon ? "PRÓXIMAMENTE" : "MÁS TARDE HOY";
 
@@ -867,14 +896,19 @@ export default function ExploreScreen() {
       >
         <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
           {showSkeleton ? (
-            <Group header="LIBRE AHORA MISMO">
-              <Animated.View exiting={FadeOut.duration(200)}>
-                <Skeleton />
-              </Animated.View>
-              <Animated.View exiting={FadeOut.duration(200)}>
-                <Skeleton />
-              </Animated.View>
-            </Group>
+            <View className="gap-3">
+              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+                LIBRE AHORA MISMO
+              </Text>
+              <View style={{ gap: 14 }}>
+                <Animated.View exiting={FadeOut.duration(200)}>
+                  <ResourceCardSkeleton variant={cardVariant} />
+                </Animated.View>
+                <Animated.View exiting={FadeOut.duration(200)}>
+                  <ResourceCardSkeleton variant={cardVariant} />
+                </Animated.View>
+              </View>
+            </View>
           ) : null}
 
           {!showSkeleton && nowGroup.length > 0 ? (
@@ -883,7 +917,7 @@ export default function ExploreScreen() {
                 LIBRE AHORA MISMO
               </Text>
               <View style={{ gap: 14 }}>
-                {nowGroup.map((slot) => {
+                {nowGroup.map(({ slot, extraCount }) => {
                   const status = statusFor(slot, false);
                   return (
                     <Animated.View
@@ -900,6 +934,7 @@ export default function ExploreScreen() {
                         statusTone={status.tone}
                         statusLabel={status.label}
                         timeLabel={timeWindowFor(slot, false)}
+                        extraSlotsCount={extraCount}
                         distanceLabel={slotDistance(slot)}
                         isFavorite={favoriteIds.has(slot.resourceId)}
                         onToggleFavorite={() => handleToggleFavorite(slot)}
@@ -922,7 +957,7 @@ export default function ExploreScreen() {
                 {laterHeader}
               </Text>
               <View style={{ gap: 14 }}>
-                {laterGroup.map((slot) => {
+                {laterGroup.map(({ slot, extraCount }) => {
                   const status = statusFor(slot, true);
                   return (
                     <ResourceCard
@@ -935,6 +970,7 @@ export default function ExploreScreen() {
                       statusTone={status.tone}
                       statusLabel={status.label}
                       timeLabel={timeWindowFor(slot, true)}
+                      extraSlotsCount={extraCount}
                       distanceLabel={slotDistance(slot)}
                       isFavorite={favoriteIds.has(slot.resourceId)}
                       onToggleFavorite={() => handleToggleFavorite(slot)}

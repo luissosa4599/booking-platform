@@ -22,6 +22,11 @@ export interface ResourceCardProps {
   statusLabel: string;
   /** "hasta 02:31 p.m." or "01:01 p.m. – 02:31 p.m." — already formatted. */
   timeLabel: string;
+  /** How many *other* slots for this same resource also qualify for this
+   * list section — Explore dedupes to one card per resource and surfaces
+   * the rest as a "+N horarios" hint instead of one card per slot (see
+   * `dedupeByResource` in `(tabs)/index.tsx`). Renders nothing when 0. */
+  extraSlotsCount?: number;
   distanceLabel?: string | null;
   isFavorite: boolean;
   onToggleFavorite: () => void;
@@ -48,6 +53,11 @@ function metaLine(locationName: string, capacityLabel: string, distanceLabel?: s
     : `${locationName} · ${capacityLabel}`;
 }
 
+function extraSlotsLabel(count: number): string | null {
+  if (count <= 0) return null;
+  return `+${count} horario${count === 1 ? "" : "s"}`;
+}
+
 function StackedCard({
   name,
   imageUri,
@@ -56,6 +66,7 @@ function StackedCard({
   statusTone,
   statusLabel,
   timeLabel,
+  extraSlotsCount,
   distanceLabel,
   isFavorite,
   onToggleFavorite,
@@ -66,6 +77,8 @@ function StackedCard({
   actionAccessibilityLabel,
 }: ResourceCardProps) {
   const clockColor = useColor("label-3");
+  const tintColor = useColor("tint");
+  const extraLabel = extraSlotsLabel(extraSlotsCount ?? 0);
 
   return (
     <Pressable
@@ -96,9 +109,21 @@ function StackedCard({
           {metaLine(locationName, capacityLabel, distanceLabel)}
         </Text>
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1.5">
+          <View className="flex-1 flex-row items-center gap-1.5 pr-2">
             <Clock size={14} strokeWidth={2} color={clockColor} />
-            <Text className="text-footnote text-label-3">{timeLabel}</Text>
+            <Text className="text-footnote text-label-3" numberOfLines={1}>
+              {timeLabel}
+            </Text>
+            {extraLabel ? (
+              <Text
+                className="text-footnote font-semibold"
+                style={{ color: tintColor }}
+                numberOfLines={1}
+              >
+                {" "}
+                · {extraLabel}
+              </Text>
+            ) : null}
           </View>
           <Button
             variant="pill"
@@ -123,6 +148,7 @@ function RowCard({
   statusTone,
   statusLabel,
   timeLabel,
+  extraSlotsCount,
   distanceLabel,
   isFavorite,
   onToggleFavorite,
@@ -135,6 +161,8 @@ function RowCard({
 }: ResourceCardProps) {
   const dotColor = useColor(statusTone === "last" ? "state-last" : "state-free");
   const dotBorderColor = useColor("card");
+  const tintColor = useColor("tint");
+  const extraLabel = extraSlotsLabel(extraSlotsCount ?? 0);
 
   return (
     <Pressable
@@ -182,6 +210,12 @@ function RowCard({
             {statusLabel}
           </Text>
           <Text className="text-label-3"> · {timeLabel}</Text>
+          {extraLabel ? (
+            <Text className="font-semibold" style={{ color: tintColor }}>
+              {" "}
+              · {extraLabel}
+            </Text>
+          ) : null}
         </Text>
       </View>
 

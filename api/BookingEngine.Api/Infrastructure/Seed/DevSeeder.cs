@@ -230,8 +230,8 @@ public static class DevSeeder
     {
         "Auditorio" => "Escenario, proyector y audio · ~200 asistentes · resérvalo completo",
         "Salon" => "Aula con pizarrón y proyector · ~35 lugares · para tu clase o grupo",
-        "Sala de lectura" => "48 lugares · silencio, wifi y enchufes en cada mesa",
-        "Cubiculo de estudio" => "Para grupos chicos · pizarrón portátil · hasta 6 personas",
+        "Sala de lectura" => "Silencio, wifi y enchufes en cada mesa",
+        "Cubiculo de estudio" => "Para grupos chicos · pizarrón portátil",
         _ => string.Empty,
     };
 
@@ -263,28 +263,73 @@ public static class DevSeeder
         return $"Edificio {building}, Salón {floor}{room:D2}";
     }
 
+    // 15 entries — matches the 15 Sala de lectura resources seeded (60
+    // campuses / 4 types), so every one gets a distinct name; modulo is a
+    // safety net; not the expected path. Previously only 5 entries for 15
+    // resources, so 3 *different* campuses always ended up with the
+    // identical name (e.g. three unrelated "Sala de lectura Norte", each at
+    // a different UNAM/IPN campus) — read as a duplicate-card bug even
+    // though `resourceId`/location were genuinely different (2026-09-17
+    // report, after the same-resource-multi-slot dedupe fix already
+    // handled the *other* card-repeats-itself case).
     private static string SalaLecturaSection(int ordinal)
     {
-        var sections = new[] { "— Planta alta", "Norte", "Central", "— Planta baja", "Sur" };
+        var sections = new[]
+        {
+            "— Planta alta", "Norte", "Central", "— Planta baja", "Sur",
+            "Este", "Oeste", "— Ala norte", "— Ala sur", "II",
+            "III", "— Anexo", "Poniente", "Oriente", "— Sala silenciosa",
+        };
         return sections[ordinal % sections.Length];
     }
 
+    // Same fix, same reasoning as `SalaLecturaSection` above — 15 entries
+    // for the 15 seeded Auditorio resources (ordinal 1 is skipped here
+    // since it's special-cased to a real named auditorium in
+    // `ResourceName`, so one entry goes unused; still enough for the
+    // remaining 14).
     private static string AuditorioSuffix(int ordinal)
     {
-        var letters = new[] { "A", "B", "C", "Principal", "II" };
+        var letters = new[]
+        {
+            "A", "B", "C", "D", "E", "Principal", "II", "Norte", "Sur", "Mayor",
+            "Menor", "Central", "F", "G", "III",
+        };
         return letters[ordinal % letters.Length];
     }
 
-    // Pools expanded 3 -> 4-6 per type (2026-09-14 report: "de preferencia
-    // con imagenes variadas, las actuales solo hay 5") — each new id was
-    // both HTTP-verified (200) and visually subject-checked (downloaded +
-    // reviewed) before being added, same bar as the originals.
+    // Pools expanded again 2026-09-17 (user: "puedes hacer que todas las
+    // imagenes sean diferentes?") from 3-6 per type to >=15 per type — the
+    // number of same-type resources seeded (60 campuses / 4 types), so the
+    // *primary* photo (position 0, what Explore/Mapa actually show) is
+    // guaranteed unique per resource of a given type; only the *secondary*
+    // carousel-only photo can occasionally repeat one image with an adjacent
+    // resource (see the rotation comment above). Every new id here was both
+    // HTTP-verified (200) and visually subject-checked (downloaded +
+    // reviewed) before being added, same bar as the originals — several
+    // candidates were rejected during that pass for being off-theme (a
+    // corporate boardroom with visible branding, two church/worship stages
+    // that surfaced under "auditorium" searches, a classroom photo that
+    // turned out to be a small seminar room, elementary-school homework/desk
+    // shots for what's meant to be a university "cubiculo").
     private static readonly string[] AuditorioPhotos =
     {
         Photo("1519452575417-564c1401ecc0"),
         Photo("1540575467063-178a50c2df87"),
         Photo("1505373877841-8d25f7d46678"),
         Photo("1592280771190-3e2e4d571952"),
+        Photo("1539010315750-8e1c7f16e415"),
+        Photo("1576436978289-3bcb91a03710"),
+        Photo("1545129139-1beb780cf337"),
+        Photo("1631702825172-a9a848c473ad"),
+        Photo("1722321974528-ec8eaf725777"),
+        Photo("1722321974501-059dff03e970"),
+        Photo("1760121788536-9797394e210e"),
+        Photo("1778877035014-98c41b7c1460"),
+        Photo("1770844102881-f8823e9f3c83"),
+        Photo("1687773448285-50ee470e5583"),
+        Photo("1727949224255-6c85dbd25138"),
+        Photo("1733714654550-699d41c72b7d"),
     };
 
     private static readonly string[] SalonPhotos =
@@ -292,6 +337,18 @@ public static class DevSeeder
         Photo("1580582932707-520aed937b7b"),
         Photo("1509062522246-3755977927d7"),
         Photo("1524178232363-1fb2b075b655"),
+        Photo("1643386581833-6ca5e552255c"),
+        Photo("1757193714669-875a0b0faf45"),
+        Photo("1761449554823-e231e73b9caa"),
+        Photo("1644997933069-f5ede7b207ac"),
+        Photo("1727109369808-fbab005cca4b"),
+        Photo("1757193714692-44cdf07a5377"),
+        Photo("1740635341299-3b8e3490f546"),
+        Photo("1576073459656-9b03ee75cc92"),
+        Photo("1758270704522-f091f8064a81"),
+        Photo("1758270704534-fd9715bffc0e"),
+        Photo("1635424239131-32dc44986b56"),
+        Photo("1643199135305-60d59f7ffd1b"),
     };
 
     private static readonly string[] SalaLecturaPhotos =
@@ -302,6 +359,15 @@ public static class DevSeeder
         Photo("1523240795612-9a054b0db644"),
         Photo("1524995997946-a1c2e315a42f"),
         Photo("1497633762265-9d179a990aa6"),
+        Photo("1741707596672-4fcd53ec27bd"),
+        Photo("1765394715568-889eab558ed2"),
+        Photo("1567168544646-208fa5d408fb"),
+        Photo("1588581939864-064d42ace7cd"),
+        Photo("1741795746033-d50d48dc1da5"),
+        Photo("1741795821996-a0369f5e825e"),
+        Photo("1775229106888-dca42d0c9f4f"),
+        Photo("1741795821804-451ccc87aec8"),
+        Photo("1741699428220-65f37f3fbbcb"),
     };
 
     private static readonly string[] CubiculoPhotos =
@@ -311,6 +377,16 @@ public static class DevSeeder
         Photo("1587560699334-cc4ff634909a"),
         Photo("1522202176988-66273c2fd55f"),
         Photo("1543269865-cbf427effbad"),
+        Photo("1769794371055-54436b54577e"),
+        Photo("1650661926447-9efb2610f64c"),
+        Photo("1703854599747-4355f123dd3f"),
+        Photo("1758640920659-0bb864175983"),
+        Photo("1660722130895-21f0c850dc12"),
+        Photo("1754697831323-6d51e460ba8f"),
+        Photo("1756032433560-56547efed550"),
+        Photo("1747515203898-2df8f083f417"),
+        Photo("1547742992-51d6fbc9d236"),
+        Photo("1711843250791-d81f5508364f"),
     };
 
     private static string[] PhotoPool(ResourceType type) => type.Name switch

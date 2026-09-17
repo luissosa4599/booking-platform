@@ -6,7 +6,7 @@
 /// <reference types="google.maps" />
 
 import { useEffect, useMemo, useRef } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import {
   AdvancedMarker,
   APIProvider,
@@ -17,16 +17,18 @@ import {
 
 import { useColorScheme } from "nativewind";
 
-import { Button } from "@/components/Button";
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 import { palette } from "@/lib/theme/palette";
-import { SELECTED_CARD_BOTTOM, type MapPlace, type SpaceMapProps } from "./SpaceMap.types";
+import { EmptyPlacesNotice, SelectedPlaceCard } from "./SpaceMapOverlays";
+import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
 
 /**
  * The Explore map (PR #10, redesigned 2026-09-14 per the Direction A
- * reference). Web only: `@vis.gl/react-google-maps` + the Maps JavaScript
+ * reference). Web engine: `@vis.gl/react-google-maps` + the Maps JavaScript
  * API (`EXPO_PUBLIC_GOOGLE_MAPS_STATIC_KEY`, referrer-restricted). Native
- * falls back to the list — see `SpaceMap.native.tsx`.
+ * uses `react-native-maps` instead — see `SpaceMap.native.tsx` — sharing the
+ * same `SpaceMapProps`/`MapPlace` contract and the `SelectedPlaceCard`/
+ * `EmptyPlacesNotice` overlays (`SpaceMapOverlays.tsx`).
  *
  * **Markers are plain colored circles**, not Google's `<Pin>` teardrop —
  * matches the reference exactly (2026-09-14 report). Selected gets its own
@@ -252,34 +254,6 @@ function nearestPlaceTo(
   return { lat: best.lat, lng: best.lng };
 }
 
-function EmptyPlacesNotice() {
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: "absolute",
-        top: "50%",
-        left: 16,
-        right: 16,
-        alignItems: "center",
-        transform: [{ translateY: -34 }],
-      }}
-    >
-      <View
-        className="items-center gap-1 rounded-2xl border border-hairline bg-card px-5 py-4"
-        style={{ maxWidth: 280 }}
-      >
-        <Text className="text-center text-body-emph text-label-1">
-          No hay ubicaciones disponibles
-        </Text>
-        <Text className="text-center text-footnote text-label-3">
-          Ajusta los filtros o busca en otro horario.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 function CircleMarker({
   place,
   selected,
@@ -322,63 +296,3 @@ function CircleMarker({
   );
 }
 
-// Redesign handoff §"SelectedPinCard" — a horizontal card anchored to the
-// bottom of the map, directly above the Lista/Mapa toggle (matches the
-// reference image exactly — 2026-09-14 report), reusing the same visual
-// language as `ResourceCard`'s row variant (photo thumbnail + text +
-// compact CTA) at a smaller size.
-function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () => void }) {
-  const statusLabel = place.state === "free" ? "Libre" : `Libre en ${place.soonMinutes} min`;
-
-  return (
-    <View
-      className="border border-hairline bg-card"
-      style={{
-        position: "absolute",
-        left: 16,
-        right: 16,
-        // Coupled to MAP_TOGGLE_BOTTOM (SpaceMap.types.ts), not an
-        // independently-tuned number — sits right above the toggle with a
-        // 12px gap always, so the two can't drift apart again.
-        bottom: SELECTED_CARD_BOTTOM,
-        borderRadius: 16,
-        padding: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        shadowColor: "#0B0B0C",
-        shadowOpacity: 0.14,
-        shadowRadius: 30,
-        shadowOffset: { width: 0, height: 12 },
-        elevation: 6,
-      }}
-    >
-      <Image
-        source={{ uri: place.imageUri }}
-        style={{ width: 56, height: 56, borderRadius: 10 }}
-        resizeMode="cover"
-      />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text numberOfLines={1} className="text-body-emph text-label-1">
-          {place.name}
-        </Text>
-        <Text numberOfLines={1} className="text-footnote text-label-3">
-          {place.locationName} · {place.capacityLabel}
-        </Text>
-        <Text numberOfLines={1} className="text-footnote">
-          <Text
-            className={place.state === "free" ? "text-state-free" : "text-state-last"}
-            style={{ fontWeight: "600" }}
-          >
-            {statusLabel}
-          </Text>
-        </Text>
-      </View>
-      <Pressable onPress={(e) => e.stopPropagation()}>
-        <Button variant="pill" tone="filled" onPress={onAction}>
-          {place.actionLabel}
-        </Button>
-      </Pressable>
-    </View>
-  );
-}

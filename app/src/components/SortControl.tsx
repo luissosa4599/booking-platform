@@ -3,7 +3,6 @@ import { Pressable, Text, View } from "react-native";
 
 import { Sheet } from "@/components/Sheet";
 import type { AvailabilitySort } from "@/lib/api/availability";
-import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowUpDown, Check } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
@@ -38,6 +37,16 @@ export function SortControl({ value, onChange, open: openProp, onOpenChange }: S
   const setOpen = onOpenChange ?? setInternalOpen;
   const triggerColor = useColor("label-2");
   const checkColor = useColor("tint");
+  // Inline, not `text-tint-press` — a themeable-token className resolves to
+  // nothing inside `Sheet` on web (its content renders through a DOM portal,
+  // outside the wrapper element `ThemeProvider`'s `vars()` scopes the 6
+  // themeable CSS custom properties to — see CLAUDE.md "Direction A
+  // redesign"). The selected option's text silently fell back to the exact
+  // same color as every unselected one, so the only visible difference was
+  // the checkmark — read as "hiding" the selection, not highlighting it
+  // (2026-09-17 report, screenshot of this exact sheet).
+  const selectedLabelColor = useColor("tint-press");
+  const labelColor = useColor("label-1");
 
   return (
     <>
@@ -73,10 +82,8 @@ export function SortControl({ value, onChange, open: openProp, onOpenChange }: S
               >
                 <View className="flex-1">
                   <Text
-                    className={cn(
-                      "text-body-emph",
-                      selected ? "text-tint-press" : "text-label-1",
-                    )}
+                    className="text-body-emph"
+                    style={{ color: selected ? selectedLabelColor : labelColor }}
                   >
                     {opt.label}
                   </Text>

@@ -36,6 +36,14 @@ export function SuccessCheckmark() {
 
   const reduceMotion = useReduceMotion();
   const onTintColor = useColor("on-tint");
+  // Inline, not `bg-tint`/`bg-tint-wash` — a themeable-token className
+  // resolves to nothing inside `Sheet` on web (DOM portal, outside
+  // ThemeProvider's `vars()` scope — see CLAUDE.md "Direction A redesign").
+  // This component is used inside ScanResultSheet and HostUpgradedSheet, so
+  // it hits the bug directly: the filled circle + ripple rings would render
+  // with no background at all, on web only (2026-09-17 audit).
+  const tintColor = useColor("tint");
+  const tintWashColor = useColor("tint-wash");
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0);
 
@@ -61,9 +69,12 @@ export function SuccessCheckmark() {
       className="h-[104px] w-[104px] items-center justify-center"
     >
       {Array.from({ length: RIPPLE_COUNT }).map((_, i) => (
-        <RippleRing key={i} index={i} reduceMotion={reduceMotion} />
+        <RippleRing key={i} index={i} reduceMotion={reduceMotion} color={tintWashColor} />
       ))}
-      <View className="h-[84px] w-[84px] items-center justify-center rounded-full bg-tint text-on-tint">
+      <View
+        className="h-[84px] w-[84px] items-center justify-center rounded-full"
+        style={{ backgroundColor: tintColor }}
+      >
         <Check size={40} strokeWidth={3} color={onTintColor} />
       </View>
     </Animated.View>
@@ -73,9 +84,11 @@ export function SuccessCheckmark() {
 function RippleRing({
   index,
   reduceMotion,
+  color,
 }: {
   index: number;
   reduceMotion: boolean;
+  color: string;
 }) {
   "use no memo";
 
@@ -102,8 +115,8 @@ function RippleRing({
 
   return (
     <Animated.View
-      style={style}
-      className="absolute h-[104px] w-[104px] rounded-full bg-tint-wash"
+      style={[style, { backgroundColor: color }]}
+      className="absolute h-[104px] w-[104px] rounded-full"
     />
   );
 }

@@ -43,6 +43,11 @@ export default function HostSpaceScreen() {
   const userId = useUserId();
   const offline = useIsOffline();
   const backColor = useColor("label-1");
+  // Inline, not `bg-tint-wash` — a themeable-token className resolves to
+  // nothing inside `Sheet` on web (DOM portal, outside ThemeProvider's
+  // `vars()` scope — see CLAUDE.md "Direction A redesign" and the
+  // 2026-09-17 SortControl fix for the same bug).
+  const tintWashColor = useColor("tint-wash");
   const { data: space, isLoading } = useOwnerSpace(spaceId, userId);
 
   const addSlot = useAddSlot(spaceId);
@@ -201,7 +206,10 @@ export default function HostSpaceScreen() {
               Nadie podrá reservarlo. Puedes abrirlo de nuevo cuando quieras.
             </Text>
           </View>
-          <View className="rounded-[14px] bg-tint-wash px-4 py-3">
+          <View
+            className="rounded-[14px] px-4 py-3"
+            style={{ backgroundColor: tintWashColor }}
+          >
             <Text className="text-subhead text-label-2">
               Ya hay {blockConfirm?.bookings ?? 0} reservas en este horario. Se
               cancelarán y avisaremos a cada persona.

@@ -34,8 +34,9 @@ export interface SpaceMapProps {
 // above the toggle, toggle closest to the tab bar.
 //
 // MapListFab's own height (index.tsx renders it, not this file — kept here
-// only so this math has a name instead of a bare "44"). Web-only; native
-// doesn't render a map at all yet (SpaceMap.native is a placeholder).
+// only so this math has a name instead of a bare "44"). Shared by both
+// SpaceMap.web and SpaceMap.native (2026-09-17) — the toggle/card coupling
+// applies on every platform now.
 export const MAP_TOGGLE_HEIGHT = 44;
 // The toggle's resting distance from the map container's bottom edge in map
 // view, selected or not — clears Google's mandatory attribution strip

@@ -1,5 +1,9 @@
 import type { ExpoConfig } from "expo/config";
 
+// Plain CommonJS (see the file itself for why) — imported without types.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const withAndroidNightBackground = require("./plugins/withAndroidNightBackground");
+
 const config: ExpoConfig = {
   name: "Tempo",
   slug: "tempo",
@@ -10,12 +14,13 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   // Native window background — the colour the OS paints *before* JS mounts
   // (cold start) and, on the native stack, briefly behind a scene mid-push.
-  // This is baked at build time, so it can only be ONE value; we use the
-  // LIGHT `canvas` (global.css `--color-canvas`). See "Safe area + theme-flash"
-  // in the root CLAUDE.md — a `values-night` config plugin is the follow-up
-  // for a dark-mode cold-start with zero flash. Per-client theming never
-  // touches this: the swappable tokens are only `tint*`, and `canvas`/`card`
-  // flip on light/dark alone.
+  // This top-level field is iOS's only option (baked at build time, ONE
+  // value) — light `canvas` (global.css `--color-canvas`). Android gets a
+  // real dark variant via `withAndroidNightBackground` in the `plugins`
+  // array below (2026-09-17) — see "Safe area + theme-flash" in the root
+  // CLAUDE.md for the full 5-layer contract this closes the last gap in.
+  // Per-client theming never touches this: the swappable tokens are only
+  // `tint*`, and `canvas`/`card` flip on light/dark alone.
   backgroundColor: "#F7F7F8",
   ios: {
     // Must match the "iOS" OAuth client's bundle id in Google Cloud Console —
@@ -43,6 +48,19 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    // Pins Android build-tools to what's actually installed on this dev
+    // machine's shared SDK (C:\Program Files (x86)\Android\android-sdk,
+    // installed by Visual Studio for a separate project) — the RN/Expo
+    // gradle template defaults to build-tools 35.0.0, which isn't present,
+    // and `sdkmanager` can't auto-install it into Program Files (x86)
+    // without admin elevation. 36.0.0 is already there (2026-09-17, first
+    // `expo run:android` attempt on the local emulator).
+    [
+      "expo-build-properties",
+      {
+        android: { buildToolsVersion: "36.0.0" },
+      },
+    ],
     [
       "expo-splash-screen",
       {
@@ -134,6 +152,25 @@ const config: ExpoConfig = {
           "Tempo accede a tus fotos para que publiques imágenes de tu espacio.",
       },
     ],
+    // Native Explore map (SpaceMap.native.tsx, 2026-09-17) — Google Maps SDK
+    // for Android. `androidGoogleMapsApiKey` is the exact key this plugin
+    // reads (confirmed in its own source, `plugin/build/android.js`) to wire
+    // into AndroidManifest.xml's `com.google.android.geo.API_KEY` meta-data —
+    // it is NOT read at JS runtime the way `GOOGLE_MAPS_STATIC_KEY` is.
+    // Restrict this key to the Android app (package `mx.tempo.app` above +
+    // the build's keystore SHA-1), never referrer-restrict it like the web
+    // static-maps key — Android app restriction checks the cert, not an
+    // HTTP referrer. No iOS build exists yet (see CLAUDE.md), so no iOS key.
+    [
+      "react-native-maps",
+      {
+        androidGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY,
+      },
+    ],
+    // Android dark cold-start fix (2026-09-17) — see the plugin file itself
+    // and the `backgroundColor` comment above for the full story. Same dark
+    // value as expo-splash-screen's own `dark.backgroundColor` just below.
+    [withAndroidNightBackground, { color: "#17110D" }],
   ],
   experiments: {
     reactCompiler: false,
