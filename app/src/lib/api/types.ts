@@ -119,6 +119,9 @@ export interface MyBooking {
   code: string;
   /** Set once a host confirmed the visit. */
   checkedInAt: string | null;
+  /** Resource's first photo by position, null if none uploaded yet — fall
+   * back to `stockImageUrl()`, same convention as the availability type. */
+  imageUrl: string | null;
 }
 
 /**

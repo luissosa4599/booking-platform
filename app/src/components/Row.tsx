@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ComponentType } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
@@ -9,16 +9,21 @@ import Animated, {
 
 import { Button, Spinner, type ButtonPillTone } from "@/components/Button";
 import { HeartButton } from "@/components/HeartButton";
+import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
 import { cn } from "@/lib/cn";
-import { Check, ChevronRight } from "@/lib/icons";
+import { Check, ChevronRight, type IconProps } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
-export type RowTrailing = "text" | "chevron" | "action" | "check" | "none";
+export type RowTrailing = "text" | "chevron" | "action" | "check" | "badge" | "none";
 export type MetaTone = "default" | "waiting" | "last";
 
 interface RowProps {
   title: string;
+  /** Leading icon (Tú/Ajustes handoff §3.5) — 20px, `label-2`, stroke 1.8.
+   * Pass the icon component itself (from `lib/icons.ts`), not an element —
+   * Row owns size/color/stroke so every icon row looks uniform. */
+  icon?: ComponentType<IconProps>;
   /** Time ranges/numbers in the title should align — e.g. ResourceScreen's slot list. */
   tabularTitle?: boolean;
   subtitle?: string;
@@ -28,6 +33,10 @@ interface RowProps {
   trailingText?: string;
   /** Tone for trailing="text" — e.g. "Anotarme" (waiting) or "Último lugar" (last). */
   trailingTone?: MetaTone;
+  /** trailing="badge" only — resource-detail §4 point 1: the slot-list's
+   * availability indicator is the same `StatusBadge` (compact variant)
+   * ResourceCard already uses, not loose colored text. */
+  badgeTone?: StatusTone;
   /** trailing="text" only — swaps trailingText for a small spinner (e.g. joining a waitlist). */
   trailingLoading?: boolean;
   actionLabel?: string;
@@ -57,6 +66,7 @@ const META_TONE_CLASS: Record<MetaTone, string> = {
 
 export function Row({
   title,
+  icon: Icon,
   tabularTitle = false,
   subtitle,
   meta,
@@ -64,6 +74,7 @@ export function Row({
   trailing = "none",
   trailingText,
   trailingTone = "default",
+  badgeTone = "free",
   trailingLoading = false,
   actionLabel,
   actionTone = "filled",
@@ -112,6 +123,7 @@ export function Row({
     opacity: selectedProgress.value,
   }));
 
+  const iconColor = useColor("label-2");
   const pressable = !!onPress && !disabled;
 
   const handlePressIn = () => {
@@ -151,6 +163,8 @@ export function Row({
         />
       ) : null}
 
+      {Icon ? <Icon size={20} strokeWidth={1.8} color={iconColor} /> : null}
+
       <View className="flex-1 flex-col gap-[3px]">
         <Text
           numberOfLines={1}
@@ -189,6 +203,7 @@ export function Row({
         trailing={effectiveTrailing}
         trailingText={trailingText}
         trailingTone={trailingTone}
+        badgeTone={badgeTone}
         trailingLoading={trailingLoading}
         actionLabel={actionLabel}
         actionTone={actionTone}
@@ -262,6 +277,7 @@ function RowTrailingContent({
   trailing,
   trailingText,
   trailingTone = "default",
+  badgeTone = "free",
   trailingLoading = false,
   actionLabel,
   actionTone,
@@ -272,6 +288,7 @@ function RowTrailingContent({
   trailing: RowTrailing;
   trailingText?: string;
   trailingTone?: MetaTone;
+  badgeTone?: StatusTone;
   trailingLoading?: boolean;
   actionLabel?: string;
   actionTone: ButtonPillTone;
@@ -318,6 +335,11 @@ function RowTrailingContent({
       );
     case "check":
       return <CheckIcon />;
+    case "badge":
+      if (trailingLoading) {
+        return <Spinner borderColor={waitingColor} />;
+      }
+      return <StatusBadge tone={badgeTone} label={trailingText ?? ""} variant="compact" />;
     case "action":
       return (
         <Button

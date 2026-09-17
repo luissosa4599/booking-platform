@@ -3,7 +3,7 @@ import { ProfileContent } from "@/components/ProfileContent";
 
 export default function OwnerProfileScreen() {
   return (
-    <Screen bg="canvas" maxWidth={640}>
+    <Screen bg="canvas" maxWidth={720}>
       <ProfileContent />
     </Screen>
   );

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Linking,
   Platform,
@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
@@ -36,6 +36,23 @@ export default function ScanScreen() {
   const [manualCode, setManualCode] = useState("");
   const [resultOpen, setResultOpen] = useState(false);
   const scanLock = useRef(false);
+
+  // 2026-09-15 report: "el tache no cerró la cam" — this screen is a tab, and
+  // tab navigators keep inactive tabs *mounted* by default (they don't
+  // unmount on blur), so the old `router.replace(...)`-only X button never
+  // actually stopped the camera — it just navigated the visible route away
+  // while `<CameraView>` kept running underneath. `useFocusEffect`'s own
+  // blur (fired on any navigation away, not just this button, and on real
+  // tab-switch too) is what should own tearing the camera down — not the
+  // button's onPress, which only covers the one path a user might leave
+  // through.
+  const [cameraActive, setCameraActive] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setCameraActive(true);
+      return () => setCameraActive(false);
+    }, []),
+  );
 
   function run(code: string, force = false) {
     submit.mutate(
@@ -111,15 +128,25 @@ export default function ScanScreen() {
   // --- immersive camera ------------------------------------------------
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: BRAND.ink }]}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={onBarcodeScanned}
-      />
+      {/* Only actually mounted while this screen is focused — see the
+          useFocusEffect above for why that's the real fix, not just the X
+          button's onPress. */}
+      {cameraActive ? (
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={onBarcodeScanned}
+        />
+      ) : null}
 
       <Pressable
-        onPress={() => router.replace("/(owner)/(tabs)")}
+        onPress={() => {
+          // Belt and suspenders: stop the stream immediately rather than
+          // waiting on useFocusEffect's blur to catch up with navigation.
+          setCameraActive(false);
+          router.replace("/(owner)/(tabs)");
+        }}
         accessibilityRole="button"
         accessibilityLabel="Cerrar el escáner"
         style={{ position: "absolute", top: insets.top + 8, left: 16 }}
@@ -131,7 +158,18 @@ export default function ScanScreen() {
         </View>
       </Pressable>
 
-      <View style={StyleSheet.absoluteFill} className="items-center justify-center gap-11 px-8">
+      {/* 2026-09-15 report: "el tache no cerró la cam" — the real cause. This
+          purely-decorative instructional overlay is `absoluteFill` (the
+          whole screen) and renders *after* the close button in the tree, so
+          on web it silently sat on top and intercepted every pointer event
+          across the entire screen, including right over the X — the button
+          was never actually clickable, at all, full stop. `pointerEvents=
+          "none"` lets clicks pass through to whatever's underneath it. */}
+      <View
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        className="items-center justify-center gap-11 px-8"
+      >
         <Text style={{ color: "rgba(255,255,255,0.92)" }} className="text-body font-medium">
           Apunta al QR de la reserva
         </Text>

@@ -43,4 +43,5 @@ public record MyBookingResponse(
     int Seats,
     string Status,
     string Code,
-    DateTimeOffset? CheckedInAt);
+    DateTimeOffset? CheckedInAt,
+    string? ImageUrl);

@@ -16,7 +16,12 @@ import { haptics } from "@/lib/haptics";
 import { palette, type ColorToken } from "@/lib/theme/palette";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
-export type ButtonVariant = "filled" | "dark" | "gray" | "plain" | "pill";
+// "gray-destructive" — same shape/bg as "gray" (fill, per the confirmation
+// Sheet's neutral surface), label recolored to state-error. Reservas/Tú
+// handoff: the confirm button inside CancelBookingSheet and the sign-out
+// confirm Sheet both need this — "gray" alone resolves to label-2, it can't
+// carry the destructive-red text on its own.
+export type ButtonVariant = "filled" | "dark" | "gray" | "gray-destructive" | "plain" | "pill";
 export type ButtonPillTone = "filled" | "wash" | "on-tint";
 
 interface ButtonProps {
@@ -29,6 +34,9 @@ interface ButtonProps {
   onPress?: () => void;
   children: ReactNode;
   className?: string;
+  /** Resource-detail §4 point 4 — the "Apartar 01:01 p.m. – 02:31 p.m." CTA
+   * needs tabular-nums on its time range so digits don't jitter in width. */
+  tabularLabel?: boolean;
   /** Falls back to `children` when it's a plain string — pass this when the
    * label alone isn't descriptive enough (e.g. a "Cancelar" pill should
    * announce which booking it cancels). */
@@ -42,6 +50,7 @@ const CONTAINER_SHAPE_CLASS: Record<Exclude<ButtonVariant, "pill">, string> = {
   filled: "h-[52px] rounded-button px-4",
   dark: "h-[52px] rounded-button px-4",
   gray: "h-[52px] rounded-button px-4",
+  "gray-destructive": "h-[52px] rounded-button px-4",
   plain: "h-[48px] px-4",
 };
 
@@ -61,6 +70,7 @@ const CONTAINER_BG_TOKEN: Record<Exclude<ButtonVariant, "pill">, ColorToken | nu
   filled: "tint",
   dark: "label-1",
   gray: "fill",
+  "gray-destructive": "fill",
   plain: null,
 };
 
@@ -75,6 +85,7 @@ const LABEL_TOKEN: Record<Exclude<ButtonVariant, "pill">, ColorToken> = {
   filled: "on-tint",
   dark: "canvas",
   gray: "label-2",
+  "gray-destructive": "state-error",
   plain: "tint",
 };
 
@@ -131,6 +142,7 @@ export function Button({
   disabled = false,
   onPress,
   children,
+  tabularLabel = false,
   className,
   accessibilityLabel,
 }: ButtonProps) {
@@ -249,7 +261,13 @@ export function Button({
             style={labelStyle}
             className="flex-col items-center justify-center gap-px"
           >
-            <Text className={labelSizeClass} style={{ color: labelColor }}>
+            <Text
+              className={labelSizeClass}
+              style={{
+                color: labelColor,
+                fontVariant: tabularLabel ? ["tabular-nums"] : undefined,
+              }}
+            >
               {displayChildren}
             </Text>
             {displaySubtitle ? (

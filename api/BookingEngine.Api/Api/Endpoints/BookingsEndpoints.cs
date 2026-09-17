@@ -52,7 +52,11 @@ public static class BookingsEndpoints
                     b.Seats,
                     b.Status.ToString(),
                     b.Code,
-                    b.CheckedInAt))
+                    b.CheckedInAt,
+                    b.AvailabilitySlot.Resource.Images
+                        .OrderBy(i => i.Position)
+                        .Select(i => i.Url)
+                        .FirstOrDefault()))
                 .ToListAsync();
 
             return Results.Ok(bookings);

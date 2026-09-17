@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "./client";
 import type { AvailabilityResponse, AvailabilitySlot } from "./types";
@@ -82,6 +82,15 @@ export function useAvailability(filters: AvailabilityFilters) {
     // Handoff: "Disponibilidad en caché con TTL de 60 s". Returning to the
     // screen serves cache and revalidates in the background.
     staleTime: 60_000,
+    // 2026-09-15 report: switching a category filter briefly flashed the
+    // (much shorter) loading skeleton, which shrank the ScrollView content
+    // enough to force-clamp scrollTop to 0 — the real cause of "Hola, <name>"
+    // reappearing on a filter tap (its collapse state reads real scroll
+    // position, and a clamp-to-0 looks identical to the user scrolling back
+    // to the top). Keeping the previous category's results on screen until
+    // the new ones arrive removes the flash (and the layout jump) entirely,
+    // not just the symptom.
+    placeholderData: keepPreviousData,
   });
 
   const slots: AvailabilitySlot[] = query.data?.slots ?? [];

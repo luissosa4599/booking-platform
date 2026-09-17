@@ -8,6 +8,12 @@ interface GroupProps {
   variant?: "card" | "canvas";
   header?: string;
   footer?: string;
+  /** Divider left inset in px — default 16 (unchanged for every existing
+   * caller). Tú's Ajustes group (handoff §3.5) passes 52 (18 row padding +
+   * 20 icon + 14 gap) so the divider aligns with icon-row text, not the
+   * icon. Group can't infer this from its children's own props, so it's an
+   * explicit prop rather than Group inspecting each Row. */
+  dividerInset?: number;
   children: ReactNode;
 }
 
@@ -19,7 +25,13 @@ interface GroupProps {
 // mismatch didn't resolve with a clean cache / fresh server. Reverted rather
 // than ship an unverified layout — see docs/session-log.md for the repro.
 // Left as a known gap, not implemented.
-export function Group({ variant = "card", header, footer, children }: GroupProps) {
+export function Group({
+  variant = "card",
+  header,
+  footer,
+  dividerInset = 16,
+  children,
+}: GroupProps) {
   const items = Children.toArray(children);
 
   return (
@@ -40,7 +52,7 @@ export function Group({ variant = "card", header, footer, children }: GroupProps
           <Fragment key={index}>
             {child}
             {index < items.length - 1 ? (
-              <View className="ml-4 h-px bg-hairline" />
+              <View className="h-px bg-hairline" style={{ marginLeft: dividerInset }} />
             ) : null}
           </Fragment>
         ))}

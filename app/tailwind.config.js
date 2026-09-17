@@ -56,6 +56,11 @@ module.exports = {
         "state-error": "rgb(var(--color-state-error) / <alpha-value>)",
         "state-waiting": "rgb(var(--color-state-waiting) / <alpha-value>)",
 
+        // Reservas/Tú handoff §0.2 — ProfileHeader's 72px avatar only.
+        // Fixed brand pair, not per-client themeable.
+        "tint-avatar-bg": "rgb(var(--color-tint-avatar-bg) / <alpha-value>)",
+        "tint-avatar-fg": "rgb(var(--color-tint-avatar-fg) / <alpha-value>)",
+
         // Sheet / modal backdrop scrim — used as `bg-scrim/70`.
         scrim: "rgb(var(--color-scrim) / <alpha-value>)",
       },
@@ -96,6 +101,26 @@ module.exports = {
           "13px",
           { lineHeight: "18px", letterSpacing: "0em", fontWeight: "400" },
         ],
+
+        // Reservas/Tú handoff (2026-09-15). Distinct from title-lg/md/sm —
+        // not another rung on that ladder, each is a specific component's
+        // exact spec (px is normative per the handoff).
+        "title-screen": [
+          "30px",
+          { lineHeight: "36px", letterSpacing: "-0.03em", fontWeight: "700" },
+        ], // Reservas H1 (§2.2). Tú has no H1 — ProfileHeader replaces it.
+        "title-master": [
+          "26px",
+          { lineHeight: "32px", letterSpacing: "-0.03em", fontWeight: "700" },
+        ], // Reservas desktop maestro column title (§2.8).
+        "profile-name": [
+          "24px",
+          { lineHeight: "29px", letterSpacing: "-0.03em", fontWeight: "700" },
+        ], // ProfileHeader name (§3.2).
+        "stat-number": [
+          "34px",
+          { lineHeight: "38px", letterSpacing: "-0.04em", fontWeight: "700" },
+        ], // StatTile number (§3.3), auto-drops to 28px inline at 3+ digits.
       },
 
       // Multiples of 4. These match Tailwind's default spacing scale at
@@ -130,6 +155,18 @@ module.exports = {
         sheet: "30px",
         logo: "16px",
         full: "9999px",
+
+        // Reservas handoff §2.5 — BookingCard/StatTile/BookingPane's pass
+        // block use 18px, a declared deviation from `group`'s 22 (too many
+        // cards per screen at 22 reads as loose blocks). §2.8 — BookingPane's
+        // desktop master rows and metadata table use 16px. NOT defined here
+        // as named radius tokens on purpose: confirmed via getComputedStyle
+        // (2026-09-15) that custom `borderRadius` keys in this scale
+        // silently generate no CSS rule at all in this project's NativeWind
+        // setup (same class of bug as `rounded-sheet`/`bg-sheet` colliding).
+        // Every call site uses a literal `style={{ borderRadius: 18 }}` (or
+        // 16) instead — see BookingCard.tsx, StatTile.tsx, BookingPane.tsx,
+        // BookingMasterRow.tsx.
       },
     },
   },

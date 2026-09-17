@@ -1,10 +1,18 @@
-import { useMemo } from "react";
+// tsconfig.json's `types` array is deliberately scoped to just `jest`, so
+// @types/google.maps (a transitive dep of @vis.gl/react-google-maps, used
+// below for FitToPlaces' imperative `google.maps.LatLngBounds`/`event`
+// calls) isn't auto-included — pull it in locally instead of widening the
+// global compiler config for one file's use of the raw Maps JS API.
+/// <reference types="google.maps" />
+
+import { useEffect, useMemo, useRef } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import {
   AdvancedMarker,
   APIProvider,
   ColorScheme,
   Map as GoogleMap,
+  useMap,
 } from "@vis.gl/react-google-maps";
 
 import { useColorScheme } from "nativewind";
@@ -45,6 +53,20 @@ const MEXICO_CITY = { lat: 19.4326, lng: -99.1332 };
 // Bumped from 22/26 to match the reference's larger pins (2026-09-14 report).
 const CIRCLE_SIZE = 32;
 const CIRCLE_SIZE_SELECTED = 38;
+// `fitBounds` on a single pin (or a very tight cluster) zooms all the way in
+// to street level — the actual "trampa" to avoid (2026-09-15 report: "no
+// caer en trampas"). Capped at a sensible neighborhood-level max instead of
+// trusting fitBounds' own zoom unconditionally.
+const MAX_AUTO_ZOOM = 15;
+// The other side of the same trap (2026-09-15 report, second look): seeded
+// resources span several Mexican states, so a couple of far-apart pins made
+// `fitBounds` zoom out to a whole-region/country view (Texas-to-Guatemala) —
+// technically "every pin fits", practically useless for "find something
+// near me". A metro/regional floor means distant pins can fall off-screen
+// (pan to find them) rather than sacrificing the zoom everyone actually
+// wants for the common, nearby-cluster case.
+const MIN_AUTO_ZOOM = 9;
+const FIT_BOUNDS_PADDING_PX = 56;
 
 export function SpaceMap({
   places,
@@ -88,6 +110,8 @@ export function SpaceMap({
           gestureHandling="greedy"
           style={{ width: "100%", height: "100%" }}
         >
+          <FitToPlaces places={places} userPosition={userPosition} />
+
           {places.map((p) => (
             <CircleMarker
               key={p.resourceId}
@@ -118,6 +142,140 @@ export function SpaceMap({
       {selected ? (
         <SelectedPlaceCard place={selected} onAction={() => onAction(selected.resourceId)} />
       ) : null}
+
+      {/* 2026-09-15 report: "manejar el caso de que no haya pines activos" —
+          no silent empty map. */}
+      {places.length === 0 ? <EmptyPlacesNotice /> : null}
+    </View>
+  );
+}
+
+// Adjusts the live map instance's center/zoom to fit every current pin
+// (+ the user's own dot), instead of the old fixed `defaultZoom={11}` —
+// which only ever matched pins clustered near Mexico City and showed
+// nothing for the seeded campuses spread across other states (2026-09-15
+// report: "ajustar el zoom del mapa para que al menos se vea un pin").
+// `defaultCenter`/`defaultZoom` on `<Map>` stay as the pre-fit fallback
+// (first paint, before this effect runs, and the empty-places case, which
+// skips fitBounds entirely).
+function FitToPlaces({
+  places,
+  userPosition,
+}: {
+  places: MapPlace[];
+  userPosition: SpaceMapProps["userPosition"];
+}) {
+  const map = useMap();
+
+  // 2026-09-15 report: "al hacer zoom eventualmente me regresa al zoom
+  // inicial y no me deja pasar de cierto zoom in" — `places` is a fresh
+  // array every time ExploreScreen re-renders (a 60s background
+  // availability refetch, a live-location tick, ...) even when the actual
+  // *set* of pins hasn't changed, and the effect below was keyed on that
+  // array's identity — so it kept re-firing `fitBounds`, fighting (and
+  // eventually winning over) the user's own manual zoom/pan. Two fixes:
+  // (1) key the effect on a stable string of resourceIds instead of the
+  // array reference, so it only re-fits when the pins *themselves* change;
+  // (2) read `userPosition` through a ref rather than depending on it
+  // directly — a live GPS watch ticks far more often than that, and every
+  // tick was an independent re-fit trigger on its own.
+  const placesKey = places
+    .map((p) => p.resourceId)
+    .sort()
+    .join(",");
+  const userPositionRef = useRef(userPosition);
+  useEffect(() => {
+    userPositionRef.current = userPosition;
+  }, [userPosition]);
+
+  useEffect(() => {
+    if (!map || places.length === 0) return;
+    const userPos = userPositionRef.current;
+
+    const bounds = new google.maps.LatLngBounds();
+    for (const p of places) bounds.extend({ lat: p.lat, lng: p.lng });
+    if (userPos) bounds.extend(userPos);
+
+    map.fitBounds(bounds, FIT_BOUNDS_PADDING_PX);
+
+    // fitBounds' own zoom can land arbitrarily close for one pin or a tight
+    // cluster — clamp it after the map settles, don't trust it blind.
+    const listener = google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+      const zoom = map.getZoom();
+      if (zoom == null) return;
+
+      if (zoom > MAX_AUTO_ZOOM) {
+        map.setZoom(MAX_AUTO_ZOOM);
+        return;
+      }
+      if (zoom < MIN_AUTO_ZOOM) {
+        // Pins too spread out to fit at a useful zoom — fitBounds' own
+        // center is just the geometric mean of the extremes, which can
+        // land in genuinely empty space (open water, between two distant
+        // clusters — confirmed via screenshot, 2026-09-15). Recenter on a
+        // real point of interest instead: the user's own position if
+        // known, else whichever pin actually sits closest to that
+        // centroid. Far pins fall off-screen (pan to find them) rather
+        // than the view holding on nothing.
+        const boundsCenter = bounds.getCenter();
+        const center =
+          userPos ??
+          nearestPlaceTo(places, { lat: boundsCenter.lat(), lng: boundsCenter.lng() });
+        map.setCenter(center);
+        map.setZoom(MIN_AUTO_ZOOM);
+      }
+    });
+    return () => listener.remove();
+    // Deliberately `placesKey` (a stable resourceId-set fingerprint), not
+    // `places` itself or `userPosition` — see the comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, placesKey]);
+
+  return null;
+}
+
+function nearestPlaceTo(
+  places: MapPlace[],
+  center: { lat: number; lng: number },
+): { lat: number; lng: number } {
+  // Plain planar distance — fine for "which of these is visually closest
+  // to this point on a map", no need for haversine precision here.
+  let best = places[0]!;
+  let bestDist = Infinity;
+  for (const p of places) {
+    const d = (p.lat - center.lat) ** 2 + (p.lng - center.lng) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return { lat: best.lat, lng: best.lng };
+}
+
+function EmptyPlacesNotice() {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: 16,
+        right: 16,
+        alignItems: "center",
+        transform: [{ translateY: -34 }],
+      }}
+    >
+      <View
+        className="items-center gap-1 rounded-2xl border border-hairline bg-card px-5 py-4"
+        style={{ maxWidth: 280 }}
+      >
+        <Text className="text-center text-body-emph text-label-1">
+          No hay ubicaciones disponibles
+        </Text>
+        <Text className="text-center text-footnote text-label-3">
+          Ajusta los filtros o busca en otro horario.
+        </Text>
+      </View>
     </View>
   );
 }

@@ -191,5 +191,6 @@ public class CheckinsTests(ApiTestFixture fixture)
         var json = await guest.GetStringAsync("/bookings?scope=upcoming");
         Assert.Contains("checkedInAt", json);
         Assert.DoesNotContain("\"checkedInAt\":null", json);
+        Assert.Contains("imageUrl", json);
     }
 }

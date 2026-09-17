@@ -1,39 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
-import Animated, {
-  FadeOut,
-  LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeOut } from "react-native-reanimated";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
+import { BookingCard } from "@/components/BookingCard";
+import { BookingDayHeader } from "@/components/BookingDayHeader";
+import { BookingMasterRow } from "@/components/BookingMasterRow";
 import { BookingPane } from "@/components/BookingPane";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
-import { Button } from "@/components/Button";
+import { CancelBookingSheet } from "@/components/CancelBookingSheet";
 import { Group } from "@/components/Group";
+import { Pill } from "@/components/Pill";
 import { Placeholder } from "@/components/Placeholder";
 import { RefreshButton } from "@/components/RefreshButton";
-import { Row } from "@/components/Row";
 import { Screen } from "@/components/Screen";
-import { SegmentedControl } from "@/components/SegmentedControl";
 import { Skeleton } from "@/components/Skeleton";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Toast } from "@/components/Toast";
 import { useCancelBooking, useMyBookings } from "@/lib/api/bookings";
-import { useMyWaitlist } from "@/lib/api/waitlist";
+import { useLeaveWaitlist, useMyWaitlist } from "@/lib/api/waitlist";
 import { useIsOffline } from "@/lib/net";
 import { useToastStore } from "@/lib/toastStore";
-import type { BookingScope, MyBooking } from "@/lib/api/types";
-import { cn } from "@/lib/cn";
+import type { BookingScope, MyBooking, WaitlistEntryDetail } from "@/lib/api/types";
 import { haptics } from "@/lib/haptics";
-import { CalendarX } from "@/lib/icons";
+import { Calendar, RotateCw, WifiOff } from "@/lib/icons";
 import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useDetailSelection } from "@/lib/useDetailSelection";
-import { useReduceMotion } from "@/lib/useReduceMotion";
 import { useUserId } from "@/lib/session";
 
 function timeOfDay(iso: string) {
@@ -52,160 +46,60 @@ function formatSchedule(startsAt: string, endsAt: string) {
   return `${dayLabel} ${timeOfDay(startsAt)} – ${timeOfDay(endsAt)}`;
 }
 
-// Handoff § "05": "Cuenta atrás ... 'En 2 h 15 min'. Solo se muestra si falta
-// menos de 24 h; si no, la fecha ocupa su lugar."
-function formatCountdown(startsAt: string): string | null {
-  const diffMs = new Date(startsAt).getTime() - Date.now();
-  if (diffMs <= 0 || diffMs >= 24 * 60 * 60 * 1000) return null;
-  const mins = Math.round(diffMs / 60_000);
-  if (mins < 60) return `En ${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m === 0 ? `En ${h} h` : `En ${h} h ${m} min`;
-}
-
-function formatCardDate(startsAt: string): string {
-  const d = new Date(startsAt);
-  const day = d.toLocaleDateString("es-MX", {
-    weekday: "short",
-    day: "numeric",
-  });
-  return `${day} · ${timeOfDay(startsAt)}`;
-}
-
 function formatSeats(seats: number): string {
   return `${seats} ${seats === 1 ? "persona" : "personas"}`;
-}
-
-function formatHistoryLine(booking: MyBooking): string {
-  const date = new Date(booking.startsAt).toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-  });
-  const state = booking.status === "Cancelled" ? "cancelada" : "completada";
-  return `${date} · ${state}`;
 }
 
 function ordinal(position: number): string {
   return `${position}.º`;
 }
 
-// Shared shake for a cancellation that failed server-side — handoff: "la
-// tarjeta vuelve con un shake de 6 px".
-function useShake(active: boolean) {
-  "use no memo";
-  const reduceMotion = useReduceMotion();
-  const x = useSharedValue(0);
-
-  useEffect(() => {
-    if (!active || reduceMotion) return;
-    x.value = withSequence(
-      withTiming(-6, { duration: 30 }),
-      withTiming(6, { duration: 30 }),
-      withTiming(-6, { duration: 30 }),
-      withTiming(0, { duration: 30 }),
-    );
-  }, [active, reduceMotion, x]);
-
-  return useAnimatedStyle(() => ({ transform: [{ translateX: x.value + 0 }] }));
-}
-
-function NextBookingCard({
-  booking,
-  shaking,
-  onShowPass,
-  onCancel,
-}: {
-  booking: MyBooking;
-  shaking: boolean;
-  onShowPass: () => void;
-  onCancel: () => void;
-}) {
-  const shakeStyle = useShake(shaking);
-  const countdown = formatCountdown(booking.startsAt);
-
+function isInProgress(booking: MyBooking): boolean {
+  const now = Date.now();
   return (
-    <Animated.View
-      layout={LinearTransition.springify()}
-      exiting={FadeOut.duration(200)}
-      style={shakeStyle}
-    >
-      <View className="gap-4 rounded-group bg-card p-4 py-[18px]">
-        <Text
-          className={cn(
-            "text-subhead font-semibold",
-            countdown ? "text-tint" : "text-label-3",
-          )}
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
-          {countdown ?? formatCardDate(booking.startsAt)}
-        </Text>
-
-        <View className="gap-[3px]">
-          <Text className="text-title-sm text-label-1">
-            {booking.resourceName}
-          </Text>
-          <Text
-            className="text-body text-label-3"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
-            {formatSchedule(booking.startsAt, booking.endsAt)} ·{" "}
-            {formatSeats(booking.seats)}
-          </Text>
-        </View>
-
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <Button variant="dark" onPress={onShowPass}>
-              Ver pase
-            </Button>
-          </View>
-          <View className="flex-1">
-            <Button
-              variant="gray"
-              onPress={onCancel}
-              accessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${formatSchedule(booking.startsAt, booking.endsAt)}`}
-            >
-              Cancelar
-            </Button>
-          </View>
-        </View>
-      </View>
-    </Animated.View>
+    new Date(booking.startsAt).getTime() <= now && now < new Date(booking.endsAt).getTime()
   );
 }
 
-function CancelableRow({
-  booking,
-  shaking,
-  onCancel,
-  onPress,
-}: {
-  booking: MyBooking;
-  shaking: boolean;
-  onCancel: () => void;
-  onPress?: () => void;
-}) {
-  const shakeStyle = useShake(shaking);
+// Reservas handoff §2.4/§2.5d — day header for Próximas ("Hoy · mar 15" /
+// "mié 16 de sep"), month header for Anteriores ("SEPTIEMBRE").
+function dayHeaderLabel(startsAt: string): string {
+  const d = new Date(startsAt);
+  const isToday = d.toDateString() === new Date().toDateString();
+  const weekdayDay = d.toLocaleDateString("es-MX", { weekday: "short", day: "numeric" });
+  if (isToday) return `Hoy · ${weekdayDay}`;
+  const month = d.toLocaleDateString("es-MX", { month: "short" });
+  return `${weekdayDay} de ${month}`;
+}
 
-  return (
-    <Animated.View
-      layout={LinearTransition.springify()}
-      exiting={FadeOut}
-      style={shakeStyle}
-    >
-      <Row
-        title={booking.resourceName}
-        subtitle={`${booking.locationName} · ${formatSchedule(booking.startsAt, booking.endsAt)}`}
-        trailing="action"
-        actionLabel="Cancelar"
-        actionTone="wash"
-        actionAccessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${formatSchedule(booking.startsAt, booking.endsAt)}`}
-        onActionPress={onCancel}
-        onPress={onPress}
-      />
-    </Animated.View>
-  );
+function monthHeaderLabel(startsAt: string): string {
+  return new Date(startsAt).toLocaleDateString("es-MX", { month: "long" }).toUpperCase();
+}
+
+interface BookingGroup {
+  key: string;
+  label: string;
+  bookings: MyBooking[];
+}
+
+// §1: "Lo que agrupa es el día, no el espacio." Bookings are already sorted
+// server-side (asc for upcoming, desc for past), so a Map preserves the
+// right chronological group order for free.
+function groupBookings(bookings: MyBooking[], mode: "day" | "month"): BookingGroup[] {
+  const map = new Map<string, BookingGroup>();
+  for (const booking of bookings) {
+    const d = new Date(booking.startsAt);
+    const key = mode === "day" ? d.toDateString() : `${d.getFullYear()}-${d.getMonth()}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        label: mode === "day" ? dayHeaderLabel(booking.startsAt) : monthHeaderLabel(booking.startsAt),
+        bookings: [],
+      });
+    }
+    map.get(key)!.bookings.push(booking);
+  }
+  return Array.from(map.values());
 }
 
 export default function BookingsScreen() {
@@ -215,6 +109,9 @@ export default function BookingsScreen() {
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [shakeId, setShakeId] = useState<string | null>(null);
   const [passBooking, setPassBooking] = useState<MyBooking | null>(null);
+  // §2.6 — a confirmation sheet now gates the existing undo-toast flow;
+  // tapping "Cancelar" no longer hides the row directly.
+  const [confirmCancel, setConfirmCancel] = useState<MyBooking | null>(null);
   const userId = useUserId();
 
   // Desktop master–detail: the selected booking shows in a pane (with its QR
@@ -225,6 +122,7 @@ export default function BookingsScreen() {
   const bookingsQuery = useMyBookings(scope, userId);
   const waitlistQuery = useMyWaitlist(userId);
   const cancelBooking = useCancelBooking();
+  const leaveWaitlist = useLeaveWaitlist();
   const offline = useIsOffline();
   const showSkeleton = useDelayedFlag(bookingsQuery.isLoading, 150);
   const isRefreshing =
@@ -243,19 +141,39 @@ export default function BookingsScreen() {
   );
   const waitlist = waitlistQuery.data ?? [];
 
-  const nextBooking = scope === "upcoming" ? bookings[0] : undefined;
-  const otherUpcoming = scope === "upcoming" ? bookings.slice(1) : [];
-  const history = scope === "past" ? bookings : [];
+  // The nearest upcoming booking gets variant="next" wherever its day group
+  // lands — it's still filed under its own day header (§2.7: "la reserva en
+  // curso ... el encabezado del día sigue siendo 'Hoy · mar 15'"), not pulled
+  // out above the agenda.
+  const nextBookingId = scope === "upcoming" ? bookings[0]?.id : undefined;
+  const dayGroups = scope === "upcoming" ? groupBookings(bookings, "day") : [];
+  const monthGroups = scope === "past" ? groupBookings(bookings, "month") : [];
 
   const selectedBooking =
     (hasPane && selectedId
       ? bookings.find((b) => b.id === selectedId)
       : undefined) ?? null;
 
-  function openInPane(booking: MyBooking) {
-    haptics.selection();
-    select(booking.id);
-  }
+  // §2.8: "la próxima reserva Y la seleccionada coinciden al entrar" — fires
+  // once the desktop pane is available AND the bookings query has actually
+  // resolved (nextBookingId is still undefined on the first render while
+  // loading — a [hasPane]-only dependency array would fire too early and
+  // never retry). The ref guard is what keeps this a one-time "on entering"
+  // selection instead of re-forcing a pick every time the list changes or
+  // the user closes the pane.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !autoSelectedRef.current &&
+      hasPane &&
+      scope === "upcoming" &&
+      !selectedId &&
+      nextBookingId
+    ) {
+      autoSelectedRef.current = true;
+      select(nextBookingId);
+    }
+  }, [hasPane, scope, selectedId, nextBookingId, select]);
 
   function handleScopeChange(next: BookingScope) {
     clear();
@@ -272,11 +190,20 @@ export default function BookingsScreen() {
     scope === "past" &&
     !bookingsQuery.isLoading &&
     !bookingsQuery.isError &&
-    history.length === 0;
+    bookings.length === 0;
+  const isEmptyState =
+    (!showSkeleton && bookingsQuery.isError) || nothingUpcoming || nothingPast;
 
   function handleCancel(booking: MyBooking) {
     haptics.selection();
-    setPendingCancelId(booking.id);
+    setConfirmCancel(booking);
+  }
+
+  function handleConfirmCancel() {
+    if (!confirmCancel) return;
+    haptics.selection();
+    setPendingCancelId(confirmCancel.id);
+    setConfirmCancel(null);
   }
 
   function handleUndo() {
@@ -284,18 +211,17 @@ export default function BookingsScreen() {
   }
 
   // Handoff: "El DELETE se envía al expirar el toast, no antes." The toast's
-  // natural auto-dismiss — not the Cancelar tap — is where the request fires.
+  // natural auto-dismiss — not the sheet's confirm tap — is where the
+  // request fires.
   function handleToastExpired() {
     if (!pendingCancelId) return;
     const id = pendingCancelId;
-    // The real DELETE fires here (not on the Cancelar tap). Offline it can't —
+    // The real DELETE fires here (not on confirm). Offline it can't —
     // restore the row rather than queue it, so a long offline window can't
     // cancel a booking the user later decided to keep.
     if (offline) {
       setPendingCancelId(null);
-      useToastStore
-        .getState()
-        .show("Sin conexión — la reserva no se canceló");
+      useToastStore.getState().show("Sin conexión — la reserva no se canceló");
       return;
     }
     cancelBooking.mutate(id, {
@@ -312,6 +238,11 @@ export default function BookingsScreen() {
       },
       onSettled: () => setPendingCancelId(null),
     });
+  }
+
+  function handleLeaveWaitlist(entry: WaitlistEntryDetail) {
+    haptics.selection();
+    leaveWaitlist.mutate(entry.id);
   }
 
   // Handoff "Repetir": preload same resource / time-of-day / party size and go
@@ -332,6 +263,30 @@ export default function BookingsScreen() {
     });
   }
 
+  function renderBooking(booking: MyBooking, variant: "next" | "default") {
+    const inProgress = variant === "next" && isInProgress(booking);
+    const schedule = formatSchedule(booking.startsAt, booking.endsAt);
+    return (
+      <BookingCard
+        key={booking.id}
+        variant={variant}
+        resourceName={booking.resourceName}
+        metaLabel={`${formatSeats(booking.seats)} · ${booking.locationName}`}
+        startTimeLabel={inProgress ? "En curso" : timeOfDay(booking.startsAt)}
+        endTimeLabel={inProgress ? `termina ${timeOfDay(booking.endsAt)}` : `– ${timeOfDay(booking.endsAt)}`}
+        inProgress={inProgress}
+        imageUrl={variant === "next" ? booking.imageUrl : undefined}
+        onViewPass={() =>
+          hasPane ? select(booking.id) : setPassBooking(booking)
+        }
+        viewPassAccessibilityLabel={`Ver pase de ${booking.resourceName}, ${schedule}`}
+        onCancel={() => handleCancel(booking)}
+        cancelAccessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${schedule}`}
+        cancelLoading={shakeId === booking.id}
+      />
+    );
+  }
+
   return (
     <Screen bg="canvas" fluid>
      <View style={{ flex: 1, flexDirection: "row" }}>
@@ -341,19 +296,26 @@ export default function BookingsScreen() {
           wide monitors. */}
       <View style={{ flex: 1 }}>
       <View className="flex-row items-center justify-between px-4 pt-3">
-        <Text className="text-title-lg text-label-1">Reservas</Text>
+        <Text className={hasPane ? "text-title-master text-label-1" : "text-title-screen text-label-1"}>
+          Reservas
+        </Text>
         <RefreshButton onPress={handleRefresh} refreshing={isRefreshing} />
       </View>
 
-      {/* `pb-4` keeps a gap below the control while the list scrolls under it. */}
-      <View className="px-4 pb-4 pt-[22px]">
-        <SegmentedControl
-          options={[
-            { label: "Próximas", value: "upcoming" },
-            { label: "Anteriores", value: "past" },
-          ]}
-          value={scope}
-          onChange={(v) => handleScopeChange(v as BookingScope)}
+      {/* `pb-4` keeps a gap below the pills while the list scrolls under it. */}
+      <View className="flex-row gap-2 px-4 pb-4 pt-[22px]">
+        <Pill
+          active={scope === "upcoming"}
+          label="Próximas"
+          count={scope === "upcoming" ? bookings.length : undefined}
+          size={hasPane ? "desktop" : "phone"}
+          onPress={() => handleScopeChange("upcoming")}
+        />
+        <Pill
+          active={scope === "past"}
+          label="Anteriores"
+          size={hasPane ? "desktop" : "phone"}
+          onPress={() => handleScopeChange("past")}
         />
       </View>
 
@@ -373,7 +335,19 @@ export default function BookingsScreen() {
           />
         }
       >
-        <View style={{ gap: 22, opacity: isRefreshing ? 0.6 : 1 }}>
+        {/* §2.7: "Placeholder, centrado en el área de lista... las pestañas
+            siguen visibles" — the empty/error states center vertically
+            within the scrollable area (ScrollView's own flexGrow:1 gives
+            them the room), real content stays top-aligned as always. These
+            three states are always mutually exclusive with everything else
+            in this stack, so flex:1+center never fights real rows. */}
+        <View
+          style={{
+            gap: 22,
+            opacity: isRefreshing ? 0.6 : 1,
+            ...(isEmptyState ? { flex: 1, justifyContent: "center" } : null),
+          }}
+        >
           {showSkeleton ? (
             <Group>
               <Animated.View exiting={FadeOut.duration(200)}>
@@ -388,91 +362,116 @@ export default function BookingsScreen() {
           {!showSkeleton && bookingsQuery.isError ? (
             <Placeholder
               reason="offline"
-              icon={<CalendarX size={26} />}
-              title="Sin conexión"
-              body="No pudimos cargar tus reservas. Revisa tu conexión e intenta de nuevo."
-              primaryAction={{
+              icon={<WifiOff size={26} />}
+              title="No pudimos cargar tus reservas"
+              body="Revisa tu conexión e intenta de nuevo."
+              secondaryAction={{
                 label: "Reintentar",
                 onPress: () => bookingsQuery.refetch(),
               }}
             />
           ) : null}
 
-          {nextBooking ? (
-            <NextBookingCard
-              booking={nextBooking}
-              shaking={shakeId === nextBooking.id}
-              onShowPass={() =>
-                hasPane ? openInPane(nextBooking) : setPassBooking(nextBooking)
-              }
-              onCancel={() => handleCancel(nextBooking)}
-            />
-          ) : null}
-
-          {otherUpcoming.length > 0 ? (
-            <Group>
-              {otherUpcoming.map((booking) => (
-                <CancelableRow
-                  key={booking.id}
-                  booking={booking}
-                  shaking={shakeId === booking.id}
-                  onCancel={() => handleCancel(booking)}
-                  onPress={hasPane ? () => openInPane(booking) : undefined}
-                />
-              ))}
-            </Group>
-          ) : null}
-
           {scope === "upcoming" && waitlist.length > 0 ? (
-            <Group header="EN ESPERA">
-              {waitlist.map((entry) => (
-                <Row
-                  key={entry.id}
-                  title={entry.resourceName}
-                  subtitle={`${entry.locationName} · ${formatSchedule(entry.startsAt, entry.endsAt)}`}
-                  meta={`En espera · eres el ${ordinal(entry.position)}`}
-                  metaTone="waiting"
-                  trailing="chevron"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/resource/[id]",
-                      params: {
-                        id: entry.resourceId,
-                        name: entry.resourceName,
-                        location: entry.locationName,
-                      },
-                    })
-                  }
-                  accessibilityLabel={`Lista de espera para ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}, eres el ${ordinal(entry.position)}`}
+            <View style={{ gap: 10 }}>
+              <View className="flex-row items-center gap-2 pl-1">
+                <Text
+                  className="uppercase text-label-4"
+                  style={{ fontSize: 12, fontWeight: "600", letterSpacing: 0.96 }}
+                >
+                  EN ESPERA
+                </Text>
+                {/* Representative badge — the soonest entry's position. Each
+                    card's own meta line still states its own position in
+                    text, so this stays correct even with several entries at
+                    different spots in different lines. */}
+                <StatusBadge
+                  tone="waiting"
+                  variant="solid"
+                  label={`${ordinal(waitlist[0]!.position)} en fila`}
                 />
-              ))}
-            </Group>
+              </View>
+              <View style={{ gap: 10 }}>
+                {waitlist.map((entry) => (
+                  <BookingCard
+                    key={entry.id}
+                    variant="waitlist"
+                    resourceName={entry.resourceName}
+                    metaLabel={`Eres el ${ordinal(entry.position)} · ${entry.locationName}`}
+                    startTimeLabel={timeOfDay(entry.startsAt)}
+                    endTimeLabel={`– ${timeOfDay(entry.endsAt)}`}
+                    onCancel={() => handleLeaveWaitlist(entry)}
+                    cancelAccessibilityLabel={`Salir de la lista de espera de ${entry.resourceName}, ${formatSchedule(entry.startsAt, entry.endsAt)}`}
+                    cancelLoading={leaveWaitlist.isPending && leaveWaitlist.variables === entry.id}
+                  />
+                ))}
+              </View>
+            </View>
           ) : null}
 
-          {scope === "past" && history.length > 0 ? (
-            <Group header="ESTE MES">
-              {history.map((booking) => (
-                <Row
-                  key={booking.id}
-                  title={booking.resourceName}
-                  subtitle={formatHistoryLine(booking)}
-                  trailing="action"
-                  actionLabel="Repetir"
-                  actionTone="wash"
-                  actionAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
-                  onActionPress={() => handleRepeat(booking)}
-                  onPress={hasPane ? () => openInPane(booking) : undefined}
-                />
-              ))}
-            </Group>
-          ) : null}
+          {scope === "upcoming"
+            ? dayGroups.map((group) => (
+                <View key={group.key} style={{ gap: 10 }}>
+                  <BookingDayHeader label={group.label} />
+                  <View style={{ gap: 10 }}>
+                    {group.bookings.map((booking) =>
+                      hasPane ? (
+                        <BookingMasterRow
+                          key={booking.id}
+                          resourceName={booking.resourceName}
+                          metaLabel={`${formatSeats(booking.seats)} · ${booking.locationName}`}
+                          startTimeLabel={timeOfDay(booking.startsAt)}
+                          selected={booking.id === selectedId}
+                          onPress={() => select(booking.id)}
+                        />
+                      ) : (
+                        renderBooking(booking, booking.id === nextBookingId ? "next" : "default")
+                      ),
+                    )}
+                  </View>
+                </View>
+              ))
+            : null}
+
+          {scope === "past"
+            ? monthGroups.map((group) => (
+                <View key={group.key} style={{ gap: 10 }}>
+                  <BookingDayHeader label={group.label} />
+                  <View style={{ gap: 10 }}>
+                    {group.bookings.map((booking) =>
+                      hasPane ? (
+                        <BookingMasterRow
+                          key={booking.id}
+                          resourceName={booking.resourceName}
+                          metaLabel={`${dayHeaderLabel(booking.startsAt)} · ${formatSeats(booking.seats)}`}
+                          startTimeLabel={timeOfDay(booking.startsAt)}
+                          selected={booking.id === selectedId}
+                          onPress={() => select(booking.id)}
+                        />
+                      ) : (
+                        <BookingCard
+                          key={booking.id}
+                          variant="past"
+                          resourceName={booking.resourceName}
+                          metaLabel={`${dayHeaderLabel(booking.startsAt)} · ${formatSeats(booking.seats)}`}
+                          startTimeLabel={timeOfDay(booking.startsAt)}
+                          endTimeLabel={`– ${timeOfDay(booking.endsAt)}`}
+                          onRepeat={() => handleRepeat(booking)}
+                          repeatAccessibilityLabel={`Repetir reserva de ${booking.resourceName}`}
+                        />
+                      ),
+                    )}
+                  </View>
+                </View>
+              ))
+            : null}
 
           {nothingUpcoming ? (
             <Placeholder
               reason="noBookings"
-              icon={<CalendarX size={26} />}
-              title="Nada por aquí todavía"
-              body="Cuando reserves un espacio, aparecerá aquí."
+              icon={<Calendar size={26} />}
+              title="Nada apartado todavía"
+              body="Busca un espacio y apártalo en un tap."
               primaryAction={{
                 label: "Explorar espacios",
                 onPress: () => router.navigate("/"),
@@ -483,13 +482,9 @@ export default function BookingsScreen() {
           {nothingPast ? (
             <Placeholder
               reason="noHistory"
-              icon={<CalendarX size={26} />}
-              title="Todavía no tienes historial"
-              body="Tus reservas pasadas y canceladas aparecerán aquí."
-              primaryAction={{
-                label: "Explorar espacios",
-                onPress: () => router.navigate("/"),
-              }}
+              icon={<RotateCw size={26} />}
+              title="Aún sin historial"
+              body="Cuando termine una reserva aparecerá aquí, lista para repetir."
             />
           ) : null}
         </View>
@@ -509,6 +504,7 @@ export default function BookingsScreen() {
             clear();
             handleRepeat(b);
           }}
+          onViewFullPass={(b) => setPassBooking(b)}
         />
       ) : null}
      </View>
@@ -524,6 +520,16 @@ export default function BookingsScreen() {
             : null
         }
         checkedInAt={passBooking?.checkedInAt ?? null}
+      />
+
+      <CancelBookingSheet
+        isOpen={!!confirmCancel}
+        onClose={() => setConfirmCancel(null)}
+        resourceName={confirmCancel?.resourceName ?? null}
+        scheduleLabel={
+          confirmCancel ? formatSchedule(confirmCancel.startsAt, confirmCancel.endsAt) : null
+        }
+        onConfirm={handleConfirmCancel}
       />
 
       <Toast

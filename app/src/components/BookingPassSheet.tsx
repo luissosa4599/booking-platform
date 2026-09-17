@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 
+import { QrPassTile } from "@/components/QrPassTile";
 import { Sheet } from "@/components/Sheet";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -65,11 +65,7 @@ export function BookingPassSheet({
           ) : null}
         </View>
 
-        {/* QR sits on its own white tile so it scans regardless of theme —
-            react-native-qrcode-svg needs literal colors, not classNames. */}
-        <View className="rounded-[18px] bg-white p-4" style={{ opacity: confirmed ? 0.35 : 1 }}>
-          <QRCode value={lastCode ?? "—"} size={180} backgroundColor="#FFFFFF" color="#0B0B0C" />
-        </View>
+        <QrPassTile code={lastCode} size={180} dimmed={confirmed} />
 
         <Text
           className="text-label-1"

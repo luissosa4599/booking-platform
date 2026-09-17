@@ -46,6 +46,14 @@
   --color-state-error: 192 57 43; /* #C0392B */
   --color-state-waiting: 58 118 196; /* #3A76C4 */
 
+  /* Reservas/Tú handoff §0.2 (2026-09-15) — the initials-avatar pair for
+     ProfileHeader's 72px avatar. Fixed brand colors, not per-client
+     themeable (unlike tint/tint-wash), so they live here rather than in
+     ThemeProvider. Explore's 44px greeting avatar keeps its existing
+     tint-wash/tint fallback treatment — untouched. */
+  --color-tint-avatar-bg: 232 168 131; /* #E8A883 */
+  --color-tint-avatar-fg: 122 52 16; /* #7A3410 */
+
   /* Scrim behind a sheet / modal. Sits *over* the UI, so it doesn't get a
      dark-mode override — a neutral dark grey reads the same in both themes.
      Used at ~0.7 alpha (SHEET_OVERLAY_OPACITY), never opaque. */
@@ -79,6 +87,9 @@
   --color-state-last: 224 179 65; /* #E0B341 */
   --color-state-error: 255 107 94; /* #FF6B5E */
   --color-state-waiting: 111 168 245; /* #6FA8F5 */
+
+  --color-tint-avatar-bg: 64 32 11; /* #40200B */
+  --color-tint-avatar-fg: 232 168 131; /* #E8A883 */
 
   /* Was missing entirely — fell through to the light value (#B9B9BE), too
      light against a near-black canvas. Explore redesign handoff (2026-09-14). */

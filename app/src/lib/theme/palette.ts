@@ -24,6 +24,8 @@ const LIGHT = {
   "state-last": "#C08A18",
   "state-error": "#C0392B",
   "state-waiting": "#3A76C4",
+  "tint-avatar-bg": "#E8A883",
+  "tint-avatar-fg": "#7A3410",
   tint: "#C2571F",
   "tint-press": "#A0451A",
   "tint-soft": "#E8A883",
@@ -54,6 +56,8 @@ const DARK: Record<keyof typeof LIGHT, string> = {
   "state-last": "#E0B341",
   "state-error": "#FF6B5E",
   "state-waiting": "#6FA8F5",
+  "tint-avatar-bg": "#40200B",
+  "tint-avatar-fg": "#E8A883",
   // Was missing — fell through to the light value (#B9B9BE) via the spread,
   // too light against a near-black canvas. Explore redesign (2026-09-14).
   "disabled-label": "#55555A",

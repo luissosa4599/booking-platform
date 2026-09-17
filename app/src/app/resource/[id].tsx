@@ -9,6 +9,7 @@ import {
   Pressable,
   Text,
   View,
+  type ViewStyle,
 } from "react-native";
 import Animated, { FadeOut } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -109,7 +110,7 @@ function buildDayBuckets(slots: AvailabilitySlot[]): DayBucket[] {
 
 export default function ResourceScreen() {
   const router = useRouter();
-  const { insets, heroExpanded, heroHeight, onScroll, contentMinHeight } =
+  const { insets, heroExpanded, heroHeight, onScroll, onRestContentLayout } =
     useCollapsingHero();
 
   // `name`/`location` are passed from the ExploreScreen row so the header
@@ -231,6 +232,9 @@ export default function ResourceScreen() {
   const showSlotSkeleton = useDelayedFlag(resourceQuery.isLoading, 150);
   const backIconColor = useColor("label-1");
   const mapPinColor = useColor("label-3");
+  // §4 point 3 — solid tint/on-tint for the active day pill.
+  const dayActiveBg = useColor("tint");
+  const dayActiveOnTint = useColor("on-tint");
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
@@ -359,6 +363,7 @@ export default function ResourceScreen() {
       disabled={!selectedSlot || offline}
       loading={createBooking.isPending}
       onPress={handleConfirm}
+      tabularLabel
     >
       {ctaLabel}
     </Button>
@@ -369,40 +374,40 @@ export default function ResourceScreen() {
       <View className="flex-1 bg-card">
         <RNAnimated.ScrollView
           contentContainerStyle={{
-            minHeight: contentMinHeight,
             paddingBottom: isWeb ? 24 : 140,
           }}
+          // `overflow-anchor: none` (web only) — Chrome's scroll-anchoring
+          // tries to auto-correct scroll position when off-screen content
+          // resizes, which actively fights the hero's own scroll-driven
+          // height animation and was a second, independent contributor to
+          // the reported rapid-scrollbar jitter alongside the
+          // now-fixed content-height shortfall (see useCollapsingHero.ts).
+          style={
+            isWeb ? ({ overflowAnchor: "none" } as unknown as ViewStyle) : undefined
+          }
           scrollEventThrottle={16}
           onScroll={onScroll}
         >
           {/* Collapsing hero — in-flow (first child), so a drag anywhere on it
               still scrolls the page and the carousel stays a nested horizontal
               pager. It shrinks from ~half the screen to its resting height over
-              the first `collapseDistance` px of scroll; `contentMinHeight`
-              keeps that from shuddering at the bottom. Edge-to-edge under the
-              status bar; only the back button is inset. The map is a separate
-              StaticMapCard at the bottom of the content, not a hero page. */}
+              the first `collapseDistance` px of scroll — `useCollapsingHero`
+              measures the real content below it and caps the collapse so it
+              never needs artificial empty space to stay jitter-free. Edge-to-
+              edge under the status bar; only the back button is inset. The map
+              is a separate StaticMapCard at the bottom of the content, not a
+              hero page. */}
           <RNAnimated.View style={{ height: heroHeight }}>
             <PhotoCarousel
               photos={resource?.photos ?? []}
               contentHeight={heroExpanded}
               fallbackUrl={heroStockImageUrl}
             />
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Volver"
-              style={{ position: "absolute", top: insets.top + 12, left: 16 }}
-              className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
-            >
-              <ArrowLeft size={17} color={backIconColor} />
-            </Pressable>
-            <View style={{ position: "absolute", top: insets.top + 12, right: 16 }}>
-              <HeartButton active={isFavorite} onToggle={handleToggleFavorite} />
-            </View>
           </RNAnimated.View>
 
+          {/* Measured so useCollapsingHero knows exactly how much real scroll
+              room this page has — see its own doc comment for why. */}
+          <View onLayout={onRestContentLayout}>
           <View className="gap-6 px-4 pt-6">
             <View className="gap-[6px]">
               <Text className="text-title-md text-label-1">{displayName}</Text>
@@ -464,21 +469,31 @@ export default function ResourceScreen() {
                         selected: isSelected,
                         disabled: !hasSlots,
                       }}
+                      // §4 point 3 — the active day is a solid tint/on-tint
+                      // pill, same treatment as the Reservas pills and
+                      // Explorar's category chips (not tint-wash/tint-press).
                       className={cn(
                         "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
-                        isSelected ? "bg-tint-wash" : "bg-fill",
+                        isSelected ? undefined : "bg-fill",
                         !hasSlots ? "opacity-40" : undefined,
                       )}
+                      style={{ backgroundColor: isSelected ? dayActiveBg : undefined }}
                     >
-                      <Text className="text-[13px] text-label-4">
+                      <Text
+                        className={isSelected ? undefined : "text-label-4"}
+                        style={{ fontSize: 13, color: isSelected ? dayActiveOnTint : undefined }}
+                      >
                         {day.label}
                       </Text>
                       <Text
                         className={cn(
                           "text-body-emph",
-                          isSelected ? "text-tint-press" : "text-label-1",
+                          isSelected ? undefined : "text-label-1",
                         )}
-                        style={{ fontVariant: ["tabular-nums"] }}
+                        style={{
+                          fontVariant: ["tabular-nums"],
+                          color: isSelected ? dayActiveOnTint : undefined,
+                        }}
                       >
                         {day.dayNumber}
                       </Text>
@@ -550,7 +565,9 @@ export default function ResourceScreen() {
                         key={slot.id}
                         title={title}
                         tabularTitle
-                        trailing="text"
+                        // §4 point 1 — same StatusBadge (compact) as
+                        // ResourceCard's availability chip, not loose text.
+                        trailing="badge"
                         trailingText={
                           wholeUnit
                             ? "Libre"
@@ -558,10 +575,8 @@ export default function ResourceScreen() {
                               ? "Último lugar"
                               : `${slot.capacityRemaining} lugares`
                         }
-                        trailingTone={
-                          !wholeUnit && slot.capacityRemaining === 1
-                            ? "last"
-                            : "default"
+                        badgeTone={
+                          !wholeUnit && slot.capacityRemaining === 1 ? "last" : "free"
                         }
                         selected={slot.id === selectedSlotId && eligible}
                         disabled={!eligible}
@@ -608,7 +623,30 @@ export default function ResourceScreen() {
               {ctaButton}
             </View>
           ) : null}
+          </View>
         </RNAnimated.ScrollView>
+
+        {/* Back + favorite live outside the scrolling/collapsing hero now —
+            siblings positioned relative to the screen, not the shrinking
+            RNAnimated.View — so they stay put at a constant on-screen spot
+            instead of drifting with the hero's height animation. Before
+            this, both moved together with the collapse, and on a short
+            resource (hero barely shrinks) could end up close enough to
+            PhotoCarousel's own vertically-centered prev/next arrows to
+            overlap/hide them (2026-09-15 report, screenshot). */}
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+          className="h-9 w-9 items-center justify-center rounded-full bg-card/90"
+        >
+          <ArrowLeft size={17} color={backIconColor} />
+        </Pressable>
+        <View style={{ position: "absolute", top: insets.top + 12, right: 16 }}>
+          <HeartButton active={isFavorite} onToggle={handleToggleFavorite} />
+        </View>
 
         {!isWeb ? (
           <View className="absolute inset-x-0 bottom-0 border-t border-hairline bg-card/94 px-4 pb-[34px] pt-3">

@@ -96,4 +96,48 @@ public class WaitlistTests(ApiTestFixture fixture)
         Assert.Equal(2, entry.Position);
         Assert.False(string.IsNullOrWhiteSpace(entry.ResourceName));
     }
+
+    [Fact]
+    public async Task DeleteWaitlist_Owner_RemovesEntry()
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
+
+        var client = fixture.CreateAuthenticatedClient("leaver");
+        var created = await client.PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
+        var entry = await created.Content.ReadFromJsonAsync<WaitlistEntryResponse>();
+
+        var deleteResponse = await client.DeleteAsync($"/waitlist/{entry!.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var list = await client.GetFromJsonAsync<List<WaitlistEntryDetailResponse>>("/waitlist");
+        Assert.Empty(list!);
+    }
+
+    [Fact]
+    public async Task DeleteWaitlist_NotOwner_Is404()
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
+        var slot = await TestData.CreateSlotAsync(db, capacityRemaining: 0);
+
+        var created = await fixture.CreateAuthenticatedClient("owner")
+            .PostAsJsonAsync("/waitlist", new { availabilitySlotId = slot.Id });
+        var entry = await created.Content.ReadFromJsonAsync<WaitlistEntryResponse>();
+
+        var response = await fixture.CreateAuthenticatedClient("someone-else")
+            .DeleteAsync($"/waitlist/{entry!.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteWaitlist_WithoutToken_Is401()
+    {
+        var response = await fixture.Factory.CreateClient()
+            .DeleteAsync($"/waitlist/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

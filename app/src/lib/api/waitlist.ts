@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "./client";
 import type { WaitlistEntry, WaitlistEntryDetail } from "./types";
@@ -27,5 +27,16 @@ export function useJoinWaitlist() {
         method: "POST",
         body: input,
       }),
+  });
+}
+
+// Reservas handoff (2026-09-15) — the EN ESPERA card's "Cancelar" action. A
+// waitlist entry never held capacity, so there's no undo-toast/5s-delay
+// dance like DELETE /bookings/{id} — it just leaves.
+export function useLeaveWaitlist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/waitlist/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["waitlist"] }),
   });
 }

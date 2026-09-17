@@ -24,7 +24,11 @@ test.describe("bookings — deferred cancel", () => {
       timeout: 15_000,
     });
 
+    // Reservas handoff (2026-09-15): "Cancelar" now opens a confirmation
+    // sheet first — the toast only appears once the sheet's own
+    // "Cancelar reserva" button is tapped.
     await page.getByRole("button", { name: /^Cancelar/ }).first().click();
+    await page.getByRole("button", { name: "Cancelar reserva", exact: true }).click();
     await expect(page.getByText("Reserva cancelada")).toBeVisible();
 
     await page.getByRole("button", { name: "Deshacer" }).click();
@@ -51,6 +55,7 @@ test.describe("bookings — deferred cancel", () => {
     });
 
     await page.getByRole("button", { name: /^Cancelar/ }).first().click();
+    await page.getByRole("button", { name: "Cancelar reserva", exact: true }).click();
     await expect(page.getByText("Reserva cancelada")).toBeVisible();
 
     // Don't touch it — the DELETE fires when the 5s toast auto-dismisses.

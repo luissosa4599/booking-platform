@@ -107,5 +107,35 @@ public static class WaitlistEndpoints
         .RequireAuthorization()
         .AddEndpointFilter<ValidationFilter<JoinWaitlistRequest>>()
         .WithName("JoinWaitlist");
+
+        // Reservas handoff (2026-09-15) — EN ESPERA cards get a "Cancelar"
+        // action. A waitlist entry never held capacity, so leaving one is
+        // just a delete, no restoration needed (unlike DELETE /bookings/{id}).
+        app.MapDelete("/waitlist/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            BookingEngineDbContext db,
+            ILogger<Program> logger) =>
+        {
+            var entry = await db.WaitlistEntries.FirstOrDefaultAsync(w => w.Id == id);
+
+            // Same "not yours looks like not found" convention as DELETE /bookings/{id}.
+            if (entry is null || entry.UserId != principal.UserId())
+            {
+                return Results.NotFound();
+            }
+
+            db.WaitlistEntries.Remove(entry);
+            await db.SaveChangesAsync();
+
+            logger.LogInformation(
+                "{UserId} left waitlist entry {EntryId}",
+                principal.UserId(),
+                id);
+
+            return Results.NoContent();
+        })
+        .RequireAuthorization()
+        .WithName("LeaveWaitlist");
     }
 }

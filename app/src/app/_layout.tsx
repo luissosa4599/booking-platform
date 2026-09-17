@@ -171,6 +171,10 @@ function GlobalToast() {
       actionLabel={actionLabel}
       onAction={() => {
         clear();
+        // 2026-09-15 report: force a reload right as "Ver" is tapped, not
+        // just trust whatever's already cached — Reservas should always
+        // reflect the booking that toast is literally about.
+        queryClient.invalidateQueries({ queryKey: ["bookings"] });
         router.navigate("/bookings");
       }}
       onDismiss={clear}

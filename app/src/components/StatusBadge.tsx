@@ -4,7 +4,7 @@ import type { ColorToken } from "@/lib/theme/palette";
 import { useColor } from "@/lib/theme/useColor";
 
 export type StatusTone = "free" | "last" | "waiting" | "error";
-export type StatusBadgeVariant = "inline" | "onPhoto" | "compact";
+export type StatusBadgeVariant = "inline" | "onPhoto" | "compact" | "solid";
 
 const TOKEN: Record<StatusTone, ColorToken> = {
   free: "state-free",
@@ -23,6 +23,10 @@ const TOKEN: Record<StatusTone, ColorToken> = {
 //   4.5:1 against an arbitrary image — solid `card` background instead.
 // - `compact`: the desktop row variant — smaller text/padding, keeps the wash
 //   fill (the row already sits on `card`, same contrast case as `inline`).
+// - `solid`: Reservas handoff §2.5c — the EN ESPERA section-header badge.
+//   Full-opacity tone background + `on-tint` text (the doc's literal pairing,
+//   not a per-tone-computed color), no dot — the approved screenshot shows a
+//   plain text pill here, not a dot+label like every other variant.
 export function StatusBadge({
   tone,
   label,
@@ -34,9 +38,29 @@ export function StatusBadge({
 }) {
   const color = useColor(TOKEN[tone]);
   const cardColor = useColor("card");
+  const onTintColor = useColor("on-tint");
 
   const onPhoto = variant === "onPhoto";
   const compact = variant === "compact";
+  const solid = variant === "solid";
+
+  if (solid) {
+    return (
+      <View
+        className="flex-row items-center self-start"
+        style={{
+          paddingVertical: 2,
+          paddingHorizontal: 7,
+          borderRadius: 9999,
+          backgroundColor: color,
+        }}
+      >
+        <Text style={{ color: onTintColor, fontSize: 11, fontWeight: "700" }} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View

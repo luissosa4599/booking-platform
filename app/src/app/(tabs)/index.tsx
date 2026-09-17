@@ -171,12 +171,17 @@ export default function ExploreScreen() {
       useNativeDriver: false,
     }).start();
   }, [greetingCollapsed, greetingCollapse, reduceMotion]);
+  // 2026-09-15 report: "en resoluciones no moviles que no se oculte al hacer
+  // slide, ahi si sobra espacio" — the collapse-on-scroll behavior only
+  // makes sense where vertical space is actually tight (phone). Wide
+  // viewports have room to spare, so the greeting just stays put there.
   const handleListScroll = useCallback(
     (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      if (isWide) return;
       const y = e.nativeEvent.contentOffset.y;
       setGreetingCollapsed((collapsed) => (collapsed ? y > 0 : y > 8));
     },
-    [],
+    [isWide],
   );
   // Coming back from map view should start expanded again — the ScrollView
   // resets to the top on remount, but this boolean lives on the screen
@@ -191,6 +196,17 @@ export default function ExploreScreen() {
   if (prevView !== view) {
     setPrevView(view);
     if (view === "list" && greetingCollapsed) {
+      setGreetingCollapsed(false);
+    }
+  }
+
+  // Resizing up from a narrow width where the greeting was already
+  // scroll-collapsed shouldn't leave it stuck collapsed once there's room
+  // to spare — same derived-state pattern as the `prevView` block above.
+  const [prevIsWide, setPrevIsWide] = useState(isWide);
+  if (prevIsWide !== isWide) {
+    setPrevIsWide(isWide);
+    if (isWide && greetingCollapsed) {
       setGreetingCollapsed(false);
     }
   }

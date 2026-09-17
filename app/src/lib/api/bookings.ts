@@ -40,6 +40,10 @@ export function useCreateBooking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["availability"] });
+      // The one-tap Explore flow's success toast links straight to Reservas
+      // ("Ver") — that list needs to already know about this booking by the
+      // time it lands there, not just eventually via its own staleTime.
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 

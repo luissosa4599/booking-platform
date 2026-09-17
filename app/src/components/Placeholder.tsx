@@ -26,7 +26,8 @@ interface PlaceholderProps {
   icon: ReactNode;
   title: string;
   body: string;
-  primaryAction: PlaceholderAction;
+  /** Optional — "Aún sin historial" (§2.7) has no useful action to offer. */
+  primaryAction?: PlaceholderAction;
   secondaryAction?: PlaceholderAction;
   /** For telemetry — not rendered. */
   reason: PlaceholderReason;
@@ -57,16 +58,20 @@ export function Placeholder({
         {body}
       </Text>
 
-      <View className="w-full gap-2 pt-[14px]">
-        <Button variant={PRIMARY_VARIANT} onPress={primaryAction.onPress}>
-          {primaryAction.label}
-        </Button>
-        {secondaryAction ? (
-          <Button variant={SECONDARY_VARIANT} onPress={secondaryAction.onPress}>
-            {secondaryAction.label}
-          </Button>
-        ) : null}
-      </View>
+      {primaryAction || secondaryAction ? (
+        <View className="w-full gap-2 pt-[14px]">
+          {primaryAction ? (
+            <Button variant={PRIMARY_VARIANT} onPress={primaryAction.onPress}>
+              {primaryAction.label}
+            </Button>
+          ) : null}
+          {secondaryAction ? (
+            <Button variant={SECONDARY_VARIANT} onPress={secondaryAction.onPress}>
+              {secondaryAction.label}
+            </Button>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }

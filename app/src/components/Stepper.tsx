@@ -72,15 +72,18 @@ export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperPro
 
   return (
     <View className="flex-row items-center gap-[2px] rounded-control bg-fill p-[2px]">
+      {/* §4 point 5 — bumped from 34px to the 44px touch-target floor (the
+          slot-list Row's own min-h-[56px] already cleared it; the stepper
+          didn't visually, even though hitSlop compensated). §4 point 2 —
+          radius bumped from rounded-control-inner (8) to rounded-button (14). */}
       <Pressable
         onPress={handleDecrement}
         disabled={!canDecrement}
         accessibilityRole="button"
         accessibilityLabel={decrementLabel}
         accessibilityState={{ disabled: !canDecrement }}
-        hitSlop={{ top: 5, bottom: 5 }}
         className={cn(
-          "h-[34px] w-11 items-center justify-center rounded-control-inner bg-card",
+          "h-11 w-11 items-center justify-center rounded-button bg-card",
           canDecrement ? "text-label-2" : "text-disabled-label",
         )}
       >
@@ -100,8 +103,7 @@ export function Stepper({ value, min = 1, max, onChange, unitLabel }: StepperPro
           accessibilityRole="button"
           accessibilityLabel={incrementLabel}
           accessibilityState={{ disabled: !canIncrement }}
-          hitSlop={{ top: 5, bottom: 5 }}
-          className="h-[34px] w-11 items-center justify-center rounded-control-inner bg-card text-label-2"
+          className="h-11 w-11 items-center justify-center rounded-button bg-card text-label-2"
         >
           <Plus size={19} color={glyphColor} />
         </Pressable>
