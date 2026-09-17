@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 
@@ -89,6 +89,12 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
   const c = palette(isDark ? "dark" : "light");
 
   const mapRef = useRef<MapView>(null);
+  // `fitToCoordinates` is silently dropped on Android if it's called before
+  // the native map surface has finished mounting — the ref exists the moment
+  // React commits, but the underlying GoogleMap isn't ready yet. Gate the fit
+  // effect on `onMapReady` too (found by an actual on-device/emulator pass,
+  // 2026-09-17 — the map rendered real tiles but never auto-framed the pins).
+  const [mapReady, setMapReady] = useState(false);
   // Set right before an imperative `fitToCoordinates` call, cleared by the
   // next `onRegionChangeComplete` — a one-shot flag so the min/max clamp only
   // ever corrects our own auto-fit, never a user's manual pinch/pan (mirrors
@@ -124,6 +130,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
     .join(",");
 
   useEffect(() => {
+    if (!mapReady) return;
     const current = placesRef.current;
     if (current.length === 0) return;
 
@@ -136,7 +143,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
       edgePadding: FIT_EDGE_PADDING,
       animated: true,
     });
-  }, [placesKey]);
+  }, [placesKey, mapReady]);
 
   function handleRegionChangeComplete(region: Region) {
     if (!pendingFitRef.current) return;
@@ -181,6 +188,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
           longitudeDelta: 0.2,
         }}
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
+        onMapReady={() => setMapReady(true)}
         onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation={false}
         showsMyLocationButton={false}
