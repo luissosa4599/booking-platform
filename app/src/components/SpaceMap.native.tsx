@@ -55,7 +55,24 @@ let lastRegion: Region | null = null;
 // reliably overshot `MAX_DELTA` and needed a second corrective
 // `animateToRegion`. Computing (and clamping) the region up front means the
 // map only ever animates once.
-function regionForCoords(coords: { latitude: number; longitude: number }[]): Region {
+//
+// **The "Golfo de México" bug (2026-09-18 report).** Clamping the *delta*
+// alone doesn't fix a bad *center* — `SpaceMap.web.tsx` hit this exact
+// problem first (2026-09-15, see its `FitToPlaces`): when the raw bounding
+// box needed to fit every pin is wider than the clamp allows, the naive
+// midpoint of the extremes (the geometric center of the bounding box) can
+// land in genuinely empty space between two distant clusters — open water,
+// in this dataset's case, since the seeded campuses span several Mexican
+// states. That fix was never ported here when this native map was built two
+// days later. Same port: when the pins are too spread out to fit inside
+// `MAX_DELTA`, recenter on the user's own position if known, else on
+// whichever real pin sits closest to that (otherwise-empty) midpoint —
+// never the midpoint itself.
+function regionForCoords(
+  coords: { latitude: number; longitude: number }[],
+  places: MapPlace[],
+  userPos: { lat: number; lng: number } | null,
+): Region {
   const lats = coords.map((c) => c.latitude);
   const lngs = coords.map((c) => c.longitude);
   const minLat = Math.min(...lats);
@@ -64,12 +81,40 @@ function regionForCoords(coords: { latitude: number; longitude: number }[]): Reg
   const maxLng = Math.max(...lngs);
   const rawLatDelta = (maxLat - minLat) * BOUNDS_PADDING_FACTOR;
   const rawLngDelta = (maxLng - minLng) * BOUNDS_PADDING_FACTOR;
+
+  let centerLat = (minLat + maxLat) / 2;
+  let centerLng = (minLng + maxLng) / 2;
+  if ((rawLatDelta > MAX_DELTA || rawLngDelta > MAX_DELTA) && places.length > 0) {
+    const recentered = userPos ?? nearestPlaceTo(places, { lat: centerLat, lng: centerLng });
+    centerLat = recentered.lat;
+    centerLng = recentered.lng;
+  }
+
   return {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLng + maxLng) / 2,
+    latitude: centerLat,
+    longitude: centerLng,
     latitudeDelta: Math.min(MAX_DELTA, Math.max(MIN_DELTA, rawLatDelta)),
     longitudeDelta: Math.min(MAX_DELTA, Math.max(MIN_DELTA, rawLngDelta)),
   };
+}
+
+function nearestPlaceTo(
+  places: MapPlace[],
+  center: { lat: number; lng: number },
+): { lat: number; lng: number } {
+  // Plain planar distance — fine for "which of these is visually closest to
+  // this point on a map", no need for haversine precision here. Mirrors
+  // `SpaceMap.web.tsx`'s helper of the same name.
+  let best = places[0]!;
+  let bestDist = Infinity;
+  for (const p of places) {
+    const d = (p.lat - center.lat) ** 2 + (p.lng - center.lng) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return { lat: best.lat, lng: best.lng };
 }
 
 // A commonly-published Google Maps "night mode" style (Google's own map
@@ -182,7 +227,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
     const userPos = userPositionRef.current;
     if (userPos) coords.push({ latitude: userPos.lat, longitude: userPos.lng });
 
-    mapRef.current?.animateToRegion(regionForCoords(coords), 600);
+    mapRef.current?.animateToRegion(regionForCoords(coords, current, userPos), 600);
     // `onRegionChangeComplete` below records the result into `lastRegion`.
   }, [placesKey, mapReady, shouldAutoFit]);
 
@@ -213,22 +258,32 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
         showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        {places.map((p) => (
-          <Marker
-            key={p.resourceId}
-            coordinate={{ latitude: p.lat, longitude: p.lng }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={p.resourceId === selectedId ? 20 : 1}
-            onPress={() => onSelect(p.resourceId)}
-            // Custom child views need this to re-snapshot on a style change
-            // (e.g. selected -> unselected) — with ~50 seeded resources at
-            // most in view, always-on tracking is fine; revisit if a real
-            // device pass shows jank with a much larger dataset.
-            tracksViewChanges
-          >
-            <NativeCircleMarker place={p} selected={p.resourceId === selectedId} colors={c} />
-          </Marker>
-        ))}
+        {places.map((p) => {
+          const selected = p.resourceId === selectedId;
+          return (
+            <Marker
+              // Keying on the selected flag forces React (and the native
+              // module) to remount the Marker — a fresh view, correctly
+              // snapshotted once — whenever a pin's selected state flips,
+              // instead of leaving `tracksViewChanges` permanently on for
+              // every pin (2026-09-18 report: "el mapa se esta tardando en
+              // abrir"). With ~50-55 seeded resources, continuously
+              // re-snapshotting every single marker's custom view on every
+              // frame — the old approach — is a well-documented
+              // react-native-maps performance trap; this way each marker is
+              // only ever snapshotted twice in its lifetime (mount, and
+              // whichever one remount its own selection change causes).
+              key={`${p.resourceId}-${selected}`}
+              coordinate={{ latitude: p.lat, longitude: p.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              zIndex={selected ? 20 : 1}
+              onPress={() => onSelect(p.resourceId)}
+              tracksViewChanges={false}
+            >
+              <NativeCircleMarker place={p} selected={selected} colors={c} />
+            </Marker>
+          );
+        })}
 
         {userPosition ? (
           <Marker

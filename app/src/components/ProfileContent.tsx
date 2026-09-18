@@ -17,6 +17,7 @@ import {
   useConnectCalendar,
   useDisconnectCalendar,
 } from "@/lib/api/calendar";
+import { ApiError } from "@/lib/api/client";
 import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
 import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
@@ -24,6 +25,7 @@ import { type IconProps, Calendar, LogOut } from "@/lib/icons";
 import { useIsWide } from "@/lib/useBreakpoint";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
+import { useToastStore } from "@/lib/toastStore";
 
 // The "Tú" screen body — shared by the guest tab (`(tabs)/profile`) and the
 // host tab (`(owner)/(tabs)/profile`). Identical on both sides; the "Modo
@@ -53,9 +55,26 @@ export function ProfileContent() {
   const calendarConnected = !!calendarStatus.data?.connected;
   const calendarBusy = connectCalendar.isPending || disconnectCalendar.isPending;
 
+  // 2026-09-19 report: "siempre se pide conectar... a pesar de ya estar
+  // conectado" — a failed connect attempt was entirely silent (no toast, no
+  // console output visible to the user), so a real failure (Google's
+  // "unverified app" interstitial for this sensitive scope, a rejected
+  // redirect, ...) looked identical to "nothing happened, I guess I have to
+  // try again" every single time. This doesn't fix whatever's actually
+  // failing server-side, but it stops hiding it — `grant === null` is a
+  // real cancellation (the user closed Google's screen) and stays silent;
+  // anything that throws past that point is a real failure and now says so.
   async function handleConnectCalendar() {
-    const grant = await calendarAuth.authorize();
-    if (grant) await connectCalendar.mutateAsync(grant);
+    try {
+      const grant = await calendarAuth.authorize();
+      if (!grant) return;
+      await connectCalendar.mutateAsync(grant);
+    } catch (err) {
+      const body = err instanceof ApiError ? (err.body as { message?: string } | null) : null;
+      useToastStore
+        .getState()
+        .show(body?.message ?? "No se pudo conectar con Google Calendar. Intenta de nuevo.");
+    }
   }
 
   async function handleConfirmDisconnect() {

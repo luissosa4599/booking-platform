@@ -66,7 +66,6 @@ import { useHasDetailPane, useIsWide } from "@/lib/useBreakpoint";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useDetailSelection } from "@/lib/useDetailSelection";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
-import { useReduceMotion } from "@/lib/useReduceMotion";
 import { useToastStore } from "@/lib/toastStore";
 
 // Redesign handoff §4 — the category-icon mapping, keyed by the resource
@@ -235,93 +234,56 @@ export default function ExploreScreen() {
   // search bar takes its place at the top (2026-09-14 report: "al comenzar
   // el slide se puede ocultar el header y que el search quede arriba"). Map
   // view already hides the greeting outright (see below) — this only ever
-  // runs against the list ScrollView. Legacy `Animated` (not Reanimated),
-  // same "this is what actually works on web" pattern as the resource
-  // detail hero's scroll-driven collapse (`lib/useCollapsingHero.ts`).
-  const reduceMotion = useReduceMotion();
-  const [greetingCollapsed, setGreetingCollapsed] = useState(false);
+  // runs against the list ScrollView.
+  //
+  // Driven directly by the scroll offset via `interpolate`, not a boolean
+  // "collapsed" state plus a separate timed animation — same pattern as the
+  // resource detail hero's collapse (`lib/useCollapsingHero.ts`). An earlier
+  // version latched a boolean once the scroll crossed a distance threshold
+  // and then played a fixed 200ms tween between two end states; that's what
+  // produced the "se ven 2 frames" report (2026-09-18) — the header only
+  // ever animated between fully-open and fully-closed, never in proportion
+  // to how far you'd actually scrolled, so it read as a snap, not a
+  // follow-the-finger motion. Interpolating straight from `scrollY` fixes
+  // both that and the original "puede quedar atorado" bug at once: there's
+  // no latch to get stuck in, so scrolling back up by any amount smoothly
+  // un-collapses it in direct proportion, from wherever it currently is.
+  // Legacy `Animated` (not Reanimated) + `useNativeDriver: false`, same "this
+  // is what actually works on web" story as everywhere else in this file.
+  const COLLAPSE_DISTANCE = 48;
   // Measured via onLayout, not hardcoded — the two-line "Hola, <name>" block
   // can run taller than the 44px avatar depending on font metrics. 44 is
   // just a sane pre-measurement fallback so there's no 0-height flash.
   const [greetingHeight, setGreetingHeight] = useState(44);
-  const greetingCollapse = useState(() => new RNAnimated.Value(0))[0];
-  useEffect(() => {
-    RNAnimated.timing(greetingCollapse, {
-      toValue: greetingCollapsed ? 1 : 0,
-      duration: reduceMotion ? 0 : 200,
-      useNativeDriver: false,
-    }).start();
-  }, [greetingCollapsed, greetingCollapse, reduceMotion]);
+  const [scrollY] = useState(() => new RNAnimated.Value(0));
+  const handleListScroll = RNAnimated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false },
+  );
   // 2026-09-15 report: "en resoluciones no moviles que no se oculte al hacer
   // slide, ahi si sobra espacio" — the collapse-on-scroll behavior only
   // makes sense where vertical space is actually tight (phone). Wide
-  // viewports have room to spare, so the greeting just stays put there.
+  // viewports have room to spare, so the greeting just stays put there (see
+  // the render below, which skips the interpolated style entirely on wide).
   //
-  // Direction-based, not position-based (2026-09-18 report: "si deslizas
-  // hacia arriba no se puede volver a mostrar"). The old logic only
-  // un-collapsed at `y <= 0` — the exact top of the list — so scrolling back
-  // up without landing precisely there left it stuck collapsed, which read as
-  // both "stuck" and (since the only way back was a hard snap at the top)
-  // "not fluid".
-  //
-  // Compares against an *anchor* offset (the `y` where the header last
-  // changed state), not the delta since the previous `onScroll` call — a
-  // real device pass (logcat, `adb shell input swipe`) showed `onScroll`
-  // arriving as a single coalesced event covering an entire gesture (or
-  // several back-to-back swipes) rather than one call per frame whenever the
-  // JS thread is at all busy, so "distance since the last event" is not a
-  // reliable signal: a fast flick can deliver just one event with a huge
-  // jump. Distance since the last *decision* still resolves correctly
-  // however many events it took to get there. A plain ref — read/written
-  // only inside this event handler, never during render, so it doesn't trip
-  // `react-hooks/refs`.
-  const scrollAnchorY = useRef(0);
-  const handleListScroll = useCallback(
-    (e: { nativeEvent: { contentOffset: { y: number } } }) => {
-      if (isWide) return;
-      const y = e.nativeEvent.contentOffset.y;
-      if (y <= 8) {
-        scrollAnchorY.current = y;
-        setGreetingCollapsed(false);
-        return;
-      }
-      const diff = y - scrollAnchorY.current;
-      if (diff > 24) {
-        scrollAnchorY.current = y;
-        setGreetingCollapsed(true);
-      } else if (diff < -24) {
-        scrollAnchorY.current = y;
-        setGreetingCollapsed(false);
-      }
-    },
-    [isWide],
-  );
-  // Coming back from map view should start expanded again — the ScrollView
-  // resets to the top on remount, but this boolean lives on the screen
-  // component itself and would otherwise stay stuck collapsed from before
-  // the switch. "Adjusting state when a prop changes" via a state-based
-  // previous-value comparison during render, not `useEffect` (trips
-  // `react-hooks/set-state-in-effect`) and not a ref (`react-hooks/refs`
-  // forbids reading/writing `.current` during render in this project) —
-  // same derived-state-from-a-changed-value pattern `ConflictSheet` already
-  // uses for its own retained value.
+  // Coming back from map view (or resizing up from a narrow width) should
+  // start expanded again — the ScrollView resets to the top on remount, but
+  // `scrollY` lives on the screen component itself and would otherwise stay
+  // wherever it was left. Reset via a plain `setValue` call — an
+  // `Animated.Value` mutation, not React state, so doing this straight
+  // during render (a state-based previous-value comparison, same
+  // derived-from-a-changed-value pattern `ConflictSheet` uses) doesn't trip
+  // `react-hooks/set-state-in-effect` the way resetting real state here
+  // would have.
   const [prevView, setPrevView] = useState(view);
   if (prevView !== view) {
     setPrevView(view);
-    if (view === "list" && greetingCollapsed) {
-      setGreetingCollapsed(false);
-    }
+    if (view === "list") scrollY.setValue(0);
   }
-
-  // Resizing up from a narrow width where the greeting was already
-  // scroll-collapsed shouldn't leave it stuck collapsed once there's room
-  // to spare — same derived-state pattern as the `prevView` block above.
   const [prevIsWide, setPrevIsWide] = useState(isWide);
   if (prevIsWide !== isWide) {
     setPrevIsWide(isWide);
-    if (isWide && greetingCollapsed) {
-      setGreetingCollapsed(false);
-    }
+    if (isWide) scrollY.setValue(0);
   }
 
   // Captured once per mount — a slight drift against a live clock over a long
@@ -744,21 +706,36 @@ export default function ExploreScreen() {
             view it instead collapses as soon as scrolling starts, so the
             search bar takes its place at the top (2026-09-14 report: "al
             comenzar el slide se puede ocultar el header y que el search
-            quede arriba") — height/opacity/margin all animate together via
-            `greetingCollapse`, and the real height is measured via
-            `onLayout` rather than guessed, since the two-line name block
-            can run taller than the 44px avatar depending on font metrics. */}
+            quede arriba") — height/opacity/margin interpolate straight from
+            `scrollY` (see above for why, not a boolean latch), and the real
+            height is measured via `onLayout` rather than guessed, since the
+            two-line name block can run taller than the 44px avatar depending
+            on font metrics. No animated style at all on wide — the collapse
+            doesn't apply there, so it just renders at its natural size. */}
         {view !== "map" ? (
           <RNAnimated.View
-            style={{
-              opacity: greetingCollapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-              height: greetingCollapse.interpolate({
-                inputRange: [0, 1],
-                outputRange: [greetingHeight, 0],
-              }),
-              marginBottom: greetingCollapse.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
-              overflow: "hidden",
-            }}
+            style={
+              isWide
+                ? undefined
+                : {
+                    opacity: scrollY.interpolate({
+                      inputRange: [0, COLLAPSE_DISTANCE],
+                      outputRange: [1, 0],
+                      extrapolate: "clamp",
+                    }),
+                    height: scrollY.interpolate({
+                      inputRange: [0, COLLAPSE_DISTANCE],
+                      outputRange: [greetingHeight, 0],
+                      extrapolate: "clamp",
+                    }),
+                    marginBottom: scrollY.interpolate({
+                      inputRange: [0, COLLAPSE_DISTANCE],
+                      outputRange: [16, 0],
+                      extrapolate: "clamp",
+                    }),
+                    overflow: "hidden",
+                  }
+            }
           >
             <View
               // Guard against a 0 measurement (2026-09-18 defensive fix) — this
@@ -767,9 +744,9 @@ export default function ExploreScreen() {
               // stray layout pass ever reported this child's height as 0 too,
               // it would corrupt `greetingHeight` itself (the *expanded*
               // target the interpolation animates back out to), permanently
-              // stuck at 0 regardless of `greetingCollapsed` flipping back to
-              // false. A real measurement is never 0, so this can only reject
-              // bad data, never a legitimate resize.
+              // stuck at 0 regardless of how far back up the list scrolls. A
+              // real measurement is never 0, so this can only reject bad
+              // data, never a legitimate resize.
               onLayout={(e) => {
                 const h = e.nativeEvent.layout.height;
                 if (h > 0) setGreetingHeight(h);
