@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
+import { DirectionsButton } from "@/components/DirectionsButton";
 import { HeartButton } from "@/components/HeartButton";
 import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
 import { cn } from "@/lib/cn";
@@ -28,6 +29,11 @@ export interface ResourceCardProps {
    * `dedupeByResource` in `(tabs)/index.tsx`). Renders nothing when 0. */
   extraSlotsCount?: number;
   distanceLabel?: string | null;
+  /** Present only when the resource has real coordinates — gates the
+   * "Cómo llegar" button (2026-09-19 report), same guard `StaticMapCard`
+   * already uses on the detail screen. */
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onBook: () => void;
@@ -68,6 +74,8 @@ function StackedCard({
   timeLabel,
   extraSlotsCount,
   distanceLabel,
+  locationLatitude,
+  locationLongitude,
   isFavorite,
   onToggleFavorite,
   onBook,
@@ -125,15 +133,20 @@ function StackedCard({
               </Text>
             ) : null}
           </View>
-          <Button
-            variant="pill"
-            tone="filled"
-            loading={bookLoading}
-            onPress={onBook}
-            accessibilityLabel={actionAccessibilityLabel ?? actionLabel}
-          >
-            {actionLabel}
-          </Button>
+          <View className="flex-row items-center gap-2">
+            {locationLatitude != null && locationLongitude != null ? (
+              <DirectionsButton coords={{ lat: locationLatitude, lng: locationLongitude }} />
+            ) : null}
+            <Button
+              variant="pill"
+              tone="filled"
+              loading={bookLoading}
+              onPress={onBook}
+              accessibilityLabel={actionAccessibilityLabel ?? actionLabel}
+            >
+              {actionLabel}
+            </Button>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -150,6 +163,8 @@ function RowCard({
   timeLabel,
   extraSlotsCount,
   distanceLabel,
+  locationLatitude,
+  locationLongitude,
   isFavorite,
   onToggleFavorite,
   onBook,
@@ -220,7 +235,12 @@ function RowCard({
       </View>
 
       <View className="items-end gap-2.5">
-        <HeartButton variant="inline" active={isFavorite} onToggle={onToggleFavorite} />
+        <View className="flex-row items-center gap-1.5">
+          {locationLatitude != null && locationLongitude != null ? (
+            <DirectionsButton coords={{ lat: locationLatitude, lng: locationLongitude }} />
+          ) : null}
+          <HeartButton variant="inline" active={isFavorite} onToggle={onToggleFavorite} />
+        </View>
         <Button
           variant="pill"
           tone="wash"

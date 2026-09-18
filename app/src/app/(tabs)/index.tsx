@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Animated as RNAnimated,
   BackHandler,
+  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -159,6 +160,35 @@ export default function ExploreScreen() {
     haptics.selection();
     setView(next);
   }, []);
+  // Tearing down the native SpaceMap (the real Google Maps SDK view on
+  // Android) is expensive enough that doing it in the same commit as the
+  // switch back to list view blocked the main thread for 3-4s with zero
+  // visual feedback (2026-09-19 report: "al hacer back se tarda... sin
+  // notificacion visual de trabajando"). `mapMounted` lags one tick behind
+  // `view` on the way OUT of map view: the list mounts and paints
+  // immediately (its data is already cached, so that commit is cheap), the
+  // old map just goes invisible/non-interactive in place, and the actual
+  // unmount — the slow part — happens after via `InteractionManager`, once
+  // the list is already on screen. Going INTO map view stays synchronous
+  // (no reason to delay that one), so first-open timing is unaffected.
+  // `runAfterInteractions` doesn't actually defer on web (fires immediately)
+  // — harmless here, since web's map (the Maps JS API) doesn't have this
+  // expensive-native-teardown problem to begin with.
+  const [mapMounted, setMapMounted] = useState(false);
+  // Mounting is the cheap direction — done as a derived-state comparison
+  // during render (same "compare against the previous value" pattern
+  // `ConflictSheet` uses), not an effect, so it takes effect in the same
+  // commit as `view` itself instead of trailing it by a frame.
+  const [prevMapView, setPrevMapView] = useState(view);
+  if (prevMapView !== view) {
+    setPrevMapView(view);
+    if (view === "map") setMapMounted(true);
+  }
+  useEffect(() => {
+    if (view === "map") return;
+    const task = InteractionManager.runAfterInteractions(() => setMapMounted(false));
+    return () => task.cancel();
+  }, [view]);
   // Android hardware back button (2026-09-18 report). Two things, both
   // Android-only (iOS has no hardware/software back button this API
   // intercepts): from map view, back should return to the list rather than
@@ -229,62 +259,6 @@ export default function ExploreScreen() {
 
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
   const searchIconColor = useColor("label-4");
-
-  // Collapses the greeting row as soon as the list starts scrolling, so the
-  // search bar takes its place at the top (2026-09-14 report: "al comenzar
-  // el slide se puede ocultar el header y que el search quede arriba"). Map
-  // view already hides the greeting outright (see below) — this only ever
-  // runs against the list ScrollView.
-  //
-  // Driven directly by the scroll offset via `interpolate`, not a boolean
-  // "collapsed" state plus a separate timed animation — same pattern as the
-  // resource detail hero's collapse (`lib/useCollapsingHero.ts`). An earlier
-  // version latched a boolean once the scroll crossed a distance threshold
-  // and then played a fixed 200ms tween between two end states; that's what
-  // produced the "se ven 2 frames" report (2026-09-18) — the header only
-  // ever animated between fully-open and fully-closed, never in proportion
-  // to how far you'd actually scrolled, so it read as a snap, not a
-  // follow-the-finger motion. Interpolating straight from `scrollY` fixes
-  // both that and the original "puede quedar atorado" bug at once: there's
-  // no latch to get stuck in, so scrolling back up by any amount smoothly
-  // un-collapses it in direct proportion, from wherever it currently is.
-  // Legacy `Animated` (not Reanimated) + `useNativeDriver: false`, same "this
-  // is what actually works on web" story as everywhere else in this file.
-  const COLLAPSE_DISTANCE = 48;
-  // Measured via onLayout, not hardcoded — the two-line "Hola, <name>" block
-  // can run taller than the 44px avatar depending on font metrics. 44 is
-  // just a sane pre-measurement fallback so there's no 0-height flash.
-  const [greetingHeight, setGreetingHeight] = useState(44);
-  const [scrollY] = useState(() => new RNAnimated.Value(0));
-  const handleListScroll = RNAnimated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false },
-  );
-  // 2026-09-15 report: "en resoluciones no moviles que no se oculte al hacer
-  // slide, ahi si sobra espacio" — the collapse-on-scroll behavior only
-  // makes sense where vertical space is actually tight (phone). Wide
-  // viewports have room to spare, so the greeting just stays put there (see
-  // the render below, which skips the interpolated style entirely on wide).
-  //
-  // Coming back from map view (or resizing up from a narrow width) should
-  // start expanded again — the ScrollView resets to the top on remount, but
-  // `scrollY` lives on the screen component itself and would otherwise stay
-  // wherever it was left. Reset via a plain `setValue` call — an
-  // `Animated.Value` mutation, not React state, so doing this straight
-  // during render (a state-based previous-value comparison, same
-  // derived-from-a-changed-value pattern `ConflictSheet` uses) doesn't trip
-  // `react-hooks/set-state-in-effect` the way resetting real state here
-  // would have.
-  const [prevView, setPrevView] = useState(view);
-  if (prevView !== view) {
-    setPrevView(view);
-    if (view === "list") scrollY.setValue(0);
-  }
-  const [prevIsWide, setPrevIsWide] = useState(isWide);
-  if (prevIsWide !== isWide) {
-    setPrevIsWide(isWide);
-    if (isWide) scrollY.setValue(0);
-  }
 
   // Captured once per mount — a slight drift against a live clock over a long
   // session is fine, the query itself refetches every 60s regardless.
@@ -702,89 +676,47 @@ export default function ExploreScreen() {
       <View className="px-4 pb-4 pt-3">
         {/* Redesign handoff §"Mapa · teléfono" (2026-09-14 report: "el header
             de hola se esconde") — the greeting gives up its vertical space to
-            the map entirely, not a scroll-driven collapse there. In list
-            view it instead collapses as soon as scrolling starts, so the
-            search bar takes its place at the top (2026-09-14 report: "al
-            comenzar el slide se puede ocultar el header y que el search
-            quede arriba") — height/opacity/margin interpolate straight from
-            `scrollY` (see above for why, not a boolean latch), and the real
-            height is measured via `onLayout` rather than guessed, since the
-            two-line name block can run taller than the 44px avatar depending
-            on font metrics. No animated style at all on wide — the collapse
-            doesn't apply there, so it just renders at its natural size. */}
+            the map entirely. It used to also collapse on scroll in list view
+            (2026-09-14 report), but two rounds of tuning that animation
+            (a boolean latch, then a scroll-linked interpolation) still read
+            as "tieso"/mechanical (2026-09-19 report) — animating `height` is
+            a layout prop, off the native driver no matter how it's driven,
+            so there was no more headroom to make it feel fluid. Removed
+            rather than tuned a third time; the greeting just renders at its
+            natural size now, same as it always has on wide viewports. */}
         {view !== "map" ? (
-          <RNAnimated.View
-            style={
-              isWide
-                ? undefined
-                : {
-                    opacity: scrollY.interpolate({
-                      inputRange: [0, COLLAPSE_DISTANCE],
-                      outputRange: [1, 0],
-                      extrapolate: "clamp",
-                    }),
-                    height: scrollY.interpolate({
-                      inputRange: [0, COLLAPSE_DISTANCE],
-                      outputRange: [greetingHeight, 0],
-                      extrapolate: "clamp",
-                    }),
-                    marginBottom: scrollY.interpolate({
-                      inputRange: [0, COLLAPSE_DISTANCE],
-                      outputRange: [16, 0],
-                      extrapolate: "clamp",
-                    }),
-                    overflow: "hidden",
-                  }
-            }
-          >
-            <View
-              // Guard against a 0 measurement (2026-09-18 defensive fix) — this
-              // inner view sits inside the outer `RNAnimated.View` whose own
-              // `height` is being animated down to 0 while collapsed; if a
-              // stray layout pass ever reported this child's height as 0 too,
-              // it would corrupt `greetingHeight` itself (the *expanded*
-              // target the interpolation animates back out to), permanently
-              // stuck at 0 regardless of how far back up the list scrolls. A
-              // real measurement is never 0, so this can only reject bad
-              // data, never a legitimate resize.
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                if (h > 0) setGreetingHeight(h);
-              }}
-              className="flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center gap-3">
-                <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
-                <View>
-                  <Text className="text-body-emph text-label-3">Hola,</Text>
-                  <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
-                </View>
-              </View>
-              <View className="flex-row items-center gap-1.5">
-                <NotificationBell
-                  unreadCount={unreadNotificationCount}
-                  onPress={() => {
-                    haptics.selection();
-                    router.push("/notifications");
-                  }}
-                />
-                <RefreshButton
-                  onPress={() => availabilityQuery.refetch()}
-                  refreshing={isRefreshing}
-                />
-                {/* No idle-state date/time here on purpose (2026-09-15
-                    report: "la hora en el header no tiene mucho sentido, ya
-                    que la barra del sistema con la hora esta al lado") —
-                    only real transient status, which the system clock can't
-                    show. */}
-                {locating || isRefreshing ? (
-                  <Text className="text-footnote text-label-3">
-                    {locating ? "Ubicando…" : "Actualizando…"}
-                  </Text>
-                ) : null}
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center gap-3">
+              <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
+              <View>
+                <Text className="text-body-emph text-label-3">Hola,</Text>
+                <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
               </View>
             </View>
-          </RNAnimated.View>
+            <View className="flex-row items-center gap-1.5">
+              <NotificationBell
+                unreadCount={unreadNotificationCount}
+                onPress={() => {
+                  haptics.selection();
+                  router.push("/notifications");
+                }}
+              />
+              <RefreshButton
+                onPress={() => availabilityQuery.refetch()}
+                refreshing={isRefreshing}
+              />
+              {/* No idle-state date/time here on purpose (2026-09-15
+                  report: "la hora en el header no tiene mucho sentido, ya
+                  que la barra del sistema con la hora esta al lado") —
+                  only real transient status, which the system clock can't
+                  show. */}
+              {locating || isRefreshing ? (
+                <Text className="text-footnote text-label-3">
+                  {locating ? "Ubicando…" : "Actualizando…"}
+                </Text>
+              ) : null}
+            </View>
+          </View>
         ) : null}
 
         <View className="gap-4">
@@ -938,15 +870,7 @@ export default function ExploreScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-      {view === "map" && mapAvailable ? (
-        <SpaceMap
-          places={mapPlaces}
-          selectedId={selectedMapId}
-          onSelect={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
-          onAction={openResourceFromMap}
-          userPosition={livePos}
-        />
-      ) : (
+      {view !== "map" ? (
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -954,8 +878,6 @@ export default function ExploreScreen() {
           paddingHorizontal: 16,
           paddingBottom: isWide ? 16 : 96,
         }}
-        onScroll={handleListScroll}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1007,6 +929,8 @@ export default function ExploreScreen() {
                         timeLabel={timeWindowFor(slot, false)}
                         extraSlotsCount={extraCount}
                         distanceLabel={slotDistance(slot)}
+                        locationLatitude={slot.locationLatitude}
+                        locationLongitude={slot.locationLongitude}
                         isFavorite={favoriteIds.has(slot.resourceId)}
                         onToggleFavorite={() => handleToggleFavorite(slot)}
                         onBook={() => handleBook(slot)}
@@ -1043,6 +967,8 @@ export default function ExploreScreen() {
                       timeLabel={timeWindowFor(slot, true)}
                       extraSlotsCount={extraCount}
                       distanceLabel={slotDistance(slot)}
+                      locationLatitude={slot.locationLatitude}
+                      locationLongitude={slot.locationLongitude}
                       isFavorite={favoriteIds.has(slot.resourceId)}
                       onToggleFavorite={() => handleToggleFavorite(slot)}
                       onBook={() => handleBook(slot)}
@@ -1077,7 +1003,26 @@ export default function ExploreScreen() {
           ) : null}
         </View>
       </ScrollView>
-      )}
+      ) : null}
+
+      {mapAvailable && mapMounted ? (
+        // Absolutely positioned over the list rather than a ternary sibling —
+        // see the `mapMounted` effect above for why: it needs to keep existing
+        // (just invisible/non-interactive) for one tick after `view` leaves
+        // "map" so its own unmount doesn't block the list's first paint.
+        <View
+          pointerEvents={view === "map" ? "auto" : "none"}
+          style={[StyleSheet.absoluteFill, { opacity: view === "map" ? 1 : 0 }]}
+        >
+          <SpaceMap
+            places={mapPlaces}
+            selectedId={selectedMapId}
+            onSelect={(id) => setSelectedMapId((cur) => (cur === id ? null : id))}
+            onAction={openResourceFromMap}
+            userPosition={livePos}
+          />
+        </View>
+      ) : null}
 
       {!isWide && mapAvailable ? (
         <MapListFab

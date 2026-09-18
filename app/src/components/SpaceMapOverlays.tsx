@@ -1,7 +1,9 @@
 import { Image, Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
-import { SELECTED_CARD_BOTTOM, type MapPlace } from "./SpaceMap.types";
+import { LocateFixed } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
+import { MAP_TOGGLE_BOTTOM, SELECTED_CARD_BOTTOM, type MapPlace } from "./SpaceMap.types";
 
 /**
  * Shared between `SpaceMap.web.tsx` and `SpaceMap.native.tsx` — plain RN
@@ -67,6 +69,46 @@ export function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onActi
         </Button>
       </Pressable>
     </View>
+  );
+}
+
+/**
+ * Standard bottom-right "center on my location" map control (2026-09-19
+ * report). Sits at the same height as the Lista/Mapa toggle (`MAP_TOGGLE_BOTTOM`)
+ * but off to the side, so it never collides with it (the toggle is
+ * horizontally centered with room to spare on both sides). When a place *is*
+ * selected, `SelectedPlaceCard` sits higher up (`SELECTED_CARD_BOTTOM`) and
+ * spans the full width — outside this button's vertical range entirely, so
+ * the two never overlap either. Only rendered by the caller when the
+ * device's position is known; there's nothing useful to center on otherwise.
+ */
+export function CenterOnMeButton({ onPress }: { onPress: () => void }) {
+  const iconColor = useColor("label-1");
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Centrar en mi ubicación"
+      style={{
+        position: "absolute",
+        right: 16,
+        bottom: MAP_TOGGLE_BOTTOM,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#0B0B0C",
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 5,
+      }}
+      className="bg-card"
+    >
+      <LocateFixed size={20} strokeWidth={2} color={iconColor} />
+    </Pressable>
   );
 }
 

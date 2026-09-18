@@ -5,7 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps
 import { useColorScheme } from "nativewind";
 
 import { palette } from "@/lib/theme/palette";
-import { EmptyPlacesNotice, SelectedPlaceCard } from "./SpaceMapOverlays";
+import { CenterOnMeButton, EmptyPlacesNotice, SelectedPlaceCard } from "./SpaceMapOverlays";
 import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
 
 /**
@@ -244,6 +244,19 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
 
   const selected = places.find((p) => p.resourceId === selectedId) ?? null;
 
+  function centerOnMe() {
+    if (!userPosition) return;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: userPosition.lat,
+        longitude: userPosition.lng,
+        latitudeDelta: MIN_DELTA,
+        longitudeDelta: MIN_DELTA,
+      },
+      500,
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <MapView
@@ -300,6 +313,8 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
       {selected ? (
         <SelectedPlaceCard place={selected} onAction={() => onAction(selected.resourceId)} />
       ) : null}
+
+      {userPosition ? <CenterOnMeButton onPress={centerOnMe} /> : null}
 
       {places.length === 0 ? <EmptyPlacesNotice /> : null}
     </View>

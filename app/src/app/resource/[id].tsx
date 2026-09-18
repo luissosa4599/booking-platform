@@ -475,7 +475,6 @@ export default function ResourceScreen() {
                       className={cn(
                         "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
                         isSelected ? undefined : "bg-fill",
-                        !hasSlots ? "opacity-40" : undefined,
                       )}
                       style={{ backgroundColor: isSelected ? dayActiveBg : undefined }}
                     >
@@ -488,7 +487,14 @@ export default function ResourceScreen() {
                       <Text
                         className={cn(
                           "text-body-emph",
-                          isSelected ? undefined : "text-label-1",
+                          // A "sin horarios" day used to dim via opacity-40 on
+                          // top of the normal label-1 number — on dark canvas
+                          // that opacity crush landed at ~1.9:1 contrast
+                          // against the pill's own bg-fill, unreadable
+                          // (2026-09-19 report, screenshot). label-3 alone
+                          // (no opacity) reads clearly muted vs. label-1 while
+                          // staying ~5:1 — legible in both themes.
+                          isSelected ? undefined : !hasSlots ? "text-label-3" : "text-label-1",
                         )}
                         style={{
                           fontVariant: ["tabular-nums"],

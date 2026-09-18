@@ -24,11 +24,13 @@ import {
   Heart as LHeart,
   Home as LHome,
   List as LList,
+  LocateFixed as LLocateFixed,
   LogOut as LLogOut,
   Map as LMap,
   MapPin as LMapPin,
   Minus as LMinus,
   Moon as LMoon,
+  Navigation as LNavigation,
   PanelBottom as LPanelBottom,
   Plus as LPlus,
   Presentation as LPresentation,
@@ -87,11 +89,13 @@ export const EyeOff = typed(LEyeOff);
 export const Heart = typed(LHeart);
 export const Home = typed(LHome);
 export const List = typed(LList);
+export const LocateFixed = typed(LLocateFixed);
 export const LogOut = typed(LLogOut);
 export const Map = typed(LMap);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
 export const Moon = typed(LMoon);
+export const Navigation = typed(LNavigation);
 export const PanelBottom = typed(LPanelBottom);
 export const Plus = typed(LPlus);
 export const Presentation = typed(LPresentation);

@@ -5,7 +5,7 @@
 // global compiler config for one file's use of the raw Maps JS API.
 /// <reference types="google.maps" />
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { View } from "react-native";
 import {
   AdvancedMarker,
@@ -19,7 +19,7 @@ import { useColorScheme } from "nativewind";
 
 import { GOOGLE_MAPS_STATIC_KEY } from "@/lib/config";
 import { palette } from "@/lib/theme/palette";
-import { EmptyPlacesNotice, SelectedPlaceCard } from "./SpaceMapOverlays";
+import { CenterOnMeButton, EmptyPlacesNotice, SelectedPlaceCard } from "./SpaceMapOverlays";
 import type { MapPlace, SpaceMapProps } from "./SpaceMap.types";
 
 /**
@@ -80,6 +80,7 @@ export function SpaceMap({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const c = palette(isDark ? "dark" : "light");
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
 
   const center = useMemo(() => {
     if (userPosition) return userPosition;
@@ -90,6 +91,12 @@ export function SpaceMap({
   }, [places, userPosition]);
 
   const selected = places.find((p) => p.resourceId === selectedId) ?? null;
+
+  function centerOnMe() {
+    if (!userPosition || !mapInstanceRef.current) return;
+    mapInstanceRef.current.panTo(userPosition);
+    mapInstanceRef.current.setZoom(15);
+  }
 
   if (!GOOGLE_MAPS_STATIC_KEY) {
     return (
@@ -113,6 +120,7 @@ export function SpaceMap({
           style={{ width: "100%", height: "100%" }}
         >
           <FitToPlaces places={places} userPosition={userPosition} />
+          <MapInstanceCapture mapRef={mapInstanceRef} />
 
           {places.map((p) => (
             <CircleMarker
@@ -144,6 +152,8 @@ export function SpaceMap({
       {selected ? (
         <SelectedPlaceCard place={selected} onAction={() => onAction(selected.resourceId)} />
       ) : null}
+
+      {userPosition ? <CenterOnMeButton onPress={centerOnMe} /> : null}
 
       {/* 2026-09-15 report: "manejar el caso de que no haya pines activos" —
           no silent empty map. */}
@@ -233,6 +243,19 @@ function FitToPlaces({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, placesKey]);
 
+  return null;
+}
+
+// Purely imperative — grabs the live `google.maps.Map` instance into a ref
+// owned by the parent so the "center on me" button (rendered *outside*
+// `<GoogleMap>`, alongside `SelectedPlaceCard`) can drive it directly. Same
+// "a plain child of `<Map>` can call `useMap()`" trick `FitToPlaces` already
+// relies on — this one just exposes the instance instead of acting on it.
+function MapInstanceCapture({ mapRef }: { mapRef: MutableRefObject<google.maps.Map | null> }) {
+  const map = useMap();
+  useEffect(() => {
+    mapRef.current = map ?? null;
+  }, [map, mapRef]);
   return null;
 }
 

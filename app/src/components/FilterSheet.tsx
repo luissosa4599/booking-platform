@@ -134,15 +134,17 @@ export function FilterSheet({
         </View>
 
         <View style={{ gap: 12 }}>
+          {/* Dimming via opacity-40 on top of label-1/label-3 used to crush to
+              near-invisible on dark canvas (2026-09-19 report, same class of
+              bug as resource/[id].tsx's disabled day pills) — a direct swap
+              to a more muted label tier (no opacity) instead, so "disabled"
+              stays legible in both themes. */}
           <View className="flex-row items-center justify-between">
-            <Text className={cn("text-body-emph text-label-1", !locationAvailable ? "opacity-40" : undefined)}>
+            <Text className={!locationAvailable ? "text-body-emph text-label-4" : "text-body-emph text-label-1"}>
               Distancia
             </Text>
             <Text
-              className={cn(
-                "text-body-emph text-label-1",
-                !locationAvailable ? "opacity-40" : undefined,
-              )}
+              className={!locationAvailable ? "text-body-emph text-label-4" : "text-body-emph text-label-1"}
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {draftMaxDistanceKm != null ? `${draftMaxDistanceKm} km` : "Cualquiera"}
@@ -160,9 +162,7 @@ export function FilterSheet({
             accessibilityLabel="Distancia máxima"
           />
           <View className="flex-row items-center justify-between">
-            <Text
-              className={cn("text-footnote text-label-3", !locationAvailable ? "opacity-40" : undefined)}
-            >
+            <Text className={cn("text-footnote", !locationAvailable ? "text-label-4" : "text-label-3")}>
               {MIN_DISTANCE_KM} km
             </Text>
             {draftMaxDistanceKm != null ? (
@@ -172,9 +172,7 @@ export function FilterSheet({
                 </Text>
               </Pressable>
             ) : null}
-            <Text
-              className={cn("text-footnote text-label-3", !locationAvailable ? "opacity-40" : undefined)}
-            >
+            <Text className={cn("text-footnote", !locationAvailable ? "text-label-4" : "text-label-3")}>
               {MAX_DISTANCE_KM} km
             </Text>
           </View>
