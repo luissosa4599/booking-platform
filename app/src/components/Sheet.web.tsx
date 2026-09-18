@@ -26,7 +26,7 @@ const TRANSITION_MS = 300;
 // Reanimated) driven straight through `useFadeTransition` — see that file
 // for why: Reanimated's web backend and Tailwind's `transition-*` utilities
 // both turned out not to work for this, independently, in this project.
-export function Sheet({ isOpen, onClose, children }: SheetProps) {
+export function Sheet({ isOpen, onClose, children, maxWidth }: SheetProps) {
   const { mounted, opacity } = useFadeTransition(isOpen, TRANSITION_MS);
   // `useColor`, not the `bg-sheet` class — that class silently generated no
   // rule at all (confirmed via getComputedStyle: transparent background),
@@ -52,8 +52,8 @@ export function Sheet({ isOpen, onClose, children }: SheetProps) {
           onPress={onClose}
         >
           <Animated.View
-            style={{ transform: [{ scale }] }}
-            className="w-full max-w-md"
+            style={{ transform: [{ scale }], maxWidth: maxWidth ?? 448 }}
+            className="w-full"
           >
             {/* Capped height + internal scroll — without this, a sheet with
                 tall content (many conflict alternatives, a big QR pass) filled

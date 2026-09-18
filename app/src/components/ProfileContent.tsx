@@ -10,6 +10,7 @@ import { ProfileHeader } from "@/components/ProfileHeader";
 import { Row } from "@/components/Row";
 import { Sheet } from "@/components/Sheet";
 import { StatTile } from "@/components/StatTile";
+import { ThemeControl } from "@/components/ThemeControl";
 import { Toggle } from "@/components/Toggle";
 import {
   useCalendarStatus,
@@ -18,13 +19,11 @@ import {
 } from "@/lib/api/calendar";
 import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
-import { useOwnerSpaces } from "@/lib/api/owner";
 import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
-import { type IconProps, Calendar, LogOut, Moon } from "@/lib/icons";
+import { type IconProps, Calendar, LogOut } from "@/lib/icons";
 import { useIsWide } from "@/lib/useBreakpoint";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
-import { useThemeStore } from "@/lib/theme/themeStore";
-import { useColor, useIsDark } from "@/lib/theme/useColor";
+import { useColor } from "@/lib/theme/useColor";
 
 // The "Tú" screen body — shared by the guest tab (`(tabs)/profile`) and the
 // host tab (`(owner)/(tabs)/profile`). Identical on both sides; the "Modo
@@ -39,14 +38,8 @@ export function ProfileContent() {
   const signOut = useAuthStore((s) => s.signOut);
   const { data: me, isLoading } = useMe(userId);
   const { favorites } = useFavorites();
-  // Only fetch for hosts — /owner/spaces 403s for a guest, and useOwnerSpaces
-  // has no separate `enabled` override, but it's already gated on
-  // `userId !== ""`, so an empty id here disables the query for free.
-  const ownerSpaces = useOwnerSpaces(role === "host" ? userId : "");
 
-  const isDark = useIsDark();
   const isWide = useIsWide();
-  const setThemePreference = useThemeStore((s) => s.setPreference);
 
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
@@ -97,12 +90,9 @@ export function ProfileContent() {
           <View className="gap-5">{identityAndStats}</View>
         )}
 
-        <HostCta
-          spaceCount={role === "host" ? (ownerSpaces.data?.length ?? 0) : null}
-          onPress={() =>
-            role === "host" ? router.push("/spaces") : router.push("/become-host")
-          }
-        />
+        {role === "guest" ? (
+          <HostCta onPress={() => router.push("/become-host")} />
+        ) : null}
 
         {/* Favorites (guest only) — the handoff doesn't address this block at
             all; left unstyled, in its existing reading-order spot. */}
@@ -152,12 +142,7 @@ export function ProfileContent() {
                 onValueChange={(v) => setViewMode(v ? "host" : "guest")}
               />
             ) : null}
-            <ToggleRow
-              icon={Moon}
-              title="Tema oscuro"
-              value={isDark}
-              onValueChange={(v) => setThemePreference(v ? "dark" : "light")}
-            />
+            <ThemeControl />
             {calendarConfigured ? (
               <CalendarRow
                 connected={calendarConnected}

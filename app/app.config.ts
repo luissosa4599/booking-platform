@@ -30,10 +30,11 @@ const config: ExpoConfig = {
   android: {
     backgroundColor: "#F7F7F8",
     adaptiveIcon: {
-      // Solid brand terracotta — the handoff's adaptive spec ("Fondo del
-      // adaptive: color sólido #C2571F, sin degradado"). The foreground mark
-      // is kept inside the 66dp / 61% safe zone.
-      backgroundColor: "#C2571F",
+      // Solid brand terracotta, matching the real tempo-icon.svg background
+      // (2026-09-18 — icon.png and both adaptive layers were regenerated
+      // from that file; this was the one hardcoded copy of its old color).
+      // The foreground mark is kept inside the 66dp / 61% safe zone.
+      backgroundColor: "#B8481D",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },

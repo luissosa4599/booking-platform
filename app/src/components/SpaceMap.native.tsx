@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 
@@ -31,10 +31,46 @@ const CIRCLE_SIZE_SELECTED = 38;
 // does — clamp on `latitudeDelta` instead (smaller delta = more zoomed in).
 // These are a first approximation of the same two traps `SpaceMap.web.tsx`
 // already documents (over-zoom on a single/tight pin, over-zoom-out on
-// far-flung pins) — tune against a real device, this can't be verified here.
+// far-flung pins) — tuned against a real emulator pass, 2026-09-18.
 const MIN_DELTA = 0.02;
 const MAX_DELTA = 0.9;
-const FIT_EDGE_PADDING = { top: 80, right: 56, bottom: 140, left: 56 };
+// A raw lat/lng bounding-box multiplier standing in for `fitToCoordinates`'s
+// own pixel-based edge padding — see `regionForCoords` below.
+const BOUNDS_PADDING_FACTOR = 1.4;
+
+// Module-level, not component state (2026-09-18 report: "que continue con la
+// ultima posicion en la que se dejo... que aparezca [el auto-fit] muchas
+// veces no tiene sentido") — `SpaceMap` fully unmounts every time the Lista/
+// Mapa toggle switches away (see `(tabs)/index.tsx`), so anything that should
+// survive that round-trip within the same app session has to live outside the
+// component's own lifecycle. Reset only by a real reload, which is fine: the
+// point is just "don't re-play the intro fit animation every single time you
+// reopen the map this session".
+let lastRegion: Region | null = null;
+
+// Replaces the old "animate to `fitToCoordinates`'s natural fit, then
+// separately correct it if the result is outside [MIN_DELTA, MAX_DELTA]"
+// two-step dance — that produced a visible zoom-out-then-zoom-in hop on this
+// dataset (2026-09-18 report), since the raw fit for ~55 spread-out campuses
+// reliably overshot `MAX_DELTA` and needed a second corrective
+// `animateToRegion`. Computing (and clamping) the region up front means the
+// map only ever animates once.
+function regionForCoords(coords: { latitude: number; longitude: number }[]): Region {
+  const lats = coords.map((c) => c.latitude);
+  const lngs = coords.map((c) => c.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const rawLatDelta = (maxLat - minLat) * BOUNDS_PADDING_FACTOR;
+  const rawLngDelta = (maxLng - minLng) * BOUNDS_PADDING_FACTOR;
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.min(MAX_DELTA, Math.max(MIN_DELTA, rawLatDelta)),
+    longitudeDelta: Math.min(MAX_DELTA, Math.max(MIN_DELTA, rawLngDelta)),
+  };
+}
 
 // A commonly-published Google Maps "night mode" style (Google's own map
 // styling wizard export, reused widely) — not a pixel match for the app's
@@ -89,17 +125,13 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
   const c = palette(isDark ? "dark" : "light");
 
   const mapRef = useRef<MapView>(null);
-  // `fitToCoordinates` is silently dropped on Android if it's called before
-  // the native map surface has finished mounting — the ref exists the moment
-  // React commits, but the underlying GoogleMap isn't ready yet. Gate the fit
-  // effect on `onMapReady` too (found by an actual on-device/emulator pass,
-  // 2026-09-17 — the map rendered real tiles but never auto-framed the pins).
+  // `fitToCoordinates`/`animateToRegion` are silently dropped on Android if
+  // called before the native map surface has finished mounting — the ref
+  // exists the moment React commits, but the underlying GoogleMap isn't ready
+  // yet. Gate the fit effect on `onMapReady` too (found by an actual
+  // on-device/emulator pass, 2026-09-17 — the map rendered real tiles but
+  // never auto-framed the pins).
   const [mapReady, setMapReady] = useState(false);
-  // Set right before an imperative `fitToCoordinates` call, cleared by the
-  // next `onRegionChangeComplete` — a one-shot flag so the min/max clamp only
-  // ever corrects our own auto-fit, never a user's manual pinch/pan (mirrors
-  // `SpaceMap.web.tsx`'s `addListenerOnce(map, "bounds_changed", ...)`).
-  const pendingFitRef = useRef(false);
   const placesRef = useRef(places);
   const userPositionRef = useRef(userPosition);
   useEffect(() => {
@@ -109,17 +141,29 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
     userPositionRef.current = userPosition;
   }, [userPosition]);
 
-  const initialCenter = useMemo(() => {
-    if (userPosition) return userPosition;
-    if (places.length === 0) return MEXICO_CITY;
-    const lat = places.reduce((s, p) => s + p.lat, 0) / places.length;
-    const lng = places.reduce((s, p) => s + p.lng, 0) / places.length;
-    return { lat, lng };
-    // Only the first value matters — `fitToPlaces` below takes over as soon
-    // as it can run, same "defaultCenter is just the pre-fit fallback" story
-    // as the web version.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Only auto-fit to the pins' bounds once per app session — see the
+  // `lastRegion` module variable above. Captured once via a lazy initializer
+  // so a region saved *during* this very mount (from the auto-fit itself, or
+  // from the user panning/zooming) doesn't retroactively flip this.
+  const [shouldAutoFit] = useState(() => lastRegion == null);
+
+  const [initialRegion] = useState<Region>(() => {
+    if (lastRegion) return lastRegion;
+    const center =
+      userPosition ??
+      (places.length > 0
+        ? {
+            lat: places.reduce((s, p) => s + p.lat, 0) / places.length,
+            lng: places.reduce((s, p) => s + p.lng, 0) / places.length,
+          }
+        : MEXICO_CITY);
+    return {
+      latitude: center.lat,
+      longitude: center.lng,
+      latitudeDelta: 0.2,
+      longitudeDelta: 0.2,
+    };
+  });
 
   // Deliberately keyed on a stable resourceId-set fingerprint, not `places`
   // itself — see `SpaceMap.web.tsx`'s `FitToPlaces` for why (a fresh array on
@@ -130,7 +174,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
     .join(",");
 
   useEffect(() => {
-    if (!mapReady) return;
+    if (!mapReady || !shouldAutoFit) return;
     const current = placesRef.current;
     if (current.length === 0) return;
 
@@ -138,39 +182,19 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
     const userPos = userPositionRef.current;
     if (userPos) coords.push({ latitude: userPos.lat, longitude: userPos.lng });
 
-    pendingFitRef.current = true;
-    mapRef.current?.fitToCoordinates(coords, {
-      edgePadding: FIT_EDGE_PADDING,
-      animated: true,
-    });
-  }, [placesKey, mapReady]);
+    mapRef.current?.animateToRegion(regionForCoords(coords), 600);
+    // `onRegionChangeComplete` below records the result into `lastRegion`.
+  }, [placesKey, mapReady, shouldAutoFit]);
 
+  // Just persistence now — the min/max clamp used to live here as a second,
+  // corrective `animateToRegion` after the natural `fitToCoordinates` landed
+  // outside [MIN_DELTA, MAX_DELTA], which is exactly what produced the
+  // visible zoom-out-then-zoom-in hop (2026-09-18 report). `regionForCoords`
+  // clamps before the (now single) animation runs, so there's nothing left to
+  // correct here — every settled region (auto-fit or a manual pinch/pan) is
+  // simply remembered for the next time this screen mounts.
   function handleRegionChangeComplete(region: Region) {
-    if (!pendingFitRef.current) return;
-    pendingFitRef.current = false;
-
-    if (region.latitudeDelta < MIN_DELTA) {
-      mapRef.current?.animateToRegion(
-        { ...region, latitudeDelta: MIN_DELTA, longitudeDelta: MIN_DELTA },
-        200,
-      );
-      return;
-    }
-    if (region.latitudeDelta > MAX_DELTA) {
-      const userPos = userPositionRef.current;
-      const center =
-        userPos ??
-        nearestPlaceTo(placesRef.current, { lat: region.latitude, lng: region.longitude });
-      mapRef.current?.animateToRegion(
-        {
-          latitude: center.lat,
-          longitude: center.lng,
-          latitudeDelta: MAX_DELTA,
-          longitudeDelta: MAX_DELTA,
-        },
-        200,
-      );
-    }
+    lastRegion = region;
   }
 
   const selected = places.find((p) => p.resourceId === selectedId) ?? null;
@@ -181,12 +205,7 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
-        initialRegion={{
-          latitude: initialCenter.lat,
-          longitude: initialCenter.lng,
-          latitudeDelta: 0.2,
-          longitudeDelta: 0.2,
-        }}
+        initialRegion={initialRegion}
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         onMapReady={() => setMapReady(true)}
         onRegionChangeComplete={handleRegionChangeComplete}
@@ -230,23 +249,6 @@ export function SpaceMap({ places, selectedId, onSelect, onAction, userPosition 
       {places.length === 0 ? <EmptyPlacesNotice /> : null}
     </View>
   );
-}
-
-function nearestPlaceTo(
-  places: MapPlace[],
-  center: { lat: number; lng: number },
-): { lat: number; lng: number } {
-  if (places.length === 0) return center;
-  let best = places[0]!;
-  let bestDist = Infinity;
-  for (const p of places) {
-    const d = (p.lat - center.lat) ** 2 + (p.lng - center.lng) ** 2;
-    if (d < bestDist) {
-      bestDist = d;
-      best = p;
-    }
-  }
-  return { lat: best.lat, lng: best.lng };
 }
 
 function NativeCircleMarker({

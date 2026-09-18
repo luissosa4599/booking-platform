@@ -21,6 +21,22 @@ jest.mock("@gorhom/bottom-sheet");
 // — see __mocks__/lucide-react-native.tsx.
 jest.mock("lucide-react-native");
 
+// `useFocusEffect` (added to ExploreScreen 2026-09-18, for the Android
+// hardware-back-button handling) needs a real `NavigationContainer`
+// ancestor — it throws "Couldn't find a navigation object" otherwise. This
+// test renders `Index` standalone, with no router tree above it (same as
+// every other test here), so there's no real focus/blur to distinguish;
+// standing in with a plain mount-effect is enough to exercise the rest of
+// the screen.
+jest.mock("expo-router", () => {
+  const react = jest.requireActual("react");
+  const actual = jest.requireActual("expo-router");
+  return {
+    ...actual,
+    useFocusEffect: (effect: () => void | (() => void)) => react.useEffect(effect, []),
+  };
+});
+
 const RESOURCE_TYPES = [
   {
     id: "type-1",

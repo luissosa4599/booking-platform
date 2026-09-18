@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated as RNAnimated,
+  BackHandler,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,7 +11,7 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeOut, LinearTransition } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { Avatar } from "@/components/Avatar";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
@@ -143,6 +145,57 @@ export default function ExploreScreen() {
   // (see SpaceMap.native) — no longer gated to web only.
   const mapAvailable = true;
   const [view, setView] = useState<"list" | "map">("list");
+  // Every list<->map switch fully mounts/unmounts the native `SpaceMap`
+  // (Google Maps SDK on Android) — spamming the toggle faster than that
+  // native view can tear down/re-init froze then crashed the app on a real
+  // device (2026-09-18 report). A time-based cooldown, not a `disabled`
+  // prop on the buttons: they should still feel responsive to a normal tap
+  // cadence, just not fire a second real mount before the first has settled.
+  const lastViewChangeRef = useRef(0);
+  const VIEW_CHANGE_COOLDOWN_MS = 500;
+  const changeView = useCallback((next: "list" | "map") => {
+    const now = Date.now();
+    if (now - lastViewChangeRef.current < VIEW_CHANGE_COOLDOWN_MS) return;
+    lastViewChangeRef.current = now;
+    haptics.selection();
+    setView(next);
+  }, []);
+  // Android hardware back button (2026-09-18 report). Two things, both
+  // Android-only (iOS has no hardware/software back button this API
+  // intercepts): from map view, back should return to the list rather than
+  // falling through to the tab navigator's default behavior on this screen —
+  // Explore is the initial tab route, so an unhandled back here exits the
+  // app. From the list itself (the screen's true "root" state), back uses
+  // the standard Android "press back again to exit" pattern — a subtle,
+  // self-dismissing text hint, never a confirm dialog (a modal was the first
+  // pass here, but the user asked for the more familiar convention instead:
+  // Gmail/Instagram/WhatsApp etc. all use this, not an "¿Estás seguro?"
+  // AlertDialog). `useFocusEffect` scopes the listener to while this tab is
+  // actually the focused route — tab navigators keep every tab mounted, so
+  // an unscoped listener would also catch back presses made while on a
+  // different tab.
+  const lastExitBackPressRef = useRef(0);
+  const EXIT_CONFIRM_WINDOW_MS = 2000;
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") return;
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (view === "map") {
+          changeView("list");
+          return true;
+        }
+        const now = Date.now();
+        if (now - lastExitBackPressRef.current < EXIT_CONFIRM_WINDOW_MS) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastExitBackPressRef.current = now;
+        useToastStore.getState().show("Presiona atrás de nuevo para salir");
+        return true;
+      });
+      return () => sub.remove();
+    }, [view, changeView]),
+  );
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   // Desktop master–detail: the selected resource shows in a pane, the list
   // stays mounted and live. Tablet/phone push the full screen as before.
@@ -203,11 +256,43 @@ export default function ExploreScreen() {
   // slide, ahi si sobra espacio" — the collapse-on-scroll behavior only
   // makes sense where vertical space is actually tight (phone). Wide
   // viewports have room to spare, so the greeting just stays put there.
+  //
+  // Direction-based, not position-based (2026-09-18 report: "si deslizas
+  // hacia arriba no se puede volver a mostrar"). The old logic only
+  // un-collapsed at `y <= 0` — the exact top of the list — so scrolling back
+  // up without landing precisely there left it stuck collapsed, which read as
+  // both "stuck" and (since the only way back was a hard snap at the top)
+  // "not fluid".
+  //
+  // Compares against an *anchor* offset (the `y` where the header last
+  // changed state), not the delta since the previous `onScroll` call — a
+  // real device pass (logcat, `adb shell input swipe`) showed `onScroll`
+  // arriving as a single coalesced event covering an entire gesture (or
+  // several back-to-back swipes) rather than one call per frame whenever the
+  // JS thread is at all busy, so "distance since the last event" is not a
+  // reliable signal: a fast flick can deliver just one event with a huge
+  // jump. Distance since the last *decision* still resolves correctly
+  // however many events it took to get there. A plain ref — read/written
+  // only inside this event handler, never during render, so it doesn't trip
+  // `react-hooks/refs`.
+  const scrollAnchorY = useRef(0);
   const handleListScroll = useCallback(
     (e: { nativeEvent: { contentOffset: { y: number } } }) => {
       if (isWide) return;
       const y = e.nativeEvent.contentOffset.y;
-      setGreetingCollapsed((collapsed) => (collapsed ? y > 0 : y > 8));
+      if (y <= 8) {
+        scrollAnchorY.current = y;
+        setGreetingCollapsed(false);
+        return;
+      }
+      const diff = y - scrollAnchorY.current;
+      if (diff > 24) {
+        scrollAnchorY.current = y;
+        setGreetingCollapsed(true);
+      } else if (diff < -24) {
+        scrollAnchorY.current = y;
+        setGreetingCollapsed(false);
+      }
     },
     [isWide],
   );
@@ -676,7 +761,19 @@ export default function ExploreScreen() {
             }}
           >
             <View
-              onLayout={(e) => setGreetingHeight(e.nativeEvent.layout.height)}
+              // Guard against a 0 measurement (2026-09-18 defensive fix) — this
+              // inner view sits inside the outer `RNAnimated.View` whose own
+              // `height` is being animated down to 0 while collapsed; if a
+              // stray layout pass ever reported this child's height as 0 too,
+              // it would corrupt `greetingHeight` itself (the *expanded*
+              // target the interpolation animates back out to), permanently
+              // stuck at 0 regardless of `greetingCollapsed` flipping back to
+              // false. A real measurement is never 0, so this can only reject
+              // bad data, never a legitimate resize.
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0) setGreetingHeight(h);
+              }}
               className="flex-row items-center justify-between"
             >
               <View className="flex-row items-center gap-3">
@@ -800,10 +897,7 @@ export default function ExploreScreen() {
               return (
                 <Pressable
                   key={v}
-                  onPress={() => {
-                    haptics.selection();
-                    setView(v);
-                  }}
+                  onPress={() => changeView(v)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={v === "list" ? "Ver como lista" : "Ver en el mapa"}
@@ -1011,10 +1105,7 @@ export default function ExploreScreen() {
       {!isWide && mapAvailable ? (
         <MapListFab
           view={view}
-          onToggle={() => {
-            haptics.selection();
-            setView((v) => (v === "list" ? "map" : "list"));
-          }}
+          onToggle={() => changeView(view === "list" ? "map" : "list")}
           // Same small distance above the tab bar in both views — list
           // view's toggle ("Mapa") was left at the old, too-high 96 offset
           // when only the map view's ("Lista") got fixed, which is exactly

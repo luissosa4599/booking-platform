@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -5,6 +6,10 @@ import { Sheet } from "@/components/Sheet";
 import { Slider } from "@/components/Slider";
 import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
+
+// Wider than the default 448px `Sheet` centered dialog on web — two full-width
+// range sliders read cramped at that width (2026-09-18 report).
+const FILTER_SHEET_MAX_WIDTH = 560;
 
 const MIN_CAPACITY = 1;
 const MAX_CAPACITY = 100;
@@ -40,6 +45,19 @@ export interface FilterSheetProps {
 // `maxDistanceKm` at their unset value (0 / null) still means "no filter";
 // the slider itself only ever shows/produces a real 1-100 value, and a
 // "Cualquiera" chip is the way back to unset.
+//
+// **Draft state, applied on "Aplicar" (2026-09-18 report).** Dragging used to
+// call `onMinCapacityChange`/`onMaxDistanceKmChange` straight through on every
+// touch-move tick — each one flows into `useAvailability`'s query key in
+// `(tabs)/index.tsx`, so a drag fired a refetch per pixel of movement. On a
+// real device this froze and crashed the app. The sliders now only ever touch
+// local `draftMinCapacity`/`draftMaxDistanceKm` state; the parent (and the
+// query it drives) only hears about a change when "Aplicar" is pressed. The
+// draft re-syncs from the applied props whenever the sheet transitions
+// closed→open — a state-based previous-value comparison during render (not a
+// `useEffect`, which would trip `react-hooks/set-state-in-effect`; not a ref,
+// which `react-hooks/refs` forbids reading during render in this project) —
+// the same pattern `ConflictSheet`/`ExploreScreen`'s `prevView` already use.
 export function FilterSheet({
   isOpen,
   onClose,
@@ -50,10 +68,33 @@ export function FilterSheet({
   locationAvailable,
   onClear,
 }: FilterSheetProps) {
-  const hasFilters = minCapacity > 0 || maxDistanceKm != null;
+  const [draftMinCapacity, setDraftMinCapacity] = useState(minCapacity);
+  const [draftMaxDistanceKm, setDraftMaxDistanceKm] = useState(maxDistanceKm);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setDraftMinCapacity(minCapacity);
+      setDraftMaxDistanceKm(maxDistanceKm);
+    }
+  }
+
+  const hasDraftFilters = draftMinCapacity > 0 || draftMaxDistanceKm != null;
+
+  function applyAndClose() {
+    onMinCapacityChange(draftMinCapacity);
+    onMaxDistanceKmChange(draftMaxDistanceKm);
+    onClose();
+  }
+
+  function clearAll() {
+    setDraftMinCapacity(0);
+    setDraftMaxDistanceKm(null);
+    onClear();
+  }
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} maxWidth={FILTER_SHEET_MAX_WIDTH}>
       <View style={{ gap: 24 }}>
         <Text className="text-title-sm text-label-1">Filtros</Text>
 
@@ -64,23 +105,25 @@ export function FilterSheet({
               className="text-body-emph text-label-1"
               style={{ fontVariant: ["tabular-nums"] }}
             >
-              {minCapacity > 0 ? `${minCapacity} ${minCapacity === 1 ? "persona" : "personas"}` : "Cualquiera"}
+              {draftMinCapacity > 0
+                ? `${draftMinCapacity} ${draftMinCapacity === 1 ? "persona" : "personas"}`
+                : "Cualquiera"}
             </Text>
           </View>
           <Slider
             min={MIN_CAPACITY}
             max={MAX_CAPACITY}
-            value={minCapacity > 0 ? minCapacity : MIN_CAPACITY}
+            value={draftMinCapacity > 0 ? draftMinCapacity : MIN_CAPACITY}
             onChange={(v) => {
               haptics.selection();
-              onMinCapacityChange(v);
+              setDraftMinCapacity(v);
             }}
             accessibilityLabel="Aforo mínimo"
           />
           <View className="flex-row items-center justify-between">
             <Text className="text-footnote text-label-3">{MIN_CAPACITY}</Text>
-            {minCapacity > 0 ? (
-              <Pressable onPress={() => onMinCapacityChange(0)}>
+            {draftMinCapacity > 0 ? (
+              <Pressable onPress={() => setDraftMinCapacity(0)}>
                 <Text className="text-footnote text-label-3" style={{ textDecorationLine: "underline" }}>
                   Cualquiera
                 </Text>
@@ -102,17 +145,17 @@ export function FilterSheet({
               )}
               style={{ fontVariant: ["tabular-nums"] }}
             >
-              {maxDistanceKm != null ? `${maxDistanceKm} km` : "Cualquiera"}
+              {draftMaxDistanceKm != null ? `${draftMaxDistanceKm} km` : "Cualquiera"}
             </Text>
           </View>
           <Slider
             min={MIN_DISTANCE_KM}
             max={MAX_DISTANCE_KM}
-            value={maxDistanceKm ?? MIN_DISTANCE_KM}
+            value={draftMaxDistanceKm ?? MIN_DISTANCE_KM}
             disabled={!locationAvailable}
             onChange={(v) => {
               haptics.selection();
-              onMaxDistanceKmChange(v);
+              setDraftMaxDistanceKm(v);
             }}
             accessibilityLabel="Distancia máxima"
           />
@@ -122,8 +165,8 @@ export function FilterSheet({
             >
               {MIN_DISTANCE_KM} km
             </Text>
-            {maxDistanceKm != null ? (
-              <Pressable onPress={() => onMaxDistanceKmChange(null)}>
+            {draftMaxDistanceKm != null ? (
+              <Pressable onPress={() => setDraftMaxDistanceKm(null)}>
                 <Text className="text-footnote text-label-3" style={{ textDecorationLine: "underline" }}>
                   Cualquiera
                 </Text>
@@ -143,11 +186,11 @@ export function FilterSheet({
         </View>
 
         <View style={{ gap: 10 }}>
-          <Button variant="filled" onPress={onClose}>
+          <Button variant="filled" onPress={applyAndClose}>
             Aplicar
           </Button>
-          {hasFilters ? (
-            <Button variant="plain" onPress={onClear}>
+          {hasDraftFilters ? (
+            <Button variant="plain" onPress={clearAll}>
               Quitar filtros
             </Button>
           ) : null}
