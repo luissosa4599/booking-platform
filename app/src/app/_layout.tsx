@@ -55,6 +55,12 @@ const PUBLIC_SEGMENTS = new Set([
   "privacy",
   "terms",
 ]);
+// Subset of PUBLIC_SEGMENTS a signed-in user gets bounced away from (auth-flow
+// screens they shouldn't linger on). privacy/terms are deliberately excluded —
+// always-public info pages (Google's OAuth consent screen and Play Console
+// both link here) that must stay viewable even when the visitor happens to
+// have a session in that browser.
+const AUTH_FLOW_SEGMENTS = new Set(["sign-in", "auth", "forgot-password", "reset-password"]);
 // A signed-in host may sit here without being bounced into their own nav group
 // (the become-host success sheet lives on this screen).
 const ROLE_NEUTRAL_SEGMENTS = new Set(["become-host"]);
@@ -97,7 +103,7 @@ function AuthGate() {
     let target: "/sign-in" | "/spaces" | "/" | null = null;
     if (!session && !onPublic) {
       target = "/sign-in";
-    } else if (session && onPublic) {
+    } else if (session && AUTH_FLOW_SEGMENTS.has(seg0)) {
       target = hostView ? "/spaces" : "/";
     } else if (session && !ROLE_NEUTRAL_SEGMENTS.has(seg0)) {
       if (hostView && !inOwner) target = "/spaces";

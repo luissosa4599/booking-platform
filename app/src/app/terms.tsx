@@ -1,13 +1,32 @@
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 
 import { Screen } from "@/components/Screen";
+import { ArrowLeft } from "@/lib/icons";
+import { useColor } from "@/lib/theme/useColor";
 
 // Required to publish the Google OAuth consent screen (Branding page needs a
 // real Terms of Service link before "Publicar app" unlocks) — 2026-09-14.
 // Plain content, no session required — see `_layout.tsx`'s PUBLIC_SEGMENTS.
+// Reachable as a standalone deep link (Google's consent screen, Play
+// Console) with no prior screen in the stack — `canGoBack()` guards the back
+// button so it falls back to home instead of no-op'ing.
 export default function TermsScreen() {
+  const router = useRouter();
+  const backColor = useColor("label-1");
+
   return (
     <Screen bg="canvas">
+      <View className="flex-row items-center px-4 py-2">
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          className="h-9 w-9 items-center justify-center rounded-full bg-fill"
+        >
+          <ArrowLeft size={18} color={backColor} />
+        </Pressable>
+      </View>
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
         <Text className="text-title-lg text-label-1">Términos del servicio</Text>
         <Text className="text-footnote text-label-3">Última actualización: 14 de septiembre de 2026</Text>
