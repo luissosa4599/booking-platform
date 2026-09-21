@@ -577,8 +577,14 @@ public static class DevSeeder
         var slotDuration = TimeSpan.FromMinutes(90);
         var dailyStartHour = 8;
         var slotsPerDay = 6; // 08:00 -> 17:00 LOCAL time, in 90-minute blocks
-        var daysAhead = 2;   // today + tomorrow — with ~60 resources this keeps
-                             // GET /availability from returning thousands of slots
+        // 60 days out (2026-09-21: was 2 — "today + tomorrow" — bumped so a
+        // single seed run covers a full Play Store closed-testing period
+        // without needing the daily reseed cron, which wipes ALL bookings
+        // (including real testers') on every run. GET /availability response
+        // size isn't affected by this — callers always scope by from/to, so
+        // a narrow query still returns the same handful of rows regardless
+        // of how far the table's data extends.
+        var daysAhead = 60;
         var now = DateTimeOffset.UtcNow;
         var random = new Random(); // no fixed seed — every run should look fresh relative to "now"
 
