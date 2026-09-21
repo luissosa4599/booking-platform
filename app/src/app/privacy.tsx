@@ -75,10 +75,18 @@ export default function PrivacyScreen() {
           </Text>
         </View>
 
-        <View className="gap-2">
-          <Text className="text-body-emph text-label-1">Eliminar tu información</Text>
+        <View className="gap-2" nativeID="eliminar-cuenta">
+          <Text className="text-body-emph text-label-1">Eliminar tu cuenta en Tempo</Text>
           <Text className="text-body text-label-2">
-            Escríbenos a luis.sosa.4599@gmail.com y eliminamos tu cuenta y tus datos.
+            Para solicitar la eliminación de tu cuenta de Tempo, escríbenos a
+            luis.sosa.4599@gmail.com desde el correo asociado a tu cuenta,
+            indicando que quieres eliminarla. Procesamos la solicitud en un
+            plazo máximo de 30 días.{"\n\n"}
+            Al eliminar tu cuenta, borramos: tu correo y nombre, tu
+            contraseña (si la tienes), tu historial de reservas y lista de
+            espera, tus espacios favoritos, tu token de notificaciones push y,
+            si la conectaste, tu conexión con Google Calendar. No conservamos
+            ningún dato después de completar la eliminación.
           </Text>
         </View>
 
