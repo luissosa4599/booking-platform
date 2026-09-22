@@ -28,7 +28,7 @@ function formatFullDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", {
     weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
   });
 }
 
@@ -150,30 +150,30 @@ export function BookingPane({
           className="flex-row overflow-hidden border border-hairline bg-hairline"
           style={{ gap: 1, borderRadius: 18 }}
         >
-          <View className="flex-1 gap-1 bg-card px-[18px] py-4">
+          <View className="gap-1 bg-card py-4" style={{ flex: 1.2, paddingHorizontal: 12 }}>
             <Text className="text-label-4" style={{ fontSize: 12, fontWeight: "600" }}>
               HORARIO
             </Text>
             <Text
               className="text-label-1"
-              style={{ fontSize: 17, fontWeight: "600", fontVariant: ["tabular-nums"] }}
+              style={{ fontSize: 15, fontWeight: "600", fontVariant: ["tabular-nums"] }}
             >
               {timeOfDay(booking.startsAt)} – {timeOfDay(booking.endsAt)}
             </Text>
           </View>
-          <View className="flex-1 gap-1 bg-card px-[18px] py-4">
+          <View className="gap-1 bg-card py-4" style={{ flex: 1.25, paddingHorizontal: 12 }}>
             <Text className="text-label-4" style={{ fontSize: 12, fontWeight: "600" }}>
               FECHA
             </Text>
-            <Text className="text-label-1" style={{ fontSize: 17, fontWeight: "600" }}>
+            <Text className="text-label-1" style={{ fontSize: 15, fontWeight: "600" }}>
               {formatFullDate(booking.startsAt)}
             </Text>
           </View>
-          <View className="flex-1 gap-1 bg-card px-[18px] py-4">
+          <View className="gap-1 bg-card py-4" style={{ flex: 0.9, paddingHorizontal: 12 }}>
             <Text className="text-label-4" style={{ fontSize: 12, fontWeight: "600" }}>
               PERSONAS
             </Text>
-            <Text className="text-label-1" style={{ fontSize: 17, fontWeight: "600" }}>
+            <Text className="text-label-1" style={{ fontSize: 15, fontWeight: "600" }}>
               {booking.seats}
             </Text>
           </View>
