@@ -21,7 +21,11 @@ import { useThemeStore } from "./themeStore";
  * / <alpha-value>)` format tailwind.config.js uses for these same 4 colors.
  */
 export const appleTheme = vars({
-  "--color-tint": "194 87 31" /* #C2571F */,
+  /* #B8481D (was #C2571F, 4.49:1 against white — just under AA both as
+     tint-on-white text and white-on-tint button label). It's the exact
+     launcher-icon background from the designer's export, so the UI accent
+     now matches the brand mark. 2026-09-29 contrast audit. */
+  "--color-tint": "184 72 29" /* #B8481D */,
   "--color-tint-press": "160 69 26" /* #A0451A */,
   "--color-tint-soft": "232 168 131" /* #E8A883 */,
   "--color-tint-wash": "251 239 232" /* #FBEFE8 */,
@@ -33,7 +37,7 @@ export const appleTheme = vars({
   "--color-on-tint": "255 255 255" /* #FFFFFF */,
   /* Subtitle text inside a filled (tint-background) button — handoff "Color —
      themeable" table. Paired with tint, flips with the theme like on-tint. */
-  "--color-on-tint-sub": "246 217 199" /* #F6D9C7 */,
+  "--color-on-tint-sub": "252 237 228" /* #FCEDE4 (was #F6D9C7, 3.35:1 on tint) */,
 });
 
 /**
@@ -44,7 +48,11 @@ export const appleTheme = vars({
  */
 export const appleThemeDark = vars({
   "--color-tint": "232 168 131" /* #E8A883 */,
-  "--color-tint-press": "194 87 31" /* #C2571F — handoff host "Color — themeable" dark col */,
+  /* Was #C2571F (handoff dark col), but tint-press doubles as the
+     "selected" *text* color (Row, SortControl, NavRail, wash buttons) and
+     #C2571F on the dark surfaces is 3.1-3.8:1. In dark, emphasis = lighter:
+     #F2BE9F clears 7:1+ on card/fill/tint-wash. 2026-09-29 contrast audit. */
+  "--color-tint-press": "242 190 159" /* #F2BE9F */,
   "--color-tint-soft": "194 87 31" /* #C2571F */,
   "--color-tint-wash": "64 32 11" /* #40200B */,
   "--color-on-tint": "64 32 11" /* #40200B — handoff § "tema oscuro" */,

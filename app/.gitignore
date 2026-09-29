@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# scripts/contrast-audit.cjs output (screenshots + JSON report)
+contrast-audit/

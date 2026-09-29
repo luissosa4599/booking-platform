@@ -479,7 +479,7 @@ export default function ResourceScreen() {
                       style={{ backgroundColor: isSelected ? dayActiveBg : undefined }}
                     >
                       <Text
-                        className={isSelected ? undefined : "text-label-4"}
+                        className={isSelected ? undefined : "text-label-3"}
                         style={{ fontSize: 13, color: isSelected ? dayActiveOnTint : undefined }}
                       >
                         {day.label}

@@ -71,7 +71,9 @@ export function StatusBadge({
         paddingHorizontal: onPhoto ? 10 : compact ? 9 : 14,
         paddingVertical: compact ? 3 : undefined,
         borderRadius: 9999,
-        backgroundColor: onPhoto ? cardColor : withAlpha(color, compact ? 0.16 : 0.16),
+        // 10%, not the handoff's 16%: at 16% the tone-on-wash label fell to
+        // ~4.0-4.3:1 in light mode (2026-09-29 contrast audit); 10% clears 4.5.
+        backgroundColor: onPhoto ? cardColor : withAlpha(color, 0.1),
       }}
     >
       <View
