@@ -172,15 +172,20 @@ try
     // A one-off: migrate, run the demo seeder, then exit (0) — the process
     // never starts serving. Wired to a Cloud Run job so the deployed database
     // can be (re)seeded on demand; `POST /dev/seed` is Development-only.
-    // DevSeeder always wipes and reseeds, so re-running the job is a clean
-    // "reset the demo" button.
+    // Non-destructive by default (SeedMode.TopUp): real users' bookings,
+    // favorites and published spaces survive, the seeded catalog's slot window
+    // just gets extended — safe to run on a schedule. SEED_MODE=reset brings
+    // back the old wipe-everything "reset the demo" behavior for a one-off.
     if (builder.Configuration.GetValue<bool>("RUN_SEED_ON_STARTUP"))
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingEngineDbContext>();
         var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         await db.Database.MigrateAsync();
-        var seedResult = await DevSeeder.SeedAsync(db, seedLogger);
+        var seedMode = string.Equals(builder.Configuration["SEED_MODE"], "reset", StringComparison.OrdinalIgnoreCase)
+            ? SeedMode.Reset
+            : SeedMode.TopUp;
+        var seedResult = await DevSeeder.SeedAsync(db, seedLogger, seedMode);
         Log.Information("Seed complete: {@SeedResult}", seedResult);
         return;
     }

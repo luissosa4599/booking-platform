@@ -9,6 +9,25 @@ namespace BookingEngine.Api.Infrastructure.Seed;
 
 public record SeedResult(int ResourceTypes, int Locations, int Resources, int AvailabilitySlots);
 
+public enum SeedMode
+{
+    /// <summary>
+    /// Wipe every booking, waitlist entry, slot, resource, location and type,
+    /// then regenerate. What `POST /dev/seed` (and so the e2e suite) uses.
+    /// </summary>
+    Reset,
+
+    /// <summary>
+    /// Non-destructive: when the seeded catalog already exists, keep every row
+    /// (so real users' bookings, waitlist entries, favorites and host-published
+    /// spaces all survive) and only append slots to extend each seeded
+    /// resource's window. On an empty database it falls through to a plain
+    /// first-time create — still nothing deleted. What the production
+    /// `booking-seed` job uses.
+    /// </summary>
+    TopUp,
+}
+
 /// <summary>
 /// Generates demo data for a campus-booking vertical (UNAM + IPN) so the
 /// frontend has real, varied data to render against. Dev-only — see how this is
@@ -19,9 +38,10 @@ public record SeedResult(int ResourceTypes, int Locations, int Resources, int Av
 ///     "libre -> reservalo, ocupado -> ya esta tomado".
 ///   - Sala de lectura / Cubiculo -> per-seat booking (Capacity > 1, stepper).
 ///
-/// Slot times are relative to the moment the seed runs, not fixed dates — every
-/// call clears existing seed data first and regenerates, so picking the project
-/// back up hours (or days) later always yields fresh "ahora mismo" data.
+/// Slot times are relative to the moment the seed runs, not fixed dates. In
+/// <see cref="SeedMode.Reset"/> every call clears existing data first and
+/// regenerates; <see cref="SeedMode.TopUp"/> keeps everything and only extends
+/// the slot window (see the enum).
 /// </summary>
 public static class DevSeeder
 {
@@ -32,8 +52,23 @@ public static class DevSeeder
     public static async Task<SeedResult> SeedAsync(
         BookingEngineDbContext db,
         ILogger logger,
+        SeedMode mode = SeedMode.Reset,
         CancellationToken cancellationToken = default)
     {
+        if (mode == SeedMode.TopUp)
+        {
+            // Seeded campus resources are the only ownerless ones — anything a
+            // host publishes carries its OwnerUserId (and the demo host's
+            // spaces are extended by the worker's ScheduleExpansionService).
+            if (await db.Resources.AnyAsync(r => r.OwnerUserId == null, cancellationToken))
+            {
+                return await TopUpAsync(db, logger, cancellationToken);
+            }
+
+            logger.LogInformation("Dev seed (top-up): no seeded catalog yet, creating it from scratch");
+            return await CreateCatalogAsync(db, logger, cancellationToken);
+        }
+
         // Dependency order matters: Booking/WaitlistEntry reference
         // AvailabilitySlot with DeleteBehavior.Restrict, so they have to go
         // first or the slot deletes below would be blocked.
@@ -55,6 +90,14 @@ public static class DevSeeder
             deletedLocations,
             deletedTypes);
 
+        return await CreateCatalogAsync(db, logger, cancellationToken);
+    }
+
+    private static async Task<SeedResult> CreateCatalogAsync(
+        BookingEngineDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
         var auditorioType = new ResourceType
         {
             Id = Guid.NewGuid(),
@@ -190,7 +233,12 @@ public static class DevSeeder
             resources.Add(resource);
         }
 
-        var slots = GenerateSlots(resources, CampusTimeZone);
+        var slots = GenerateSlots(
+            resources,
+            CampusTimeZone,
+            now,
+            generateAfter: _ => null,
+            addInProgress: _ => true);
 
         db.ResourceTypes.AddRange(cycle);
         db.Locations.AddRange(locations);
@@ -217,6 +265,55 @@ public static class DevSeeder
             locations.Count + 1,
             resources.Count + 2,
             slots.Count + hostSlots);
+    }
+
+    private static async Task<SeedResult> TopUpAsync(
+        BookingEngineDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        var resources = await db.Resources
+            .Where(r => r.OwnerUserId == null)
+            .ToListAsync(cancellationToken);
+        var resourceIds = resources.Select(r => r.Id).ToList();
+
+        // The daily grid is deterministic (same local hours every day), so
+        // "only generate grid starts after this resource's latest slot" is
+        // enough to never duplicate an existing slot.
+        var latestStart = await db.AvailabilitySlots
+            .Where(s => resourceIds.Contains(s.ResourceId))
+            .GroupBy(s => s.ResourceId)
+            .Select(g => new { ResourceId = g.Key, Latest = g.Max(s => s.StartsAt) })
+            .ToDictionaryAsync(x => x.ResourceId, x => x.Latest, cancellationToken);
+
+        var bookableNow = (await db.AvailabilitySlots
+            .Where(s => resourceIds.Contains(s.ResourceId)
+                && s.StartsAt <= now
+                && s.EndsAt > now
+                && s.CapacityRemaining > 0)
+            .Select(s => s.ResourceId)
+            .Distinct()
+            .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        var slots = GenerateSlots(
+            resources,
+            CampusTimeZone,
+            now,
+            generateAfter: r => latestStart.TryGetValue(r.Id, out var latest) ? latest : null,
+            addInProgress: r => !bookableNow.Contains(r.Id));
+
+        db.AvailabilitySlots.AddRange(slots);
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Dev seed (top-up): kept all existing data, appended {Slots} slots across {Resources} seeded resources",
+            slots.Count,
+            resources.Count);
+
+        return new SeedResult(0, 0, 0, slots.Count);
     }
 
     private static int CapacityFor(ResourceType type) => type.Name switch
@@ -572,20 +669,32 @@ public static class DevSeeder
         return generated.Count;
     }
 
-    private static List<AvailabilitySlot> GenerateSlots(IReadOnlyList<Resource> resources, string timeZoneId)
+    /// <param name="generateAfter">
+    /// Per resource: only grid slots starting strictly after this instant are
+    /// generated (null = no bound beyond "not already in the past").
+    /// </param>
+    /// <param name="addInProgress">
+    /// Per resource: whether to add the guaranteed "already in progress" slot.
+    /// </param>
+    private static List<AvailabilitySlot> GenerateSlots(
+        IReadOnlyList<Resource> resources,
+        string timeZoneId,
+        DateTimeOffset now,
+        Func<Resource, DateTimeOffset?> generateAfter,
+        Func<Resource, bool> addInProgress)
     {
         var slotDuration = TimeSpan.FromMinutes(90);
         var dailyStartHour = 8;
         var slotsPerDay = 6; // 08:00 -> 17:00 LOCAL time, in 90-minute blocks
         // 60 days out (2026-09-21: was 2 — "today + tomorrow" — bumped so a
-        // single seed run covers a full Play Store closed-testing period
-        // without needing the daily reseed cron, which wipes ALL bookings
-        // (including real testers') on every run. GET /availability response
+        // single seed run covers a full Play Store closed-testing period).
+        // Since 2026-09-29 the production job runs in SeedMode.TopUp, which
+        // only appends to this window instead of wiping real users' bookings.
+        // GET /availability response
         // size isn't affected by this — callers always scope by from/to, so
         // a narrow query still returns the same handful of rows regardless
         // of how far the table's data extends.
         var daysAhead = 60;
-        var now = DateTimeOffset.UtcNow;
         var random = new Random(); // no fixed seed — every run should look fresh relative to "now"
 
         // Business hours are local to the location, not raw UTC clock hours —
@@ -599,6 +708,7 @@ public static class DevSeeder
         foreach (var resource in resources)
         {
             var slotIndex = 0;
+            var after = generateAfter(resource);
 
             // One slot that's ALREADY in progress — started a little while ago,
             // still running for most of an hour. This is what guarantees
@@ -609,18 +719,21 @@ public static class DevSeeder
             // on its empty state. An in-progress slot satisfies both the API's
             // `EndsAt >= from` filter and the client's "starts within the hour"
             // grouping no matter the clock.
-            var inProgressStart = now - TimeSpan.FromMinutes(random.Next(10, 45));
-            slots.Add(new AvailabilitySlot
+            if (addInProgress(resource))
             {
-                Id = Guid.NewGuid(),
-                Resource = resource,
-                StartsAt = inProgressStart,
-                EndsAt = inProgressStart + slotDuration,
-                // Always bookable — the whole point of this slot is to have
-                // something visible right away.
-                CapacityRemaining = random.Next(1, resource.Capacity + 1),
-            });
-            slotIndex++;
+                var inProgressStart = now - TimeSpan.FromMinutes(random.Next(10, 45));
+                slots.Add(new AvailabilitySlot
+                {
+                    Id = Guid.NewGuid(),
+                    Resource = resource,
+                    StartsAt = inProgressStart,
+                    EndsAt = inProgressStart + slotDuration,
+                    // Always bookable — the whole point of this slot is to have
+                    // something visible right away.
+                    CapacityRemaining = random.Next(1, resource.Capacity + 1),
+                });
+                slotIndex++;
+            }
 
             for (var dayOffset = 0; dayOffset < daysAhead; dayOffset++)
             {
@@ -635,6 +748,11 @@ public static class DevSeeder
                     if (startsAt < now)
                     {
                         continue; // don't generate slots already in the past today
+                    }
+
+                    if (after is { } existingUntil && startsAt <= existingUntil)
+                    {
+                        continue; // top-up: this grid slot already exists
                     }
 
                     var capacityRemaining = NextCapacityRemaining(resource.Capacity, slotIndex, random);
