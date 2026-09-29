@@ -5,6 +5,9 @@ namespace BookingEngine.Api.Application.Me;
 /// screen shows (so it needs one request, not three). <c>Role</c> is lowercase
 /// ("guest"/"host") to match the access-token claim.
 /// </summary>
+/// <summary><c>PATCH /me</c> — for now just the display name.</summary>
+public record UpdateMeRequest(string? DisplayName);
+
 public record MeResponse(
     string Id,
     string Email,

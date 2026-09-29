@@ -60,6 +60,7 @@ export default function SignInScreen() {
   const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
   const registerWithPassword = useAuthStore((s) => s.registerWithPassword);
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -73,6 +74,10 @@ export default function SignInScreen() {
 
   const emailValid = EMAIL_RE.test(email.trim());
   const passwordValid = password.length >= 8;
+  // Only asked when creating an account — it's what the Explore greeting and
+  // the profile header show (Google accounts get theirs from Google).
+  const nameValid = passwordMode === "login" || name.trim().length > 0;
+  const canSubmit = emailValid && passwordValid && nameValid;
 
   // Dev-only: no mail is sent, so we verify the token right away. The
   // /auth/request-link + /auth/verify endpoints only exist in Development.
@@ -97,7 +102,7 @@ export default function SignInScreen() {
       if (passwordMode === "login") {
         await loginWithPassword(email, password);
       } else {
-        await registerWithPassword(email, password);
+        await registerWithPassword(email, password, name);
       }
       router.replace("/");
     } catch (e) {
@@ -106,7 +111,11 @@ export default function SignInScreen() {
       } else if (e instanceof ApiError && e.status === 409) {
         setError("Ya existe una cuenta con este correo.");
       } else if (e instanceof ApiError && e.status === 400) {
-        setError("Revisa el correo y la contraseña (mínimo 8 caracteres).");
+        setError(
+          passwordMode === "register"
+            ? "Revisa tu nombre, el correo y la contraseña (mínimo 8 caracteres)."
+            : "Revisa el correo y la contraseña (mínimo 8 caracteres).",
+        );
       } else {
         setError("No pudimos entrar. Intenta de nuevo.");
       }
@@ -134,6 +143,24 @@ export default function SignInScreen() {
       ) : null}
 
       <View style={{ gap: 12 }}>
+        {passwordMode === "register" ? (
+          <View style={{ gap: 6 }}>
+            <Text className="text-footnote font-semibold text-label-2">Nombre</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Cómo quieres que te llamemos"
+              placeholderTextColor="#8A8A8E"
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+              importantForAutofill="yes"
+              maxLength={80}
+              editable={!busy}
+              className="h-[52px] rounded-button border border-hairline bg-card px-4 text-body text-label-1"
+            />
+          </View>
+        ) : null}
         <View style={{ gap: 6 }}>
           <Text className="text-footnote font-semibold text-label-2">Correo</Text>
           <TextInput
@@ -176,7 +203,7 @@ export default function SignInScreen() {
               autoComplete={passwordMode === "login" ? "current-password" : "new-password"}
               textContentType={passwordMode === "login" ? "password" : "newPassword"}
               editable={!busy}
-              onSubmitEditing={() => emailValid && passwordValid && submitPassword()}
+              onSubmitEditing={() => canSubmit && submitPassword()}
               className="h-[52px] rounded-button border border-hairline bg-card px-4 pr-12 text-body text-label-1"
             />
             <Pressable
@@ -202,7 +229,7 @@ export default function SignInScreen() {
 
       <Button
         variant={googleReady ? "gray" : "filled"}
-        disabled={!emailValid || !passwordValid || busy || offline}
+        disabled={!canSubmit || busy || offline}
         loading={busy}
         onPress={submitPassword}
       >

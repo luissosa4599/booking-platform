@@ -15,7 +15,11 @@ public record VerifyRequest(string Token);
 
 // --- Email + password ---
 
-public record RegisterRequest(string Email, string Password);
+/// <summary>
+/// <c>Name</c> is optional so app builds from before it existed keep working;
+/// the current sign-in screen always sends one.
+/// </summary>
+public record RegisterRequest(string Email, string Password, string? Name = null);
 
 public record LoginRequest(string Email, string Password);
 

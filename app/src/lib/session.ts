@@ -119,7 +119,7 @@ interface AuthState {
   /** Creates a new account (or adds a password to an existing Google/magic-link
    * one for the same email) and signs in. Throws ApiError(409) if that email
    * already has a password set. */
-  registerWithPassword: (email: string, password: string) => Promise<void>;
+  registerWithPassword: (email: string, password: string, name: string) => Promise<void>;
   /** Throws ApiError(401) on a wrong password or an unknown email. */
   loginWithPassword: (email: string, password: string) => Promise<void>;
   /** Always resolves — the server never reveals whether the email exists. */
@@ -130,6 +130,8 @@ interface AuthState {
   refresh: () => Promise<void>;
   /** Self-upgrade to host. Server re-issues the session so the new token carries role=host. */
   becomeHost: () => Promise<void>;
+  /** Sets the display name. Server re-issues the session so the stored user updates. */
+  updateDisplayName: (name: string) => Promise<void>;
   /** Switch a host between their own UI and the guest UI. Persisted. */
   setViewMode: (mode: ViewMode) => void;
   signOut: () => Promise<void>;
@@ -196,10 +198,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     void registerForPushNotificationsAsync();
   },
 
-  registerWithPassword: async (email, password) => {
+  registerWithPassword: async (email, password, name) => {
     const res = await apiFetch<SessionResponse>("/auth/register", {
       method: "POST",
-      body: { email: email.trim(), password },
+      body: { email: email.trim(), password, name: name.trim() },
     });
     await persist(set, toSession(res));
     void registerForPushNotificationsAsync();
@@ -253,6 +255,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
     await persist(set, toSession(res));
     get().setViewMode("host");
+  },
+
+  updateDisplayName: async (name) => {
+    const res = await apiFetch<SessionResponse>("/me", {
+      method: "PATCH",
+      body: { displayName: name.trim() },
+    });
+    await persist(set, toSession(res));
   },
 
   setViewMode: (mode) => {

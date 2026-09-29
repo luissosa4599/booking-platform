@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/Button";
 import { DisconnectCalendarSheet } from "@/components/DisconnectCalendarSheet";
@@ -21,7 +22,7 @@ import { ApiError } from "@/lib/api/client";
 import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
 import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
-import { type IconProps, Calendar, LogOut } from "@/lib/icons";
+import { type IconProps, Calendar, LogOut, User } from "@/lib/icons";
 import { useIsWide } from "@/lib/useBreakpoint";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
@@ -45,6 +46,7 @@ export function ProfileContent() {
 
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [editingName, setEditingName] = useState(false);
 
   const calendarStatus = useCalendarStatus();
   const calendarAuth = useGoogleCalendarAuth();
@@ -83,6 +85,7 @@ export function ProfileContent() {
   }
 
   const name = session?.displayName ?? me?.displayName ?? null;
+  const hasName = !!name?.trim();
   const email = session?.email ?? me?.email ?? "";
   const avatarUrl = session?.avatarUrl ?? me?.avatarUrl ?? null;
 
@@ -161,6 +164,16 @@ export function ProfileContent() {
                 onValueChange={(v) => setViewMode(v ? "host" : "guest")}
               />
             ) : null}
+            {/* Email+password accounts created before registration asked for a
+                name have none — this is how they get one (and anyone can fix
+                a typo or a Google name they don't like). */}
+            <Row
+              icon={User}
+              title={hasName ? "Tu nombre" : "Agrega tu nombre"}
+              subtitle={hasName ? "Cambia cómo te saludamos" : "Para saludarte en Explorar"}
+              trailing="chevron"
+              onPress={() => setEditingName(true)}
+            />
             <ThemeControl />
             {calendarConfigured ? (
               <CalendarRow
@@ -207,6 +220,12 @@ export function ProfileContent() {
           </Button>
         </View>
       </Sheet>
+
+      <EditNameSheet
+        isOpen={editingName}
+        initialName={name ?? ""}
+        onClose={() => setEditingName(false)}
+      />
 
       <DisconnectCalendarSheet
         isOpen={confirmDisconnect}
@@ -314,5 +333,82 @@ function CalendarRow({
     >
       {content}
     </Pressable>
+  );
+}
+
+// Always mounted (isOpen-driven) like the other sheets here, so it animates
+// both ways. The draft is re-seeded from the current name on every open.
+function EditNameSheet({
+  isOpen,
+  initialName,
+  onClose,
+}: {
+  isOpen: boolean;
+  initialName: string;
+  onClose: () => void;
+}) {
+  const updateDisplayName = useAuthStore((s) => s.updateDisplayName);
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState(initialName);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Derived-state reset on the closed -> open edge (same pattern as
+  // ConflictSheet), not a useEffect — react-hooks/set-state-in-effect.
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      setDraft(initialName);
+      setError(null);
+    }
+  }
+
+  const trimmed = draft.trim();
+  const canSave = trimmed.length > 0 && trimmed !== initialName.trim() && !saving;
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateDisplayName(trimmed);
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      onClose();
+    } catch {
+      setError("No pudimos guardar tu nombre. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet isOpen={isOpen} onClose={onClose}>
+      <View className="gap-5">
+        <View className="gap-2">
+          <Text className="text-title-sm text-label-1">Tu nombre</Text>
+          <Text className="text-body text-label-3">Así te saludamos en Explorar.</Text>
+        </View>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Cómo quieres que te llamemos"
+          placeholderTextColor="#8A8A8E"
+          autoCapitalize="words"
+          autoComplete="name"
+          textContentType="name"
+          maxLength={80}
+          editable={!saving}
+          onSubmitEditing={() => canSave && void save()}
+          className="h-[52px] rounded-button border border-hairline bg-card px-4 text-body text-label-1"
+        />
+        {error ? <Text className="text-footnote text-state-error">{error}</Text> : null}
+        <Button variant="filled" disabled={!canSave} loading={saving} onPress={() => void save()}>
+          Guardar
+        </Button>
+        <Button variant="plain" onPress={onClose}>
+          Cancelar
+        </Button>
+      </View>
+    </Sheet>
   );
 }

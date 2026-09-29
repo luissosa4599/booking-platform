@@ -105,6 +105,30 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
     }
 
     [Fact]
+    public async Task PostAuthRegister_WithName_StoresItNormalized_AndPatchMeRenames()
+    {
+        var client = fixture.Factory.CreateClient();
+        var register = await client.PostAsJsonAsync(
+            "/auth/register", new RegisterRequest(UniqueEmail(), "correct-horse", "  Ana   María "));
+        Assert.Equal(HttpStatusCode.OK, register.StatusCode);
+        var session = (await register.Content.ReadFromJsonAsync<SessionResponse>())!;
+        Assert.Equal("Ana María", session.User.DisplayName);
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session.AccessToken);
+
+        var blank = await client.PatchAsJsonAsync("/me", new { displayName = "   " });
+        Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
+        var tooLong = await client.PatchAsJsonAsync("/me", new { displayName = new string('a', 81) });
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+
+        var rename = await client.PatchAsJsonAsync("/me", new { displayName = "Ana" });
+        Assert.Equal(HttpStatusCode.OK, rename.StatusCode);
+        var renamed = (await rename.Content.ReadFromJsonAsync<SessionResponse>())!;
+        Assert.Equal("Ana", renamed.User.DisplayName);
+    }
+
+    [Fact]
     public async Task PostAuthRegister_EmailAlreadyHasAPassword_Returns409()
     {
         var client = fixture.Factory.CreateClient();

@@ -51,6 +51,43 @@ public static class MeEndpoints
         .RequireAuthorization()
         .WithName("GetMe");
 
+        // Re-issues the session (same as become-host below) so the stored
+        // session's user — what the greeting and profile header read — and the
+        // access token's name claim both pick up the change immediately.
+        app.MapPatch("/me", async (
+            UpdateMeRequest request,
+            ClaimsPrincipal principal,
+            SessionIssuer issuer,
+            BookingEngineDbContext db,
+            CancellationToken ct) =>
+        {
+            var name = DisplayNames.Normalize(request.DisplayName);
+            if (name is null)
+            {
+                return Results.BadRequest(new { message = "Name is required." });
+            }
+            if (DisplayNames.IsTooLong(name))
+            {
+                return Results.BadRequest(new { message = "Name is too long." });
+            }
+
+            var userId = principal.UserId();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user is null)
+            {
+                return Results.NotFound();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            user.DisplayName = name;
+            user.LastSeenAt = now;
+
+            var session = await issuer.IssueAsync(db, user, now, ct);
+            return Results.Ok(session);
+        })
+        .RequireAuthorization()
+        .WithName("UpdateMe");
+
         // Self-service upgrade, no approval. Re-issues the session so the returned
         // access token carries role=host immediately (the caller's old token would
         // otherwise keep saying guest for up to the access-token lifetime).

@@ -27,6 +27,11 @@ public static class AuthEndpoints
             {
                 return Results.BadRequest(new { message = "Password must be at least 8 characters." });
             }
+            var name = DisplayNames.Normalize(request.Name);
+            if (DisplayNames.IsTooLong(name))
+            {
+                return Results.BadRequest(new { message = "Name is too long." });
+            }
 
             var email = request.Email.Trim().ToLowerInvariant();
             var id = MagicLinkTokens.UserIdFor(email);
@@ -47,6 +52,9 @@ public static class AuthEndpoints
             }
 
             user.PasswordHash = PasswordHasher.Hash(request.Password);
+            // Only overwrite with a real value — an existing Google account's
+            // name survives an old client that registers without one.
+            user.DisplayName = name ?? user.DisplayName;
             user.LastSeenAt = now;
 
             var session = await issuer.IssueAsync(db, user, now, ct);
