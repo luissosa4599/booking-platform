@@ -4,8 +4,8 @@ import {
   InteractionManager,
   Platform,
   Pressable,
+  FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -118,6 +118,19 @@ interface GroupedResourceSlot {
    * which already lists every slot for the day. */
   extraCount: number;
 }
+
+type ExploreListItem =
+  | { kind: "header"; key: string; label: string }
+  | { kind: "skeleton"; key: string; first: boolean }
+  | {
+      kind: "card";
+      key: string;
+      slot: AvailabilitySlot;
+      extraCount: number;
+      later: boolean;
+      first: boolean;
+    }
+  | { kind: "empty"; key: string };
 
 function dedupeByResource(slots: AvailabilitySlot[]): GroupedResourceSlot[] {
   const byResource = new Map<string, GroupedResourceSlot>();
@@ -603,6 +616,7 @@ export default function ExploreScreen() {
   // A "Favoritos"-filtered empty list is its own case — the fix is to drop the
   // filter, not to widen the time window or clear the search.
   const favoritesEmpty = favoritesOnly && isEmpty;
+
   let emptyPrimary: { label: string; onPress: () => void };
   if (favoritesEmpty) {
     emptyPrimary = { label: "Ver todo", onPress: () => setFavoritesOnly(false) };
@@ -658,6 +672,125 @@ export default function ExploreScreen() {
 
   const paneOpen = hasPane && !!paneId;
   const cardVariant: "stacked" | "row" = hasPane ? "row" : "stacked";
+
+  // One flat, virtualizable list: section headers, cards, skeletons and the
+  // empty state are all rows. Spacing that used to come from nested `gap`s
+  // (20 between sections, 12 header->first card, 14 between cards) is each
+  // row's own marginTop.
+  const listItems: ExploreListItem[] = [];
+  if (showSkeleton) {
+    listItems.push({ kind: "header", key: "h-skeleton", label: "LIBRE AHORA MISMO" });
+    listItems.push({ kind: "skeleton", key: "sk-1", first: true });
+    listItems.push({ kind: "skeleton", key: "sk-2", first: false });
+  } else {
+    if (nowGroup.length > 0) {
+      listItems.push({ kind: "header", key: "h-now", label: "LIBRE AHORA MISMO" });
+      nowGroup.forEach(({ slot, extraCount }, i) =>
+        listItems.push({ kind: "card", key: slot.id, slot, extraCount, later: false, first: i === 0 }),
+      );
+    }
+    if (laterGroup.length > 0) {
+      listItems.push({ kind: "header", key: "h-later", label: laterHeader });
+      laterGroup.forEach(({ slot, extraCount }, i) =>
+        listItems.push({ kind: "card", key: slot.id, slot, extraCount, later: true, first: i === 0 }),
+      );
+    }
+  }
+  if (isEmpty) listItems.push({ kind: "empty", key: "empty" });
+
+  // Everything renderListItem reads besides the item itself — FlatList only
+  // re-renders rows when `data` or `extraData` change.
+  const listExtraData = [
+    cardVariant,
+    favoriteIds,
+    pendingSlotIds,
+    paneId,
+    locationStatus,
+    livePos,
+    emptyCopy,
+    favoritesEmpty,
+  ];
+
+  const renderListItem = ({ item, index }: { item: ExploreListItem; index: number }) => {
+    switch (item.kind) {
+      case "header":
+        return (
+          <Text
+            className="pl-1 text-footnote font-semibold uppercase text-label-4"
+            style={{ marginTop: index === 0 ? 0 : 20 }}
+          >
+            {item.label}
+          </Text>
+        );
+      case "skeleton":
+        return (
+          <Animated.View exiting={FadeOut.duration(200)} style={{ marginTop: item.first ? 12 : 14 }}>
+            <ResourceCardSkeleton variant={cardVariant} />
+          </Animated.View>
+        );
+      case "empty":
+        return (
+          <View style={{ marginTop: index === 0 ? 0 : 20 }}>
+            <Placeholder
+              reason={
+                (availabilityQuery.emptyContext?.reason as
+                  "noAvailability" | "noResults" | "filtered" | undefined) ??
+                "noAvailability"
+              }
+              icon={<CalendarX size={26} />}
+              title={favoritesEmpty ? "Sin favoritos disponibles" : emptyCopy.title}
+              body={
+                favoritesEmpty
+                  ? "Ninguno de tus espacios favoritos tiene lugar ahora mismo."
+                  : emptyCopy.body
+              }
+              primaryAction={emptyPrimary}
+              secondaryAction={favoritesEmpty ? undefined : emptySecondary}
+            />
+          </View>
+        );
+      case "card": {
+        const { slot, extraCount, later } = item;
+        const status = statusFor(slot, later);
+        const card = (
+          <ResourceCard
+            variant={cardVariant}
+            name={slot.resourceName}
+            imageUri={imageForSlot(slot)}
+            locationName={slot.locationName}
+            capacityLabel={String(slot.capacityRemaining)}
+            statusTone={status.tone}
+            statusLabel={status.label}
+            timeLabel={timeWindowFor(slot, later)}
+            extraSlotsCount={extraCount}
+            distanceLabel={slotDistance(slot)}
+            locationLatitude={slot.locationLatitude}
+            locationLongitude={slot.locationLongitude}
+            isFavorite={favoriteIds.has(slot.resourceId)}
+            onToggleFavorite={() => handleToggleFavorite(slot)}
+            onBook={() => handleBook(slot)}
+            onPress={() => handleOpenResource(slot)}
+            bookLoading={pendingSlotIds.has(slot.id)}
+            selected={paneId === slot.resourceId}
+            actionAccessibilityLabel={
+              later
+                ? `Apartar ${slot.resourceName}, ${formatTime(slot.startsAt)}`
+                : `Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`
+            }
+          />
+        );
+        const marginTop = item.first ? 12 : 14;
+        // "Ahora" rows keep the handoff's row-exit after a one-tap booking.
+        return later ? (
+          <View style={{ marginTop }}>{card}</View>
+        ) : (
+          <Animated.View layout={LinearTransition.springify()} exiting={FadeOut} style={{ marginTop }}>
+            {card}
+          </Animated.View>
+        );
+      }
+    }
+  };
   const firstName = session?.displayName?.trim().split(/\s+/)[0] ?? null;
 
   return (
@@ -871,13 +1004,25 @@ export default function ExploreScreen() {
 
       <View style={{ flex: 1 }}>
       {view !== "map" ? (
-      <ScrollView
+      <FlatList
         className="flex-1"
+        data={listItems}
+        keyExtractor={(item) => item.key}
+        renderItem={renderListItem}
+        // Virtualized (was a ScrollView rendering every card at once): with
+        // ~60 resources that meant ~60 photos decoding on first paint, the
+        // main cost on a low-end phone (2026-09-29 measurement). Small
+        // windows on purpose — each card is ~300pt tall, so 4 fill a screen.
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === "android"}
+        extraData={listExtraData}
         contentContainerStyle={{
-          gap: 20,
           paddingHorizontal: 16,
           paddingBottom: isWide ? 16 : 96,
         }}
+        style={{ opacity: isRefreshing ? 0.6 : 1 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -886,123 +1031,7 @@ export default function ExploreScreen() {
             colors={["transparent"]}
           />
         }
-      >
-        <View style={{ opacity: isRefreshing ? 0.6 : 1, gap: 20 }}>
-          {showSkeleton ? (
-            <View className="gap-3">
-              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
-                LIBRE AHORA MISMO
-              </Text>
-              <View style={{ gap: 14 }}>
-                <Animated.View exiting={FadeOut.duration(200)}>
-                  <ResourceCardSkeleton variant={cardVariant} />
-                </Animated.View>
-                <Animated.View exiting={FadeOut.duration(200)}>
-                  <ResourceCardSkeleton variant={cardVariant} />
-                </Animated.View>
-              </View>
-            </View>
-          ) : null}
-
-          {!showSkeleton && nowGroup.length > 0 ? (
-            <View className="gap-3">
-              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
-                LIBRE AHORA MISMO
-              </Text>
-              <View style={{ gap: 14 }}>
-                {nowGroup.map(({ slot, extraCount }) => {
-                  const status = statusFor(slot, false);
-                  return (
-                    <Animated.View
-                      key={slot.id}
-                      layout={LinearTransition.springify()}
-                      exiting={FadeOut}
-                    >
-                      <ResourceCard
-                        variant={cardVariant}
-                        name={slot.resourceName}
-                        imageUri={imageForSlot(slot)}
-                        locationName={slot.locationName}
-                        capacityLabel={String(slot.capacityRemaining)}
-                        statusTone={status.tone}
-                        statusLabel={status.label}
-                        timeLabel={timeWindowFor(slot, false)}
-                        extraSlotsCount={extraCount}
-                        distanceLabel={slotDistance(slot)}
-                        locationLatitude={slot.locationLatitude}
-                        locationLongitude={slot.locationLongitude}
-                        isFavorite={favoriteIds.has(slot.resourceId)}
-                        onToggleFavorite={() => handleToggleFavorite(slot)}
-                        onBook={() => handleBook(slot)}
-                        onPress={() => handleOpenResource(slot)}
-                        bookLoading={pendingSlotIds.has(slot.id)}
-                        selected={paneId === slot.resourceId}
-                        actionAccessibilityLabel={`Apartar ${slot.resourceName} ahora, hasta ${formatTime(slot.endsAt)}`}
-                      />
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
-
-          {!showSkeleton && laterGroup.length > 0 ? (
-            <View className="gap-3">
-              <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
-                {laterHeader}
-              </Text>
-              <View style={{ gap: 14 }}>
-                {laterGroup.map(({ slot, extraCount }) => {
-                  const status = statusFor(slot, true);
-                  return (
-                    <ResourceCard
-                      key={slot.id}
-                      variant={cardVariant}
-                      name={slot.resourceName}
-                      imageUri={imageForSlot(slot)}
-                      locationName={slot.locationName}
-                      capacityLabel={String(slot.capacityRemaining)}
-                      statusTone={status.tone}
-                      statusLabel={status.label}
-                      timeLabel={timeWindowFor(slot, true)}
-                      extraSlotsCount={extraCount}
-                      distanceLabel={slotDistance(slot)}
-                      locationLatitude={slot.locationLatitude}
-                      locationLongitude={slot.locationLongitude}
-                      isFavorite={favoriteIds.has(slot.resourceId)}
-                      onToggleFavorite={() => handleToggleFavorite(slot)}
-                      onBook={() => handleBook(slot)}
-                      onPress={() => handleOpenResource(slot)}
-                      bookLoading={pendingSlotIds.has(slot.id)}
-                      selected={paneId === slot.resourceId}
-                      actionAccessibilityLabel={`Apartar ${slot.resourceName}, ${formatTime(slot.startsAt)}`}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
-
-          {isEmpty ? (
-            <Placeholder
-              reason={
-                (availabilityQuery.emptyContext?.reason as
-                  "noAvailability" | "noResults" | "filtered" | undefined) ??
-                "noAvailability"
-              }
-              icon={<CalendarX size={26} />}
-              title={favoritesEmpty ? "Sin favoritos disponibles" : emptyCopy.title}
-              body={
-                favoritesEmpty
-                  ? "Ninguno de tus espacios favoritos tiene lugar ahora mismo."
-                  : emptyCopy.body
-              }
-              primaryAction={emptyPrimary}
-              secondaryAction={favoritesEmpty ? undefined : emptySecondary}
-            />
-          ) : null}
-        </View>
-      </ScrollView>
+      />
       ) : null}
 
       {mapAvailable && mapMounted ? (

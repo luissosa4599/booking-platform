@@ -18,6 +18,11 @@ test.describe("explore — one-tap booking", () => {
       timeout: 20_000,
     });
 
+    // Explore's list is virtualized (FlatList) — a random resource further
+    // down isn't mounted until scrolled to, so narrow the list to it first,
+    // the way a real user looking for a specific space would.
+    await page.getByPlaceholder(/Buscar sala/).fill(target.resourceName);
+
     const apartar = page
       .getByRole("button", {
         name: new RegExp(`^Apartar ${escapeRegExp(target.resourceName)}`),
