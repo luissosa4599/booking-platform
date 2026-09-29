@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Threading.RateLimiting;
 using BookingEngine.Api.Api.Endpoints;
 using BookingEngine.Api.Application.Auth;
@@ -13,6 +14,7 @@ using DotNetEnv;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -155,6 +157,20 @@ try
                 }));
     });
 
+    // JSON responses were going out uncompressed — Explore's /availability was
+    // ~133 KB raw vs ~19 KB gzipped (2026-09-29 measurement). EnableForHttps:
+    // Cloud Run terminates TLS in front of us, but clients still talk HTTPS
+    // end to end, and none of these responses echo a secret next to
+    // attacker-controlled input (the BREACH precondition).
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+    });
+    builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+    builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+
     var app = builder.Build();
 
     // Only set by docker-compose.yml — a fresh Postgres container has no
@@ -195,6 +211,7 @@ try
         app.MapOpenApi();
     }
 
+    app.UseResponseCompression();
     app.UseCors(AllowWebPolicy);
     app.UseRateLimiter();
     app.UseAuthentication();

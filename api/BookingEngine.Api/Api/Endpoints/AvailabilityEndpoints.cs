@@ -1,4 +1,5 @@
 using BookingEngine.Api.Application.Availability;
+using BookingEngine.Api.Application.Images;
 using BookingEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -123,7 +124,7 @@ public static class AvailabilityEndpoints
                         : null,
                     r.Lat,
                     r.Lng,
-                    r.ImageUrl))
+                    ImageVariants.Card(r.ImageUrl)))
                 .ToList();
 
             EmptyContextResponse? emptyContext = slots.Count > 0

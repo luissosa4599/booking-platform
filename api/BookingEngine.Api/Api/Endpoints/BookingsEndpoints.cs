@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using BookingEngine.Api.Application.Auth;
 using BookingEngine.Api.Application.Bookings;
+using BookingEngine.Api.Application.Images;
 using BookingEngine.Api.Application.Validation;
 using BookingEngine.Domain;
 using BookingEngine.Infrastructure;
@@ -53,10 +54,10 @@ public static class BookingsEndpoints
                     b.Status.ToString(),
                     b.Code,
                     b.CheckedInAt,
-                    b.AvailabilitySlot.Resource.Images
+                    ImageVariants.Thumb(b.AvailabilitySlot.Resource.Images
                         .OrderBy(i => i.Position)
                         .Select(i => i.Url)
-                        .FirstOrDefault()))
+                        .FirstOrDefault())))
                 .ToListAsync();
 
             return Results.Ok(bookings);
