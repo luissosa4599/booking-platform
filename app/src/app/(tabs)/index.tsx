@@ -42,6 +42,7 @@ import { useResourceTypes } from "@/lib/api/resourceTypes";
 import type { AvailabilitySlot, MyBooking } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { composeEmptyStateCopy } from "@/lib/emptyStateCopy";
+import { formatDuration, minutesUntil } from "@/lib/countdown";
 import { haptics } from "@/lib/haptics";
 import {
   BookOpen,
@@ -375,13 +376,10 @@ export default function ExploreScreen() {
     if (!isLater) {
       return last ? { tone: "last", label: "Último lugar" } : { tone: "free", label: "Libre" };
     }
-    const minutes = Math.max(
-      0,
-      Math.round((new Date(slot.startsAt).getTime() - now.getTime()) / 60_000),
-    );
+    const inLabel = formatDuration(minutesUntil(slot.startsAt, now));
     return last
-      ? { tone: "last", label: `Último lugar · en ${minutes} min` }
-      : { tone: "free", label: `Libre en ${minutes} min` };
+      ? { tone: "last", label: `Último lugar · en ${inLabel}` }
+      : { tone: "free", label: `Libre en ${inLabel}` };
   }
 
   function timeWindowFor(slot: AvailabilitySlot, isLater: boolean): string {

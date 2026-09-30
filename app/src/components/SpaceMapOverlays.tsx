@@ -1,6 +1,7 @@
 import { Image, Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
+import { formatDuration } from "@/lib/countdown";
 import { LocateFixed } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
 import { MAP_TOGGLE_BOTTOM, SELECTED_CARD_BOTTOM, type MapPlace } from "./SpaceMap.types";
@@ -17,7 +18,7 @@ import { MAP_TOGGLE_BOTTOM, SELECTED_CARD_BOTTOM, type MapPlace } from "./SpaceM
  * compact CTA) at a smaller size.
  */
 export function SelectedPlaceCard({ place, onAction }: { place: MapPlace; onAction: () => void }) {
-  const statusLabel = place.state === "free" ? "Libre" : `Libre en ${place.soonMinutes} min`;
+  const statusLabel = place.state === "free" ? "Libre" : `Libre en ${formatDuration(place.soonMinutes ?? 0)}`;
 
   return (
     <View

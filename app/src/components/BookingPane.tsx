@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { QrPassTile } from "@/components/QrPassTile";
 import type { BookingScope, MyBooking } from "@/lib/api/types";
+import { formatDuration, minutesUntil } from "@/lib/countdown";
 import { haptics } from "@/lib/haptics";
 import { X } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
@@ -33,13 +34,8 @@ function formatFullDate(iso: string) {
 }
 
 function formatCountdown(startsAt: string): string | null {
-  const diffMs = new Date(startsAt).getTime() - Date.now();
-  if (diffMs <= 0) return null;
-  const mins = Math.round(diffMs / 60_000);
-  if (mins < 60) return `en ${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m === 0 ? `en ${h} h` : `en ${h} h ${m} min`;
+  if (new Date(startsAt).getTime() <= Date.now()) return null;
+  return `en ${formatDuration(minutesUntil(startsAt))}`;
 }
 
 interface BookingPaneProps {
