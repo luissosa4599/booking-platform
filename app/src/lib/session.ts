@@ -124,9 +124,10 @@ interface AuthState {
   /** Dev-only simulated magic link (no mail). Kept for local testing. */
   requestLink: (email: string) => Promise<RequestLinkResult>;
   verify: (token: string) => Promise<void>;
-  /** Creates a new account (or adds a password to an existing Google/magic-link
-   * one for the same email) and signs in. Throws ApiError(409) if that email
-   * already has a password set. */
+  /** Creates a new account and signs in. Throws ApiError(409) if that email
+   * already has any account — including a Google one without a password
+   * (body `code: "google_account"`; adding a password goes through
+   * forgot-password, which proves the email). */
   registerWithPassword: (email: string, password: string, name: string) => Promise<void>;
   /** Throws ApiError(401) on a wrong password or an unknown email. */
   loginWithPassword: (email: string, password: string) => Promise<void>;

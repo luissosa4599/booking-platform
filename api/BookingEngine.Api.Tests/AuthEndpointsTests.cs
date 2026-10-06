@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using BookingEngine.Api.Application.Auth;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -142,20 +143,26 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
     }
 
     [Fact]
-    public async Task PostAuthRegister_OnExistingGoogleAccount_AddsAPassword_SameUserId()
+    public async Task PostAuthRegister_OnExistingGoogleAccount_Returns409_AndSetsNoPassword()
     {
+        // Registering used to attach the caller's password to an existing
+        // Google account — anyone who knew the email could take it over.
         var email = "someone@gmail.com"; // matches StubGoogleValidator's SampleIdentity
         var googleClient = ClientWithGoogleStub();
         var signIn = await googleClient.PostAsJsonAsync("/auth/google", new { idToken = "good-token" });
-        var googleSession = (await signIn.Content.ReadFromJsonAsync<SessionResponse>())!;
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
 
         var plainClient = fixture.Factory.CreateClient();
         var register = await plainClient.PostAsJsonAsync(
             "/auth/register", new RegisterRequest(email, "correct-horse"));
 
-        Assert.Equal(HttpStatusCode.OK, register.StatusCode);
-        var pwSession = (await register.Content.ReadFromJsonAsync<SessionResponse>())!;
-        Assert.Equal(googleSession.User.Id, pwSession.User.Id);
+        Assert.Equal(HttpStatusCode.Conflict, register.StatusCode);
+        var body = await register.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("google_account", body.GetProperty("code").GetString());
+
+        var login = await plainClient.PostAsJsonAsync(
+            "/auth/login", new LoginRequest(email, "correct-horse"));
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
 
     [Fact]

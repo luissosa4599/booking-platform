@@ -38,23 +38,26 @@ public static class AuthEndpoints
             var now = DateTimeOffset.UtcNow;
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
 
-            if (user is not null && !string.IsNullOrEmpty(user.PasswordHash))
+            // Any existing account is a 409 — including one without a password
+            // (signed up with Google). Registering never attaches a password to
+            // an account the caller hasn't proven they own: that used to let
+            // anyone who knew a Google user's email set a password on it and
+            // sign in as them. A Google user who wants a password goes through
+            // /auth/forgot-password instead, which proves the email.
+            if (user is not null)
             {
-                return Results.Conflict(new { message = "An account with this email already exists." });
+                return string.IsNullOrEmpty(user.PasswordHash)
+                    ? Results.Conflict(new { message = "This account signs in with Google.", code = "google_account" })
+                    : Results.Conflict(new { message = "An account with this email already exists.", code = "email_taken" });
             }
 
-            if (user is null)
-            {
-                // Same id derivation as Google/magic-link — if this email later
-                // signs in with Google, it resolves to this same account.
-                user = new User { Id = id, Email = email, CreatedAt = now };
-                db.Users.Add(user);
-            }
+            // Same id derivation as Google/magic-link — if this email later
+            // signs in with Google, it resolves to this same account.
+            user = new User { Id = id, Email = email, CreatedAt = now };
+            db.Users.Add(user);
 
             user.PasswordHash = PasswordHasher.Hash(request.Password);
-            // Only overwrite with a real value — an existing Google account's
-            // name survives an old client that registers without one.
-            user.DisplayName = name ?? user.DisplayName;
+            user.DisplayName = name;
             user.LastSeenAt = now;
 
             var session = await issuer.IssueAsync(db, user, now, ct);
