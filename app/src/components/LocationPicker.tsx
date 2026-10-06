@@ -15,6 +15,7 @@ import { reverseGeocode } from "@/lib/api/geocode";
 import { haptics } from "@/lib/haptics";
 import { MapPin, Minus, Plus } from "@/lib/icons";
 import { requestAndGetPosition } from "@/lib/location";
+import { ensurePermission } from "@/lib/permissionPrompt";
 import { type Coords, hasMapsStaticKey, pxToLatLng, staticMapUrl } from "@/lib/maps";
 import { useColor } from "@/lib/theme/useColor";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -119,6 +120,11 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
   }
 
   async function handleUseMyLocation() {
+    // Denied before → explainer + Settings, re-run once granted.
+    const permission = await ensurePermission("location", {
+      onGranted: () => void handleUseMyLocation(),
+    });
+    if (permission !== "granted") return;
     setLocating(true);
     const pos = await requestAndGetPosition();
     setLocating(false);

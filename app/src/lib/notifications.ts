@@ -31,14 +31,74 @@ function loadNotifications(): NotificationsModule | null {
 // flow; the server-side reminder covers every booking, including the
 // one-tap Explore flow, which the old approach never reached).
 
+// Android 13+ only shows the POST_NOTIFICATIONS prompt once at least one
+// notification channel exists, so make sure ours does before asking. Name is
+// what Android's per-app notification settings list.
+async function ensureAndroidChannel(Notifications: NotificationsModule): Promise<void> {
+  if (Platform.OS !== "android") return;
+  try {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "Recordatorios y avisos",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  } catch {
+    // best-effort
+  }
+}
+
+export interface NotificationPermission {
+  granted: boolean;
+  canAskAgain: boolean;
+}
+
+/** Current permission, or `null` where push isn't supported (web, Expo Go). */
+export async function getNotificationPermissionAsync(): Promise<NotificationPermission | null> {
+  const Notifications = loadNotifications();
+  if (!Notifications) return null;
+  try {
+    const { granted, canAskAgain } = await Notifications.getPermissionsAsync();
+    return { granted, canAskAgain };
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Registers this device for push notifications: requests permission, gets an
- * Expo push token, and POSTs it to `/devices`. Silently does nothing on web,
- * in Expo Go, without permission, or without an EAS project id configured
- * (`app.config.ts`'s `extra.eas.projectId` — unset until `eas init` runs) —
- * push is a best-effort feature, never worth surfacing an error for.
+ * Shows the OS permission dialog (if it can still be shown) and resolves
+ * whether notifications are allowed. Only call this from an explicit user tap
+ * on a screen that already explained why (the tutorial's permissions step,
+ * `NotificationPrimerSheet`) — never cold. Doesn't need a session: the token
+ * is registered with the API later, after sign-in.
  */
-export async function registerForPushNotificationsAsync(): Promise<void> {
+export async function requestNotificationPermissionAsync(): Promise<boolean> {
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
+  try {
+    await ensureAndroidChannel(Notifications);
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return true;
+    if (!current.canAskAgain) return false;
+    return (await Notifications.requestPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Registers this device for push notifications: gets an Expo push token and
+ * POSTs it to `/devices`. Silently does nothing on web, in Expo Go, without
+ * permission, or without an EAS project id configured (`app.config.ts`'s
+ * `extra.eas.projectId`) — push is a best-effort feature, never worth
+ * surfacing an error for.
+ *
+ * `prompt: false` (the default, used right after sign-in) never shows the OS
+ * dialog — it only registers when permission was already granted. The dialog
+ * is only ever shown after an explanation (2026-10-06: "una explicación rápida
+ * de por qué se requiere cada permiso").
+ */
+export async function registerForPushNotificationsAsync(
+  { prompt = false }: { prompt?: boolean } = {},
+): Promise<void> {
   const Notifications = loadNotifications();
   if (!Notifications) return;
 
@@ -46,9 +106,10 @@ export async function registerForPushNotificationsAsync(): Promise<void> {
   if (!projectId) return;
 
   try {
+    await ensureAndroidChannel(Notifications);
     const current = await Notifications.getPermissionsAsync();
     let granted = current.granted;
-    if (!granted && current.canAskAgain) {
+    if (!granted && prompt && current.canAskAgain) {
       granted = (await Notifications.requestPermissionsAsync()).granted;
     }
     if (!granted) return;

@@ -28,6 +28,7 @@ import { Calendar, RotateCw, WifiOff } from "@/lib/icons";
 import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { useDetailSelection } from "@/lib/useDetailSelection";
+import { useSignInPromptStore } from "@/lib/requireAccount";
 import { useUserId } from "@/lib/session";
 
 function timeOfDay(iso: string) {
@@ -284,6 +285,34 @@ export default function BookingsScreen() {
         cancelAccessibilityLabel={`Cancelar reserva de ${booking.resourceName}, ${schedule}`}
         cancelLoading={shakeId === booking.id}
       />
+    );
+  }
+
+  // Guest mode: the tab itself is gated (tapping it opens the sign-in modal),
+  // so this only shows on a direct /bookings visit on web.
+  if (!userId) {
+    return (
+      <Screen bg="canvas">
+        <View className="px-4 pt-3">
+          <Text className="text-title-screen text-label-1">Reservas</Text>
+        </View>
+        <View className="flex-1 justify-center px-4">
+          <Placeholder
+            reason="noBookings"
+            icon={<Calendar size={26} />}
+            title="Tus reservas aparecerán aquí"
+            body="Para acceder a esta función tienes que iniciar sesión."
+            primaryAction={{
+              label: "Iniciar sesión",
+              onPress: () => useSignInPromptStore.getState().open(),
+            }}
+            secondaryAction={{
+              label: "Explorar espacios",
+              onPress: () => router.navigate("/"),
+            }}
+          />
+        </View>
+      </Screen>
     );
   }
 

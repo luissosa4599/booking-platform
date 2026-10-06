@@ -10,6 +10,10 @@ const STORAGE_KEY = "tempo.session.v1";
 // from the session blob: `refresh()` rebuilds the session from the server every
 // ~30 min and would otherwise wipe this. Only meaningful when role === "host".
 const VIEW_MODE_KEY = "tempo.viewmode.v1";
+// Guest mode (2026-10-06): set when the user taps "Continuar como invitado" on
+// the sign-in screen — from then on the app opens on Explore without a session
+// (account-only actions open a modal). Cleared by any sign-in or sign-out.
+const GUEST_KEY = "tempo.guest.v1";
 
 export type AccountRole = "guest" | "host";
 export type ViewMode = "guest" | "host";
@@ -110,6 +114,10 @@ interface AuthState {
   session: Session | null;
   /** "guest" | "host" — which UI a host is in. Ignored while role === "guest". */
   viewMode: ViewMode;
+  /** Browsing without an account ("Continuar como invitado"). Only meaningful
+   * while `session` is null. Persisted. */
+  guest: boolean;
+  enterGuestMode: () => void;
   hydrate: () => Promise<void>;
   /** Real Google OAuth2 — pass the Google ID token from expo-auth-session. */
   signInWithGoogle: (idToken: string) => Promise<void>;
@@ -139,7 +147,8 @@ interface AuthState {
 
 async function persist(set: (partial: Partial<AuthState>) => void, session: Session) {
   await storage.set(STORAGE_KEY, JSON.stringify(session));
-  set({ session });
+  void storage.remove(GUEST_KEY);
+  set({ session, guest: false });
 }
 
 // A burst of requests can all 401 at once (access token just expired). They must
@@ -151,11 +160,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hydrated: false,
   session: null,
   viewMode: "host",
+  guest: false,
 
   hydrate: async () => {
-    const [rawSession, rawViewMode] = await Promise.all([
+    const [rawSession, rawViewMode, rawGuest] = await Promise.all([
       storage.get(STORAGE_KEY),
       storage.get(VIEW_MODE_KEY),
+      storage.get(GUEST_KEY),
     ]);
     let session: Session | null = null;
     if (rawSession) {
@@ -171,7 +182,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       hydrated: true,
       session,
       viewMode: rawViewMode === "guest" ? "guest" : "host",
+      guest: !session && rawGuest === "1",
     });
+  },
+
+  enterGuestMode: () => {
+    void storage.set(GUEST_KEY, "1");
+    set({ guest: true });
   },
 
   signInWithGoogle: async (idToken) => {
@@ -279,8 +296,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: { refreshToken: current.refreshToken },
       }).catch(() => {});
     }
-    await Promise.all([storage.remove(STORAGE_KEY), storage.remove(VIEW_MODE_KEY)]);
-    set({ session: null, viewMode: "host" });
+    await Promise.all([
+      storage.remove(STORAGE_KEY),
+      storage.remove(VIEW_MODE_KEY),
+      storage.remove(GUEST_KEY),
+    ]);
+    set({ session: null, viewMode: "host", guest: false });
   },
 }));
 
@@ -292,11 +313,21 @@ setAuthHandlers({
   onAuthLost: () => {
     void storage.remove(STORAGE_KEY);
     void storage.remove(VIEW_MODE_KEY);
-    useAuthStore.setState({ session: null, viewMode: "host" });
+    useAuthStore.setState({ session: null, viewMode: "host", guest: false });
   },
 });
 
-/** Reactive user id for hooks — "" before sign-in (screens behind the gate never see that). */
+/**
+ * Guest mode (2026-10-06): browsing without a session after choosing
+ * "Continuar como invitado". Account-only actions go through
+ * `requireAccount()` (lib/requireAccount.ts), which opens a modal instead of
+ * redirecting.
+ */
+export function useIsGuest(): boolean {
+  return useAuthStore((s) => !s.session && s.guest);
+}
+
+/** Reactive user id for hooks — "" for a guest (no session). */
 export function useUserId(): string {
   return useAuthStore((s) => s.session?.userId ?? "");
 }

@@ -20,7 +20,7 @@ const LIGHT = {
   sheet: "#FFFFFF",
   glass: "rgba(255,255,255,0.92)",
   chevron: "#C7C7CC",
-  "disabled-label": "#A3A3A8",
+  "disabled-label": "#6B6B70",
   "state-free": "#1B7046",
   "state-last": "#865E0A",
   "state-error": "#C0392B",
@@ -61,7 +61,7 @@ const DARK: Record<keyof typeof LIGHT, string> = {
   "tint-avatar-fg": "#E8A883",
   // Was missing — fell through to the light value (#B9B9BE) via the spread,
   // too light against a near-black canvas. Explore redesign (2026-09-14).
-  "disabled-label": "#6B6B71",
+  "disabled-label": "#949499",
   tint: "#E8A883",
   "tint-press": "#F2BE9F",
   "tint-soft": "#C2571F",

@@ -142,6 +142,12 @@ export function PhotoManager({ spaceId, images }: PhotoManagerProps) {
             {offline ? "Sin conexión" : busy ? "Subiendo…" : "Agregar fotos"}
           </Text>
         </Pressable>
+        {/* Permission explained up front (2026-10-06) — the picker is the
+            system's own, and only what's chosen leaves the phone. */}
+        <Text className="px-1 text-footnote text-label-3">
+          Se abre el selector de fotos de tu teléfono. Solo se suben las fotos
+          que elijas.
+        </Text>
       </View>
     </Field>
   );

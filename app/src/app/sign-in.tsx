@@ -59,6 +59,7 @@ export default function SignInScreen() {
   const verify = useAuthStore((s) => s.verify);
   const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
   const registerWithPassword = useAuthStore((s) => s.registerWithPassword);
+  const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -79,6 +80,14 @@ export default function SignInScreen() {
   const nameValid = passwordMode === "login" || name.trim().length > 0;
   const canSubmit = emailValid && passwordValid && nameValid;
 
+  // Back to wherever the guest was (they reached this from the sign-in modal),
+  // or Explore on a first launch.
+  function continueAsGuest() {
+    enterGuestMode();
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
   // Dev-only: no mail is sent, so we verify the token right away. The
   // /auth/request-link + /auth/verify endpoints only exist in Development.
   async function continueWithDevLink(address: string) {
@@ -87,7 +96,6 @@ export default function SignInScreen() {
     try {
       const { token } = await requestLink(address);
       await verify(token);
-      router.replace("/");
     } catch {
       setError("No pudimos entrar. Intenta de nuevo.");
     } finally {
@@ -104,7 +112,8 @@ export default function SignInScreen() {
       } else {
         await registerWithPassword(email, password, name);
       }
-      router.replace("/");
+      // No navigation here — the AuthGate moves a fresh session off this
+      // screen (back to wherever the guest was, or home).
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setError("Correo o contraseña incorrectos.");
@@ -266,6 +275,24 @@ export default function SignInScreen() {
           </Text>
         </Pressable>
       </View>
+
+      {/* Guest mode (2026-10-06): the first launch lands here, and browsing
+          without an account starts only when the user picks this. */}
+      <Button variant="plain" disabled={busy} onPress={continueAsGuest}>
+        Continuar como invitado
+      </Button>
+
+      <Pressable
+        onPress={() => router.push("/about")}
+        hitSlop={6}
+        accessibilityRole="link"
+        accessibilityLabel="Versión de prueba con datos ficticios, sin fines de lucro. Más información"
+      >
+        <Text className="text-center text-footnote text-label-3">
+          Versión de prueba · datos ficticios · sin fines de lucro.{" "}
+          <Text className="font-semibold text-label-2">Más info</Text>
+        </Text>
+      </Pressable>
 
       {__DEV__ ? (
         <Button

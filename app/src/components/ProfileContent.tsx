@@ -1,8 +1,10 @@
 import { useState, type ComponentType } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { DisconnectCalendarSheet } from "@/components/DisconnectCalendarSheet";
 import { Group } from "@/components/Group";
@@ -22,7 +24,8 @@ import { ApiError } from "@/lib/api/client";
 import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
 import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
-import { type IconProps, Calendar, LogOut, User } from "@/lib/icons";
+import { type IconProps, Calendar, Info, LogIn, LogOut, ShieldCheck, User } from "@/lib/icons";
+import { requireAccount } from "@/lib/requireAccount";
 import { useIsWide } from "@/lib/useBreakpoint";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
@@ -84,6 +87,77 @@ export function ProfileContent() {
     await disconnectCalendar.mutateAsync();
   }
 
+  const version = Constants.expoConfig?.version ?? "";
+  const versionLabel = version ? (
+    <Text className="pl-1 text-footnote text-label-4">Tempo v{version}</Text>
+  ) : null;
+
+  // "Acerca de Tempo" + "Permisos" (2026-10-06) — the always-reachable home
+  // of the demo-data / non-profit note and the per-permission explanations.
+  // Shown with or without a session.
+  const infoRows = (
+    <>
+      <Row
+        icon={Info}
+        title="Acerca de Tempo"
+        subtitle="Versión de prueba · sin fines de lucro"
+        trailing="chevron"
+        onPress={() => router.push("/about")}
+      />
+      <Row
+        icon={ShieldCheck}
+        title="Permisos"
+        subtitle="Para qué usamos cada uno"
+        trailing="chevron"
+        onPress={() => router.push("/permissions")}
+      />
+    </>
+  );
+
+  // Guest mode: no account yet — a way in, plus the settings that don't need
+  // one. Signing in is the user's choice here, so this row may navigate.
+  if (!session) {
+    return (
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 22, paddingBottom: 32, gap: 20 }}
+      >
+        <View className="flex-row items-center gap-4">
+          <Avatar name={null} photoUrl={null} size={72} tone="solid" />
+          <View className="flex-1 gap-0.5">
+            <Text numberOfLines={1} className="text-profile-name text-label-1">
+              Invitado
+            </Text>
+            <Text numberOfLines={1} className="text-footnote text-label-3">
+              Explorando sin cuenta
+            </Text>
+          </View>
+        </View>
+
+        <Group dividerInset={52}>
+          <Row
+            icon={LogIn}
+            title="Iniciar sesión o crear cuenta"
+            subtitle="Para apartar, guardar favoritos y recibir avisos"
+            trailing="chevron"
+            onPress={() => router.push("/sign-in")}
+          />
+        </Group>
+
+        <View className="gap-2">
+          <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
+            Ajustes
+          </Text>
+          <Group dividerInset={52}>
+            <ThemeControl />
+            {infoRows}
+          </Group>
+        </View>
+
+        {versionLabel}
+      </ScrollView>
+    );
+  }
+
   const name = session?.displayName ?? me?.displayName ?? null;
   const hasName = !!name?.trim();
   const email = session?.email ?? me?.email ?? "";
@@ -113,7 +187,11 @@ export function ProfileContent() {
         )}
 
         {role === "guest" ? (
-          <HostCta onPress={() => router.push("/become-host")} />
+          <HostCta
+            onPress={() => {
+              if (requireAccount()) router.push("/become-host");
+            }}
+          />
         ) : null}
 
         {/* Favorites (guest only) — the handoff doesn't address this block at
@@ -183,6 +261,7 @@ export function ProfileContent() {
                 onRequestDisconnect={() => setConfirmDisconnect(true)}
               />
             ) : null}
+            {infoRows}
             <Row
               icon={LogOut}
               title="Cerrar sesión"
@@ -192,7 +271,7 @@ export function ProfileContent() {
           </Group>
         </View>
 
-        <Text className="pl-1 text-footnote text-label-4">Tempo v1.0.0</Text>
+        {versionLabel}
       </ScrollView>
 
       <Sheet isOpen={confirmSignOut} onClose={() => setConfirmSignOut(false)}>
@@ -200,7 +279,7 @@ export function ProfileContent() {
           <View className="gap-2">
             <Text className="text-title-sm text-label-1">¿Cerrar sesión?</Text>
             <Text className="text-body text-label-3">
-              Vas a volver a la pantalla de inicio. Tus reservas siguen guardadas.
+              Vas a volver a la pantalla de inicio de sesión. Tus reservas siguen guardadas.
             </Text>
           </View>
           {/* El destructivo real es cancelar una reserva, no cerrar sesión —

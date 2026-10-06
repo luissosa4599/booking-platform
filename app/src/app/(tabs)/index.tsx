@@ -16,6 +16,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 
 import { Avatar } from "@/components/Avatar";
 import { BookingPassSheet } from "@/components/BookingPassSheet";
+import { Button } from "@/components/Button";
 import { CategoryCircles, type CategoryOption } from "@/components/CategoryCircles";
 import { ConflictSheet } from "@/components/ConflictSheet";
 import { FilterPills } from "@/components/FilterPills";
@@ -61,6 +62,9 @@ import { requestAndGetPosition } from "@/lib/location";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { formatDistance } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
+import { useNotificationPrimerStore } from "@/lib/notificationPrimer";
+import { ensurePermission } from "@/lib/permissionPrompt";
+import { requireAccount } from "@/lib/requireAccount";
 import { useAuthStore, useUserId } from "@/lib/session";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useColor } from "@/lib/theme/useColor";
@@ -485,6 +489,7 @@ export default function ExploreScreen() {
     : null;
 
   function handleBook(slot: AvailabilitySlot) {
+    if (!requireAccount()) return;
     if (offline) {
       useToastStore.getState().show("Necesitas conexión para apartar un lugar");
       return;
@@ -514,6 +519,12 @@ export default function ExploreScreen() {
                 "Ver",
               );
           }, 400);
+          // First booking is when a reminder obviously makes sense — offer
+          // notifications (with the why) to anyone who skipped the tutorial's
+          // permissions step. No-op if already granted/asked.
+          setTimeout(() => {
+            void useNotificationPrimerStore.getState().maybeOpen();
+          }, 1500);
         },
       },
     );
@@ -521,27 +532,32 @@ export default function ExploreScreen() {
 
   async function enableNearest() {
     sortTouched.current = true;
-    // `bootstrap()` (app start) already resolved this most of the time — only
-    // fall back to asking again if it hasn't (e.g. the store hasn't finished
-    // yet, or something cleared `position`). `requestAndGetPosition` itself
-    // no-ops without re-prompting once the user has denied this session.
+    // `bootstrap()` (app start) already has a fix when permission was granted
+    // before — only ask if it hasn't.
     if (livePos) {
       setSort("nearest");
       ensureWatching();
       return;
     }
+    // Never asked → the system dialog right here (the tap is the context).
+    // Denied before → an explainer that re-asks or points to Settings, and
+    // re-runs this once it's granted (lib/permissionPrompt.ts).
+    const permission = await ensurePermission("location", {
+      onGranted: () => void enableNearest(),
+    });
+    if (permission !== "granted") return;
     setLocating(true);
     const pos = await requestAndGetPosition();
     setLocating(false);
     if (pos) {
-      useLocationStore.setState({ position: pos, sortAnchor: pos });
+      useLocationStore.setState({ position: pos, sortAnchor: pos, status: "granted" });
       setSort("nearest");
       ensureWatching();
     } else {
-      // Denied / unavailable — stay on the current sort, don't nag.
+      // Allowed, but no fix (GPS off, timeout) — stay on the current sort.
       useToastStore
         .getState()
-        .show("Activa la ubicación para ordenar por cercanía");
+        .show("No pudimos obtener tu ubicación. Intenta de nuevo.");
     }
   }
 
@@ -569,6 +585,7 @@ export default function ExploreScreen() {
   useEffect(() => () => stopWatching(), [stopWatching]);
 
   function handleToggleFavorite(slot: AvailabilitySlot) {
+    if (!requireAccount()) return;
     toggleFavorite.mutate({
       resourceId: slot.resourceId,
       next: !favoriteIds.has(slot.resourceId),
@@ -819,19 +836,34 @@ export default function ExploreScreen() {
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center gap-3">
               <Avatar name={firstName} photoUrl={session?.avatarUrl ?? null} size={44} />
-              <View>
-                <Text className="text-body-emph text-label-3">Hola,</Text>
-                <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
-              </View>
+              {session ? (
+                <View>
+                  <Text className="text-body-emph text-label-3">Hola,</Text>
+                  <Text className="text-title-md text-label-1">{firstName ?? "—"}</Text>
+                </View>
+              ) : (
+                <View>
+                  <Text className="text-body-emph text-label-3">Explorando sin cuenta</Text>
+                  <Text className="text-title-md text-label-1">Hola</Text>
+                </View>
+              )}
             </View>
             <View className="flex-row items-center gap-1.5">
-              <NotificationBell
-                unreadCount={unreadNotificationCount}
-                onPress={() => {
-                  haptics.selection();
-                  router.push("/notifications");
-                }}
-              />
+              {session ? (
+                <NotificationBell
+                  unreadCount={unreadNotificationCount}
+                  onPress={() => {
+                    haptics.selection();
+                    router.push("/notifications");
+                  }}
+                />
+              ) : (
+                // Guest mode: no inbox without an account — a plain way in
+                // instead (the user chose it, so this one may navigate).
+                <Button variant="pill" tone="wash" onPress={() => router.push("/sign-in")}>
+                  Entrar
+                </Button>
+              )}
               <RefreshButton
                 onPress={() => availabilityQuery.refetch()}
                 refreshing={isRefreshing}
@@ -970,6 +1002,7 @@ export default function ExploreScreen() {
             <SortControl value={sort} onChange={handleSortChange} />
             <Pressable
               onPress={() => {
+                if (!requireAccount()) return;
                 haptics.selection();
                 setFavoritesOnly((v) => !v);
               }}

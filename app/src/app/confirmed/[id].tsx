@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
@@ -21,6 +21,8 @@ import {
 import { haptics } from "@/lib/haptics";
 import { MapPin } from "@/lib/icons";
 import { directionsUrl } from "@/lib/maps";
+import { useNotificationPrimerStore } from "@/lib/notificationPrimer";
+import { ensurePermission } from "@/lib/permissionPrompt";
 import { useUserId } from "@/lib/session";
 import { useColor } from "@/lib/theme/useColor";
 
@@ -200,7 +202,30 @@ export default function ConfirmedScreen() {
     }
   }
 
+  async function copyInstead() {
+    const { outcome } = await copyBookingDetails(calendarEvent);
+    setCalMode("copy");
+    if (outcome === "copied") setCalDone(true);
+  }
+
   async function handleDeviceCalendar() {
+    if (calMode === "add" && Platform.OS !== "web") {
+      // Never asked → the system dialog now; just refused → copy instead (the
+      // handoff's silent fallback). Refused on an earlier booking → explain
+      // and offer Settings or copying (lib/permissionPrompt.ts).
+      const permission = await ensurePermission("calendar", {
+        onGranted: () => {
+          setCalBusy(true);
+          void handleDeviceCalendar().finally(() => setCalBusy(false));
+        },
+        fallback: { label: "Copiar los detalles", run: () => void copyInstead() },
+      });
+      if (permission === "explaining") return;
+      if (permission === "denied") {
+        await copyInstead();
+        return;
+      }
+    }
     const { outcome, eventId } =
       calMode === "add"
         ? await addBookingToCalendar(calendarEvent)
@@ -225,6 +250,16 @@ export default function ConfirmedScreen() {
     }
   }
 
+  // A first booking is when a reminder obviously makes sense — offer
+  // notifications (with the why) to anyone who skipped the tutorial's
+  // permissions step. No-op if already granted or already asked.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void useNotificationPrimerStore.getState().maybeOpen();
+    }, 1200);
+    return () => clearTimeout(t);
+  }, []);
+
   const calLabel = calDone
     ? googleLink
       ? "Añadido a Google Calendar"
@@ -238,6 +273,16 @@ export default function ConfirmedScreen() {
       : calMode === "add"
         ? "Añadir al calendario"
         : "Copiar detalles";
+
+  // Explain a permission before its OS dialog (2026-10-06): the device
+  // calendar asks on this tap; Google Calendar asks on Google's own screen.
+  const calNote = calDone
+    ? null
+    : calLabel === "Añadir al calendario" && Platform.OS !== "web"
+      ? "Te pediremos acceso a tu calendario solo para agregar esta reserva."
+      : calLabel === "Conectar Google Calendar"
+        ? "Google te pedirá permiso solo para crear eventos de tus reservas."
+        : null;
 
   return (
     <Screen bg="card" edges={["top", "bottom"]}>
@@ -297,6 +342,9 @@ export default function ConfirmedScreen() {
       </View>
 
       <View className="gap-2 px-6 pb-4">
+        {calNote ? (
+          <Text className="px-2 pb-1 text-center text-footnote text-label-3">{calNote}</Text>
+        ) : null}
         <Button
           variant="filled"
           loading={calBusy}

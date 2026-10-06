@@ -37,6 +37,7 @@ import { ArrowLeft, MapPin } from "@/lib/icons";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
 import { directionsUrl, formatDistance } from "@/lib/maps";
 import { useIsOffline } from "@/lib/net";
+import { requireAccount } from "@/lib/requireAccount";
 import { stockImageUrl } from "@/lib/stockImages";
 import { useCollapsingHero } from "@/lib/useCollapsingHero";
 import { useColor } from "@/lib/theme/useColor";
@@ -153,6 +154,7 @@ export default function ResourceScreen() {
   const isFavorite = favoriteIds.has(id);
 
   function handleToggleFavorite() {
+    if (!requireAccount()) return;
     toggleFavorite.mutate({
       resourceId: id,
       next: !isFavorite,
@@ -301,6 +303,7 @@ export default function ResourceScreen() {
     : undefined;
 
   function handleJoinWaitlist(slot: AvailabilitySlot) {
+    if (!requireAccount()) return;
     haptics.selection();
     joinWaitlist.mutate(
       { availabilitySlotId: slot.id },
@@ -315,6 +318,7 @@ export default function ResourceScreen() {
     if (!selectedSlot || !resource) {
       return;
     }
+    if (!requireAccount()) return;
     haptics.selection();
     const bookedSlot = selectedSlot;
 

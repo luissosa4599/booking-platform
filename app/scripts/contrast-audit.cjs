@@ -12,9 +12,10 @@
 // build a realistic account) and Expo web running. Usage, from app/:
 //   node scripts/contrast-audit.cjs                      # phone, 390px
 //   VP='{"width":1280,"height":1000}' node scripts/contrast-audit.cjs
-// Env: AUDIT_API, AUDIT_WEB, AUDIT_OUT. Known non-issues: disabled-label text
-// (WCAG-exempt), the inverted label-1/canvas pills in dark mode, and white
-// text over photos (the script can't read image pixels -- eyeball those).
+// Env: AUDIT_API, AUDIT_WEB, AUDIT_OUT. Disabled-button text is held to 4.5:1
+// too since 2026-10-06 (WCAG exempts it, the user wanted it readable). Known
+// non-issue left: white text over photos (the script can't read image pixels
+// -- eyeball those). Dark mode's inverted pills are filtered out below.
 const { chromium } = require("@playwright/test");
 const fs = require("fs");
 const path = require("path");
@@ -169,9 +170,20 @@ function analyze() {
     { name: "privacy", path: "/privacy" },
   ];
   const publicRoutes = [
+    { name: "welcome", path: "/welcome" },
+    { name: "welcome-permissions", path: "/welcome", act: async (p) => { for (let i = 0; i < 3; i++) { await p.getByText("Siguiente", { exact: true }).click(); await p.waitForTimeout(500); } } },
     { name: "sign-in", path: "/sign-in" },
     { name: "sign-in-register", path: "/sign-in", act: async (p) => { await p.getByText("Crear una").click(); } },
     { name: "forgot-password", path: "/forgot-password" },
+  ];
+  // Guest mode (2026-10-06): no session, "Continuar como invitado" chosen.
+  const guestModeRoutes = [
+    { name: "guest-explore", path: "/" },
+    { name: "guest-signin-modal", path: "/", act: async (p) => { await p.getByRole("button", { name: /^Apartar/ }).first().click(); } },
+    { name: "guest-bookings", path: "/bookings" },
+    { name: "guest-profile", path: "/profile" },
+    { name: "about", path: "/about" },
+    { name: "permissions", path: "/permissions" },
   ];
   const hostRoutes = spaceId
     ? [
@@ -186,8 +198,15 @@ function analyze() {
 
   const browser = await chromium.launch();
   const report = [];
-  const runSet = async (routes, sessionValue, scheme) => {
+  const runSet = async (routes, sessionValue, scheme, { guestMode = false } = {}) => {
     const ctx = await browser.newContext({ viewport: VIEWPORT, colorScheme: scheme });
+    // Skip the first-run tutorial everywhere (it has its own routes above).
+    await ctx.addInitScript((g) => {
+      try {
+        localStorage.setItem("tempo.onboarding.v1", "1");
+        if (g) localStorage.setItem("tempo.guest.v1", "1");
+      } catch {}
+    }, guestMode);
     if (sessionValue) {
       await ctx.addInitScript((v) => { try { localStorage.setItem("tempo.session.v1", v); } catch {} }, sessionValue);
     }
@@ -211,12 +230,17 @@ function analyze() {
   fs.mkdirSync(OUT, { recursive: true });
   for (const scheme of ["light", "dark"]) {
     await runSet(publicRoutes, null, scheme);
+    await runSet(guestModeRoutes, null, scheme, { guestMode: true });
     await runSet(guestRoutes, storageValue(guest), scheme);
     if (hostRoutes.length) await runSet(hostRoutes, storageValue(host), scheme);
   }
   await browser.close();
   fs.writeFileSync(`${OUT}report-${VIEWPORT.width}.json`, JSON.stringify(report, null, 1));
-  const bad = report.filter((x) => x.ratio < x.need || x.pureBlack);
+  // Pure-black text usually means a color className silently didn't apply
+  // (fell back to black). The exception is dark mode's inverted pills
+  // (`label-1` bg + `canvas` text = white + #000), which are 21:1 by design.
+  const invertedPill = (x) => x.scheme === "dark" && x.bg === "#ffffff";
+  const bad = report.filter((x) => x.ratio < x.need || (x.pureBlack && !invertedPill(x)));
   console.log(`\n${report.length} text samples, ${bad.length} failing`);
   for (const x of bad) {
     const over = x.img ? " [over image]" : "";

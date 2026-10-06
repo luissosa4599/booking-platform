@@ -21,12 +21,17 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AnimatedSplash } from "@/components/AnimatedSplash";
+import { NotificationPrimerSheet } from "@/components/NotificationPrimerSheet";
 import { OfflineNotice } from "@/components/OfflineNotice";
+import { PermissionPromptSheet } from "@/components/PermissionPromptSheet";
+import { SignInPromptSheet } from "@/components/SignInPromptSheet";
 import { Toast } from "@/components/Toast";
 import { persistOptions } from "@/lib/api/persist";
 import { queryClient } from "@/lib/api/queryClient";
 import { useLocationStore } from "@/lib/locationStore";
 import { wireConnectivity } from "@/lib/net";
+import { useOnboardingStore } from "@/lib/onboardingStore";
+import { useSignInPromptStore } from "@/lib/requireAccount";
 import { useAuthStore } from "@/lib/session";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
@@ -46,7 +51,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // still works, Fast Refresh just doesn't).
 LogBox.ignoreLogs(["Cannot connect to Expo CLI", /Cannot connect to Metro/]);
 
-// Routes reachable without a session.
+// First launch lands on sign-in (after the tutorial). Without a session the
+// only routes reachable are these — until the user taps "Continuar como
+// invitado" (guest mode, 2026-10-06), which opens the rest of the app.
 const PUBLIC_SEGMENTS = new Set([
   "sign-in",
   "auth",
@@ -54,16 +61,33 @@ const PUBLIC_SEGMENTS = new Set([
   "reset-password",
   "privacy",
   "terms",
+  "welcome",
+  "about",
+  "permissions",
 ]);
-// Subset of PUBLIC_SEGMENTS a signed-in user gets bounced away from (auth-flow
-// screens they shouldn't linger on). privacy/terms are deliberately excluded —
-// always-public info pages (Google's OAuth consent screen and Play Console
-// both link here) that must stay viewable even when the visitor happens to
-// have a session in that browser.
+// Routes a guest still can't sit on — reachable only via a deep link, which
+// lands them on Explore with the sign-in modal open (never a redirect to the
+// sign-in screen; account-only *actions* use `requireAccount()` the same way).
+const ACCOUNT_ONLY_SEGMENTS = new Set(["(owner)", "notifications", "confirmed", "become-host"]);
+// Auth-flow screens a signed-in user is moved off of (back to wherever they
+// were before signing in, or home).
 const AUTH_FLOW_SEGMENTS = new Set(["sign-in", "auth", "forgot-password", "reset-password"]);
-// A signed-in host may sit here without being bounced into their own nav group
-// (the become-host success sheet lives on this screen).
-const ROLE_NEUTRAL_SEGMENTS = new Set(["become-host"]);
+// Never sent to the first-run tutorial: always-public info pages (Google's
+// OAuth consent screen and Play Console link to privacy/terms) and deep-link
+// landings that must finish what they started (magic link, password reset,
+// the Calendar OAuth bridge).
+const ONBOARDING_EXEMPT_SEGMENTS = new Set(["welcome", "privacy", "terms", "auth", "reset-password"]);
+// A signed-in host may sit on these from either nav group without being
+// bounced into their own one: the become-host success sheet, and the
+// info/tutorial pages reachable from both "Tú" screens.
+const ROLE_NEUTRAL_SEGMENTS = new Set([
+  "become-host",
+  "welcome",
+  "about",
+  "permissions",
+  "privacy",
+  "terms",
+]);
 
 function AuthGate() {
   const router = useRouter();
@@ -71,7 +95,11 @@ function AuthGate() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const session = useAuthStore((s) => s.session);
   const viewMode = useAuthStore((s) => s.viewMode);
+  const guest = useAuthStore((s) => s.guest);
   const hydrate = useAuthStore((s) => s.hydrate);
+  const onboardingHydrated = useOnboardingStore((s) => s.hydrated);
+  const onboardingSeen = useOnboardingStore((s) => s.seen);
+  const hydrateOnboarding = useOnboardingStore((s) => s.hydrate);
   // The native stack paints white behind a screen mid-transition unless the
   // scene has an explicit background — very visible on Android, especially
   // going resource/[id] → back → tabs. `canvas` is the app's ground colour
@@ -88,23 +116,33 @@ function AuthGate() {
 
   useEffect(() => {
     hydrate();
-  }, [hydrate]);
+    void hydrateOnboarding();
+  }, [hydrate, hydrateOnboarding]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !onboardingHydrated) return;
     const seg0 = segments[0] ?? "";
-    const onPublic = PUBLIC_SEGMENTS.has(seg0);
     const inOwner = seg0 === "(owner)";
     const hostView = session?.role === "host" && viewMode === "host";
-
     // Host home = "/spaces" (owner group), guest home = "/". These are distinct
     // URLs — an earlier version pointed both at "/", which is ambiguous from
     // inside (owner) and froze the app on a mode switch.
-    let target: "/sign-in" | "/spaces" | "/" | null = null;
-    if (!session && !onPublic) {
+    const home = hostView ? "/spaces" : "/";
+
+    let target: "/welcome" | "/sign-in" | "/spaces" | "/" | "back" | null = null;
+    let promptSignIn = false;
+    if (!onboardingSeen && !ONBOARDING_EXEMPT_SEGMENTS.has(seg0)) {
+      target = "/welcome";
+    } else if (!session && !guest && !PUBLIC_SEGMENTS.has(seg0)) {
       target = "/sign-in";
+    } else if (!session && ACCOUNT_ONLY_SEGMENTS.has(seg0)) {
+      target = "/";
+      promptSignIn = true;
     } else if (session && AUTH_FLOW_SEGMENTS.has(seg0)) {
-      target = hostView ? "/spaces" : "/";
+      // Just signed in — return to the screen they were on (e.g. the space a
+      // guest tried to book from the modal), or home if there's nothing to
+      // return to (cold deep link, or sign-in reached from the tutorial).
+      target = "back";
     } else if (session && !ROLE_NEUTRAL_SEGMENTS.has(seg0)) {
       if (hostView && !inOwner) target = "/spaces";
       else if (!hostView && inOwner) target = "/";
@@ -116,8 +154,14 @@ function AuthGate() {
     }
     if (lastRedirect.current === target + seg0) return;
     lastRedirect.current = target + seg0;
+    if (target === "back") {
+      if (router.canGoBack()) router.back();
+      else router.replace(home);
+      return;
+    }
     router.replace(target);
-  }, [hydrated, session, viewMode, segments, router]);
+    if (promptSignIn) useSignInPromptStore.getState().open();
+  }, [hydrated, onboardingHydrated, onboardingSeen, session, guest, viewMode, segments, router]);
 
   const { colorScheme } = useColorScheme();
   // The React Navigation container paints its own background behind every
@@ -131,9 +175,9 @@ function AuthGate() {
     colors: { ...navBase.colors, background: canvas, card },
   };
 
-  // Nothing to paint until we know whether there's a session — avoids a flash
-  // of Explore before the redirect to /sign-in.
-  if (!hydrated) {
+  // Nothing to paint until we know the session + tutorial state — avoids a
+  // flash of Explore before a first-timer's redirect to /welcome.
+  if (!hydrated || !onboardingHydrated) {
     return <View className="flex-1 bg-canvas" />;
   }
 
@@ -254,15 +298,18 @@ export default function RootLayout() {
   });
   const hydrated = useAuthStore((s) => s.hydrated);
   const themeHydrated = useThemeStore((s) => s.hydrated);
+  const onboardingHydrated = useOnboardingStore((s) => s.hydrated);
   const [splashDone, setSplashDone] = useState(false);
   // The persisted query cache restores asynchronously; gate the splash on it so
   // the first paint has cached data. A hung restore must never wedge the app.
   const [cacheRestored, setCacheRestored] = useState(false);
   useEffect(() => {
     wireConnectivity();
-    // Ask for location on app start (not lazily on a sort tap) so Explore can
-    // default to "nearest" and its map can open centred on the user. A denial
-    // here is cached (`lib/location.ts`) and never re-prompted this session.
+    // Read the location on app start so Explore can default to "nearest" and
+    // its map can open centred on the user — but only if permission was
+    // already granted. Since 2026-10-06 this never shows the OS dialog: that
+    // happens after an explanation (the tutorial's permissions step) or a tap
+    // that obviously needs it ("Más cerca").
     void useLocationStore.getState().bootstrap();
     const t = setTimeout(() => setCacheRestored(true), 2500);
     return () => clearTimeout(t);
@@ -283,10 +330,17 @@ export default function RootLayout() {
               <GroupTransition />
               <GlobalToast />
               <OfflineNotice />
+              <SignInPromptSheet />
+              <NotificationPrimerSheet />
+              <PermissionPromptSheet />
               {!splashDone ? (
                 <AnimatedSplash
                   appReady={
-                    fontsLoaded && hydrated && themeHydrated && cacheRestored
+                    fontsLoaded &&
+                    hydrated &&
+                    themeHydrated &&
+                    onboardingHydrated &&
+                    cacheRestored
                   }
                   onFinish={() => setSplashDone(true)}
                 />

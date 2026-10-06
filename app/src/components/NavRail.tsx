@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "expo-router";
 
 import { cn } from "@/lib/cn";
 import type { IconProps } from "@/lib/icons";
+import { requireAccount } from "@/lib/requireAccount";
 import { useColor } from "@/lib/theme/useColor";
 import { useBreakpoint } from "@/lib/useBreakpoint";
 
@@ -13,6 +14,8 @@ export interface NavItem {
   icon: ComponentType<IconProps>;
   /** Paths (besides `href` itself) that should also light this item. */
   matchPrefixes?: string[];
+  /** Guest mode: a guest tapping this gets the sign-in modal, not the route. */
+  requiresAccount?: boolean;
 }
 
 /**
@@ -78,7 +81,10 @@ export function NavRail({
           return (
             <Pressable
               key={item.href}
-              onPress={() => router.navigate(item.href)}
+              onPress={() => {
+                if (item.requiresAccount && !requireAccount()) return;
+                router.navigate(item.href);
+              }}
               accessibilityRole="link"
               accessibilityLabel={item.label}
               accessibilityState={active ? { selected: true } : {}}

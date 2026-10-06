@@ -54,6 +54,34 @@ async function findWritableCalendarId(): Promise<string | null> {
 }
 
 /**
+ * Current device-calendar permission, or `null` on web (no Calendar API there).
+ * Read-only — used by Tú → Permisos and the denied-permission explainer.
+ */
+export async function getCalendarPermissionAsync(): Promise<{
+  granted: boolean;
+  canAskAgain: boolean;
+  status: "granted" | "denied" | "undetermined";
+} | null> {
+  if (Platform.OS === "web") return null;
+  try {
+    const { granted, canAskAgain, status } = await Calendar.getCalendarPermissionsAsync();
+    return { granted, canAskAgain, status };
+  } catch {
+    return null;
+  }
+}
+
+/** Shows the OS calendar dialog (if it still can). Never throws. */
+export async function requestCalendarPermissionAsync(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  try {
+    return (await Calendar.requestCalendarPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Handoff § "04": "'Añadir al calendario' usa expo-calendar; si el permiso se
  * deniega, el botón pasa a 'Copiar detalles' sin mostrar alerta." So this never
  * throws or alerts — it returns what actually happened and the caller relabels.

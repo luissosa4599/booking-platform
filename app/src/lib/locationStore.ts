@@ -1,6 +1,11 @@
 import { create } from "zustand";
 
-import { requestAndGetPosition, watchPosition } from "@/lib/location";
+import {
+  getPermissionState,
+  getPositionIfGranted,
+  requestAndGetPosition,
+  watchPosition,
+} from "@/lib/location";
 import { haversineMeters, type Coords } from "@/lib/maps";
 
 // How far the device must move before the "sort anchor" catches up — keeps the
@@ -26,13 +31,20 @@ interface LocationState {
   /** Result of the app-start permission request — see `bootstrap()`. */
   status: LocationBootstrapStatus;
   /**
-   * One-shot permission request + fix, called once from `_layout.tsx` on app
-   * start (not lazily on a sort tap) so Explore can default to "nearest" and
-   * the map can open centred on the user. Idempotent, safe to call from
-   * several places. Does not start the continuous watch — that's still
-   * `ensureWatching()`, reserved for an active "nearest" sort.
+   * One-shot fix, called once from `_layout.tsx` on app start so Explore can
+   * default to "nearest" and the map can open centred on the user. Since
+   * 2026-10-06 it **never shows the OS dialog** — it only reads the position
+   * when permission was already granted. Asking happens in `requestFromUser()`,
+   * after an explanation. Idempotent. Does not start the continuous watch —
+   * that's still `ensureWatching()`, reserved for an active "nearest" sort.
    */
   bootstrap: () => Promise<void>;
+  /**
+   * Shows the OS dialog (if still possible) and takes a fix. Only call from a
+   * user tap on something that explained why (the tutorial's permissions
+   * step). Resolves whether location ended up granted.
+   */
+  requestFromUser: () => Promise<boolean>;
   /** Idempotent — safe to call from several screens. No-op on denial. */
   ensureWatching: () => void;
   stop: () => void;
@@ -50,13 +62,25 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   bootstrap: async () => {
     if (bootstrapped) return;
     bootstrapped = true;
+    if ((await getPermissionState()) !== "granted") return; // stays "idle"
     set({ status: "locating" });
-    const pos = await requestAndGetPosition();
+    const pos = await getPositionIfGranted();
     if (pos) {
       set({ position: pos, sortAnchor: pos, status: "granted" });
     } else {
       set({ status: "denied" });
     }
+  },
+
+  requestFromUser: async () => {
+    set({ status: "locating" });
+    const pos = await requestAndGetPosition();
+    if (pos) {
+      set({ position: pos, sortAnchor: pos, status: "granted" });
+      return true;
+    }
+    set({ status: "denied" });
+    return false;
   },
 
   ensureWatching: () => {

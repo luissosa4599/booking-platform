@@ -7,7 +7,7 @@ import { useColor } from "@/lib/theme/useColor";
 
 // Required to publish the Google OAuth consent screen (Branding page needs a
 // real Privacy Policy link before "Publicar app" unlocks) — 2026-09-14.
-// Plain content, no session required (see `_layout.tsx`'s PUBLIC_SEGMENTS —
+// Plain content, no session required (see `_layout.tsx`'s ONBOARDING_EXEMPT_SEGMENTS —
 // Google links here for signed-out visitors reviewing the consent screen, and
 // Play Console links here too). Reachable as a standalone deep link with no
 // prior screen in the stack — `canGoBack()` guards the back button so it

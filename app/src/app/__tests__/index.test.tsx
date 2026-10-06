@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import Index from "../(tabs)/index";
+import { useAuthStore, type Session } from "../../lib/session";
 
 const SAFE_AREA_METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -82,7 +83,15 @@ function availability(slots: unknown[], emptyContext: unknown = null) {
 function mockFetch(handlers: Record<string, FetchHandler>) {
   globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
-    const match = Object.entries(handlers).find(([path]) => url.includes(path));
+    // Signed-in background queries this screen fires (next-booking banner,
+    // favorites, the bell) — empty unless a test overrides them.
+    const all: Record<string, FetchHandler> = {
+      ...handlers,
+      "/bookings?": () => ({ status: 200, body: [] }),
+      "/favorites": () => ({ status: 200, body: [] }),
+      "/notifications": () => ({ status: 200, body: { notifications: [], unreadCount: 0 } }),
+    };
+    const match = Object.entries(all).find(([path]) => url.includes(path));
     if (!match) {
       throw new Error(`Unhandled fetch in test: ${url}`);
     }
@@ -97,10 +106,23 @@ function mockFetch(handlers: Record<string, FetchHandler>) {
 
 let queryClient: QueryClient;
 
+// Signed in — without a session Explore renders in guest mode (2026-10-06),
+// where "Apartar" opens the sign-in modal instead of booking.
+const SESSION: Session = {
+  userId: "user-1",
+  email: "luis@uni.mx",
+  displayName: "Luis Sosa",
+  avatarUrl: null,
+  role: "guest",
+  accessToken: "access",
+  refreshToken: "refresh",
+};
+
 beforeEach(() => {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  useAuthStore.setState({ hydrated: true, session: SESSION, viewMode: "guest" });
 });
 
 afterEach(() => {

@@ -23,8 +23,10 @@ import {
   EyeOff as LEyeOff,
   Heart as LHeart,
   Home as LHome,
+  Info as LInfo,
   List as LList,
   LocateFixed as LLocateFixed,
+  LogIn as LLogIn,
   LogOut as LLogOut,
   Map as LMap,
   MapPin as LMapPin,
@@ -37,6 +39,7 @@ import {
   QrCode as LQrCode,
   RotateCw as LRotateCw,
   Search as LSearch,
+  ShieldCheck as LShieldCheck,
   SlidersHorizontal as LSlidersHorizontal,
   Store as LStore,
   Theater as LTheater,
@@ -88,8 +91,10 @@ export const Eye = typed(LEye);
 export const EyeOff = typed(LEyeOff);
 export const Heart = typed(LHeart);
 export const Home = typed(LHome);
+export const Info = typed(LInfo);
 export const List = typed(LList);
 export const LocateFixed = typed(LLocateFixed);
+export const LogIn = typed(LLogIn);
 export const LogOut = typed(LLogOut);
 export const Map = typed(LMap);
 export const MapPin = typed(LMapPin);
@@ -102,6 +107,7 @@ export const Presentation = typed(LPresentation);
 export const QrCode = typed(LQrCode);
 export const RotateCw = typed(LRotateCw);
 export const Search = typed(LSearch);
+export const ShieldCheck = typed(LShieldCheck);
 export const SlidersHorizontal = typed(LSlidersHorizontal);
 export const Store = typed(LStore);
 export const Theater = typed(LTheater);

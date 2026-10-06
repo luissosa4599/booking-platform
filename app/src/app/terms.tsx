@@ -7,7 +7,7 @@ import { useColor } from "@/lib/theme/useColor";
 
 // Required to publish the Google OAuth consent screen (Branding page needs a
 // real Terms of Service link before "Publicar app" unlocks) — 2026-09-14.
-// Plain content, no session required — see `_layout.tsx`'s PUBLIC_SEGMENTS.
+// Plain content, no session required (guest mode — nothing needs one to view).
 // Reachable as a standalone deep link (Google's consent screen, Play
 // Console) with no prior screen in the stack — `canGoBack()` guards the back
 // button so it falls back to home instead of no-op'ing.
@@ -34,8 +34,10 @@ export default function TermsScreen() {
         <View className="gap-2">
           <Text className="text-body-emph text-label-1">Qué es Tempo</Text>
           <Text className="text-body text-label-2">
-            Tempo es un proyecto de demostración (portafolio), no un producto
-            comercial. Se ofrece &quot;tal cual&quot;, sin garantías, y puede cambiar,
+            Tempo es un proyecto de demostración (portafolio) sin fines de lucro,
+            no un producto comercial: no cobra nada y no tiene anuncios. Por ahora,
+            los espacios, horarios, fotos y ubicaciones que muestra son datos
+            ficticios. Se ofrece &quot;tal cual&quot;, sin garantías, y puede cambiar,
             interrumpirse o dejar de estar disponible en cualquier momento sin
             previo aviso.
           </Text>

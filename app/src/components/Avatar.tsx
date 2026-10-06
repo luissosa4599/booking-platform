@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { Image } from "expo-image";
 
+import { User } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
 
 interface AvatarProps {
@@ -39,6 +40,7 @@ export function Avatar({ name, photoUrl, size = 44, tone = "wash" }: AvatarProps
   // long-established tokens that render fine as classNames.
   const solidBg = useColor("tint-avatar-bg");
   const solidFg = useColor("tint-avatar-fg");
+  const tintColor = useColor("tint");
 
   // 2026-09-15 report: "se perdió el avatar" — a stale/expired Google photo
   // URL (signed-URL params do expire) failed to load and there was no
@@ -73,15 +75,21 @@ export function Avatar({ name, photoUrl, size = 44, tone = "wash" }: AvatarProps
         backgroundColor: tone === "solid" ? solidBg : undefined,
       }}
     >
-      <Text
-        className={tone === "solid" ? "font-bold" : "font-semibold text-tint"}
-        style={{
-          fontSize: INITIALS_FONT_SIZE[size],
-          color: tone === "solid" ? solidFg : undefined,
-        }}
-      >
-        {initials}
-      </Text>
+      {initials ? (
+        <Text
+          className={tone === "solid" ? "font-bold" : "font-semibold text-tint"}
+          style={{
+            fontSize: INITIALS_FONT_SIZE[size],
+            color: tone === "solid" ? solidFg : undefined,
+          }}
+        >
+          {initials}
+        </Text>
+      ) : (
+        // No name yet (a guest, or an account without one) — a person glyph
+        // instead of an empty circle.
+        <User size={Math.round(size * 0.45)} color={tone === "solid" ? solidFg : tintColor} />
+      )}
     </View>
   );
 }
