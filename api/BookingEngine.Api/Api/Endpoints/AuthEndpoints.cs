@@ -76,11 +76,29 @@ public static class AuthEndpoints
             var id = MagicLinkTokens.UserIdFor(email);
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
 
-            // Same generic 401 whether the email is unknown or the password is
-            // wrong — never reveal which one.
-            if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
+            // Always a 401 (older app builds only look at the status), but the
+            // body says which case it is: the sign-in screen sends an unknown
+            // email to a "create your account?" step instead of creating one
+            // silently, and a Google account to "sign in with Google". This
+            // reveals whether an email has an account — /auth/register's 409
+            // already did, and the global per-IP rate limiter caps probing.
+            if (user is null)
             {
-                return Results.Unauthorized();
+                return Results.Json(
+                    new { message = "No account with this email.", code = "no_account" },
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return Results.Json(
+                    new { message = "This account signs in with Google.", code = "google_account" },
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+            if (!PasswordHasher.Verify(request.Password, user.PasswordHash))
+            {
+                return Results.Json(
+                    new { message = "Wrong password.", code = "wrong_password" },
+                    statusCode: StatusCodes.Status401Unauthorized);
             }
 
             var now = DateTimeOffset.UtcNow;
@@ -122,7 +140,7 @@ public static class AuthEndpoints
 
             if (user is not null)
             {
-                var token = PasswordResetTokens.Issue(email, authOptions.Secret, now);
+                var token = PasswordResetTokens.Issue(email, user.PasswordHash, authOptions.Secret, now);
                 var configuredFrontend = config["FRONTEND_WEB_URL"];
                 var frontend = string.IsNullOrWhiteSpace(configuredFrontend)
                     ? "http://localhost:8081"
@@ -157,6 +175,22 @@ public static class AuthEndpoints
         })
         .WithName("ForgotPassword");
 
+        // Lets the reset screen show "this link no longer works" as soon as it
+        // opens, instead of after the user has typed a new password. Read-only:
+        // validating doesn't use the link up.
+        app.MapPost("/auth/reset-password/check", async (
+            ResetTokenCheckRequest request,
+            AuthOptions authOptions,
+            BookingEngineDbContext db,
+            CancellationToken ct) =>
+        {
+            var user = await FindResetTokenUserAsync(request.Token, authOptions, db, ct);
+            return user is null
+                ? Results.BadRequest(new { message = "This link is invalid or has expired.", code = "invalid_token" })
+                : Results.Ok(new ResetTokenCheckResponse(user.Email));
+        })
+        .WithName("CheckResetToken");
+
         app.MapPost("/auth/reset-password", async (
             ResetPasswordRequest request,
             AuthOptions authOptions,
@@ -164,20 +198,14 @@ public static class AuthEndpoints
             BookingEngineDbContext db,
             CancellationToken ct) =>
         {
-            if (!PasswordResetTokens.TryValidate(request.Token, authOptions.Secret, DateTimeOffset.UtcNow, out var email))
+            var user = await FindResetTokenUserAsync(request.Token, authOptions, db, ct);
+            if (user is null)
             {
-                return Results.BadRequest(new { message = "This link is invalid or has expired." });
+                return Results.BadRequest(new { message = "This link is invalid or has expired.", code = "invalid_token" });
             }
             if (!PasswordHasher.IsValidPassword(request.NewPassword))
             {
-                return Results.BadRequest(new { message = "Password must be at least 8 characters." });
-            }
-
-            var id = MagicLinkTokens.UserIdFor(email);
-            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
-            if (user is null)
-            {
-                return Results.BadRequest(new { message = "This link is invalid or has expired." });
+                return Results.BadRequest(new { message = "Password must be at least 8 characters.", code = "weak_password" });
             }
 
             var now = DateTimeOffset.UtcNow;
@@ -342,6 +370,30 @@ public static class AuthEndpoints
             return Results.Ok(session);
         })
         .WithName("VerifyMagicLink");
+    }
+
+    /// <summary>
+    /// The account a reset link belongs to, or null when the link is forged,
+    /// expired, for an unknown account, or already used (the password changed
+    /// since it was issued — see <see cref="PasswordResetTokens"/>).
+    /// </summary>
+    private static async Task<User?> FindResetTokenUserAsync(
+        string token,
+        AuthOptions authOptions,
+        BookingEngineDbContext db,
+        CancellationToken ct)
+    {
+        if (!PasswordResetTokens.TryValidate(
+                token, authOptions.Secret, DateTimeOffset.UtcNow, out var email, out var stamp))
+        {
+            return null;
+        }
+
+        var id = MagicLinkTokens.UserIdFor(email);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        return user is not null && PasswordResetTokens.StampMatches(stamp, user.PasswordHash, authOptions.Secret)
+            ? user
+            : null;
     }
 
     private static async Task<User> UpsertGoogleUserAsync(

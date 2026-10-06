@@ -13,10 +13,10 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
     private static readonly GoogleIdentity SampleIdentity =
         new("google-sub-123", "someone@gmail.com", "Some One", "https://pic");
 
-    private HttpClient ClientWithGoogleStub() =>
+    private HttpClient ClientWithGoogleStub(GoogleIdentity? identity = null) =>
         fixture.Factory
             .WithWebHostBuilder(b => b.ConfigureTestServices(s =>
-                s.AddScoped<IGoogleIdTokenValidator>(_ => new StubGoogleValidator(SampleIdentity))))
+                s.AddScoped<IGoogleIdTokenValidator>(_ => new StubGoogleValidator(identity ?? SampleIdentity))))
             .CreateClient();
 
     [Fact]
@@ -176,6 +176,7 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
             "/auth/login", new LoginRequest(email, "wrong-password"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+        Assert.Equal("wrong_password", await ErrorCode(login));
     }
 
     [Fact]
@@ -185,6 +186,20 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
             "/auth/login", new LoginRequest(UniqueEmail(), "whatever1"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+        Assert.Equal("no_account", await ErrorCode(login));
+    }
+
+    [Fact]
+    public async Task PostAuthLogin_GoogleAccountWithoutPassword_Returns401_GoogleAccount()
+    {
+        var googleClient = ClientWithGoogleStub();
+        await googleClient.PostAsJsonAsync("/auth/google", new { idToken = "good-token" });
+
+        var login = await fixture.Factory.CreateClient().PostAsJsonAsync(
+            "/auth/login", new LoginRequest("someone@gmail.com", "whatever1"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+        Assert.Equal("google_account", await ErrorCode(login));
     }
 
     [Fact]
@@ -238,5 +253,62 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
             "/auth/reset-password", new ResetPasswordRequest("not-a-real-token", "new-password"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetLink_CheckBeforeUse_ThenSingleUse()
+    {
+        var client = fixture.Factory.CreateClient();
+        var email = UniqueEmail();
+        await client.PostAsJsonAsync("/auth/register", new RegisterRequest(email, "old-password"));
+        var forgot = await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(email));
+        var token = (await forgot.Content.ReadFromJsonAsync<ForgotPasswordResponse>())!.DebugToken!;
+
+        // Checking doesn't use the link up, and says whose account it is.
+        var check = await client.PostAsJsonAsync("/auth/reset-password/check", new ResetTokenCheckRequest(token));
+        Assert.Equal(HttpStatusCode.OK, check.StatusCode);
+        Assert.Equal(email, (await check.Content.ReadFromJsonAsync<ResetTokenCheckResponse>())!.Email);
+
+        var reset = await client.PostAsJsonAsync(
+            "/auth/reset-password", new ResetPasswordRequest(token, "new-password"));
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        // Same link again: dead, for both the check and the reset itself.
+        var checkAgain = await client.PostAsJsonAsync("/auth/reset-password/check", new ResetTokenCheckRequest(token));
+        Assert.Equal(HttpStatusCode.BadRequest, checkAgain.StatusCode);
+        var resetAgain = await client.PostAsJsonAsync(
+            "/auth/reset-password", new ResetPasswordRequest(token, "third-password"));
+        Assert.Equal(HttpStatusCode.BadRequest, resetAgain.StatusCode);
+        Assert.Equal("invalid_token", await ErrorCode(resetAgain));
+    }
+
+    [Fact]
+    public async Task ResetLink_ForGoogleAccount_SetsAPassword()
+    {
+        // The supported way for a Google account to get a password: the reset
+        // link proves the caller owns the email (unlike /auth/register).
+        // Its own Google identity — the shared SampleIdentity must stay
+        // password-less for the other tests.
+        var email = UniqueEmail();
+        var googleClient = ClientWithGoogleStub(new GoogleIdentity("google-sub-reset", email, "Reset User", null));
+        await googleClient.PostAsJsonAsync("/auth/google", new { idToken = "good-token" });
+        var client = fixture.Factory.CreateClient();
+
+        var forgot = await client.PostAsJsonAsync(
+            "/auth/forgot-password", new ForgotPasswordRequest(email));
+        var token = (await forgot.Content.ReadFromJsonAsync<ForgotPasswordResponse>())!.DebugToken!;
+        var reset = await client.PostAsJsonAsync(
+            "/auth/reset-password", new ResetPasswordRequest(token, "google-user-pw"));
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        var login = await client.PostAsJsonAsync(
+            "/auth/login", new LoginRequest(email, "google-user-pw"));
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    private static async Task<string?> ErrorCode(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.TryGetProperty("code", out var code) ? code.GetString() : null;
     }
 }

@@ -38,6 +38,12 @@ public record ForgotPasswordResponse(
 
 public record ResetPasswordRequest(string Token, string NewPassword);
 
+public record ResetTokenCheckRequest(string Token);
+
+/// <summary>The account the link resets — the web form hands it to the
+/// password manager so the new password is saved against the right user.</summary>
+public record ResetTokenCheckResponse(string Email);
+
 // --- Google OAuth2 → first-party session ---
 
 public record GoogleSignInRequest(string IdToken);
