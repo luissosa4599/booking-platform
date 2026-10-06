@@ -67,7 +67,7 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <Group dividerInset={52}>
+        <Group dividerInset={48}>
           <Row
             icon={Compass}
             title="Ver el tutorial de nuevo"

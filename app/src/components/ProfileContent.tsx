@@ -24,7 +24,7 @@ import { ApiError } from "@/lib/api/client";
 import { useFavorites } from "@/lib/api/favorites";
 import { useMe } from "@/lib/api/me";
 import { useGoogleCalendarAuth } from "@/lib/auth/googleCalendar";
-import { type IconProps, Calendar, Info, LogIn, LogOut, ShieldCheck, User } from "@/lib/icons";
+import { type IconProps, Calendar, Info, LogIn, LogOut, ShieldCheck, Store, User } from "@/lib/icons";
 import { requireAccount } from "@/lib/requireAccount";
 import { useIsWide } from "@/lib/useBreakpoint";
 import { useAuthStore, useRole, useUserId, useViewMode } from "@/lib/session";
@@ -133,7 +133,7 @@ export function ProfileContent() {
           </View>
         </View>
 
-        <Group dividerInset={52}>
+        <Group dividerInset={48}>
           <Row
             icon={LogIn}
             title="Iniciar sesión o crear cuenta"
@@ -147,7 +147,7 @@ export function ProfileContent() {
           <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
             Ajustes
           </Text>
-          <Group dividerInset={52}>
+          <Group dividerInset={48}>
             <ThemeControl />
             {infoRows}
           </Group>
@@ -227,15 +227,16 @@ export function ProfileContent() {
         {/* Ajustes — §3.5 order: Modo anfitrión (host-only, kept outside the
             4 canonical blocks — it's the only phone-reachable way to switch
             modes, RailModeSwitch is tablet/desktop-only) → Tema oscuro →
-            Google Calendar → Cerrar sesión. dividerInset=52 aligns the
-            separators with icon-row text (18 padding + 20 icon + 14 gap). */}
+            Google Calendar → Cerrar sesión. dividerInset=48 aligns the
+            separators with icon-row text (16 padding + 20 icon + 12 gap). */}
         <View className="gap-2">
           <Text className="pl-1 text-footnote font-semibold uppercase text-label-4">
             Ajustes
           </Text>
-          <Group dividerInset={52}>
+          <Group dividerInset={48}>
             {role === "host" ? (
               <ToggleRow
+                icon={Store}
                 title="Modo anfitrión"
                 subtitle="Publica espacios, define horarios y confirma visitas"
                 value={viewMode === "host"}

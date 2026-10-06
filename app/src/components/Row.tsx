@@ -1,5 +1,5 @@
 import { useEffect, type ComponentType } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -124,6 +124,8 @@ export function Row({
   }));
 
   const iconColor = useColor("label-2");
+  const washColor = useColor("tint-wash");
+  const fillColor = useColor("fill");
   const pressable = !!onPress && !disabled;
 
   const handlePressIn = () => {
@@ -151,15 +153,27 @@ export function Row({
         disabled ? "opacity-45" : undefined,
       )}
     >
+      {/* Position + colour inline, never as classNames: on web a Reanimated
+          Animated.View ignores `absolute inset-0`, so both overlays sat in
+          the row's flex flow (0px wide, but each adding the 12px `gap`) —
+          every Row's icon and title were pushed 24px right of any non-Row
+          row, and the press/selected fills never showed (2026-10-06,
+          measured with getBoundingClientRect). */}
       <Animated.View
-        style={[selectedOverlayStyle, { pointerEvents: "none", zIndex: -1 }]}
-        className="absolute inset-0 bg-tint-wash"
+        style={[
+          StyleSheet.absoluteFill,
+          selectedOverlayStyle,
+          { pointerEvents: "none", zIndex: -1, backgroundColor: washColor },
+        ]}
       />
 
       {pressable ? (
         <Animated.View
-          style={[overlayStyle, { pointerEvents: "none" }]}
-          className="absolute inset-0 bg-fill"
+          style={[
+            StyleSheet.absoluteFill,
+            overlayStyle,
+            { pointerEvents: "none", backgroundColor: fillColor },
+          ]}
         />
       ) : null}
 

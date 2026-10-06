@@ -99,7 +99,7 @@ export function FilterSheet({
         <Text className="text-title-sm text-label-1">Filtros</Text>
 
         <View style={{ gap: 12 }}>
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between" style={{ gap: 12 }}>
             <Text className="text-body-emph text-label-1">Aforo mínimo</Text>
             <Text
               className="text-body-emph text-label-1"
@@ -120,7 +120,7 @@ export function FilterSheet({
             }}
             accessibilityLabel="Aforo mínimo"
           />
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between" style={{ gap: 12 }}>
             <Text className="text-footnote text-label-3">{MIN_CAPACITY}</Text>
             {draftMinCapacity > 0 ? (
               <Pressable onPress={() => setDraftMinCapacity(0)}>
@@ -139,7 +139,7 @@ export function FilterSheet({
               bug as resource/[id].tsx's disabled day pills) — a direct swap
               to a more muted label tier (no opacity) instead, so "disabled"
               stays legible in both themes. */}
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between" style={{ gap: 12 }}>
             <Text className={!locationAvailable ? "text-body-emph text-label-4" : "text-body-emph text-label-1"}>
               Distancia
             </Text>
@@ -161,7 +161,7 @@ export function FilterSheet({
             }}
             accessibilityLabel="Distancia máxima"
           />
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between" style={{ gap: 12 }}>
             <Text className={cn("text-footnote", !locationAvailable ? "text-label-4" : "text-label-3")}>
               {MIN_DISTANCE_KM} km
             </Text>

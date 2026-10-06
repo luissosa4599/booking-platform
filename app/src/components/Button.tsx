@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -285,8 +285,13 @@ export function Button({
 
           {loading ? (
             <Animated.View
-              style={[spinnerStyle, { pointerEvents: "none" }]}
-              className="absolute inset-0 items-center justify-center"
+              // Inline, not `absolute inset-0` classes — a Reanimated
+              // Animated.View ignores those on web (see Row.tsx's overlays).
+              style={[
+                StyleSheet.absoluteFill,
+                spinnerStyle,
+                { pointerEvents: "none", alignItems: "center", justifyContent: "center" },
+              ]}
             >
               <Spinner borderColor={labelColor} />
             </Animated.View>

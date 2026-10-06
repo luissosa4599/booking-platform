@@ -115,8 +115,12 @@ function RippleRing({
 
   return (
     <Animated.View
-      style={[style, { backgroundColor: color }]}
-      className="absolute h-[104px] w-[104px] rounded-full"
+      // Inline geometry — a Reanimated Animated.View ignores layout classNames
+      // like `absolute` on web (see Row.tsx's overlays).
+      style={[
+        style,
+        { position: "absolute", width: 104, height: 104, borderRadius: 52, backgroundColor: color },
+      ]}
     />
   );
 }

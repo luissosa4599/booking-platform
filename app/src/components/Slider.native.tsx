@@ -24,7 +24,11 @@ export function Slider({ min, max, value, onChange, step = 1, disabled, accessib
   const containerPageX = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const tint = useColor("tint");
-  const fillColor = useColor("fill");
+  // The unfilled track + disabled parts. Was `fill`, which in dark mode is
+  // the exact colour of the `sheet` these sliders live on (#2C2C2E) — the
+  // track vanished, leaving a lone thumb (2026-10-06). `chevron` is the
+  // iOS-slider grey and reads on both sheet colours.
+  const fillColor = useColor("chevron");
   const cardColor = useColor("card");
 
   const usableWidth = Math.max(0, trackWidth - THUMB_SIZE);

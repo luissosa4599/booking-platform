@@ -49,11 +49,15 @@ export function Sheet({ isOpen, onClose, children, maxWidth }: SheetProps) {
       <Animated.View style={{ opacity, flex: 1 }}>
         <Pressable
           className="flex-1 items-center justify-center bg-scrim/70"
+          style={{ paddingHorizontal: 16 }}
           onPress={onClose}
         >
+          {/* `width: "100%"` inline, not a `w-full` class: on this legacy
+              Animated.View the class didn't apply, so the dialog shrank to
+              its content — a sheet without long text (Filtros) came out
+              ~290px wide with its labels colliding (2026-10-06). */}
           <Animated.View
-            style={{ transform: [{ scale }], maxWidth: maxWidth ?? 448 }}
-            className="w-full"
+            style={{ transform: [{ scale }], width: "100%", maxWidth: maxWidth ?? 448 }}
           >
             {/* Capped height + internal scroll — without this, a sheet with
                 tall content (many conflict alternatives, a big QR pass) filled
