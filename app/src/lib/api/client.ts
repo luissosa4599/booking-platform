@@ -15,6 +15,9 @@ interface RequestOptions {
   method?: "GET" | "POST" | "DELETE" | "PATCH" | "PUT";
   body?: unknown;
   headers?: Record<string, string>;
+  /** Abort after this many ms — the fetch then rejects with an AbortError (not
+   * an ApiError), which callers treat like any other network failure. */
+  timeoutMs?: number;
   /** Internal: set once a 401 has already triggered a refresh, so we don't loop. */
   _retried?: boolean;
 }
@@ -39,15 +42,23 @@ export function setAuthHandlers(next: AuthHandlers): void {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const accessToken = handlers?.getAccessToken() ?? null;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers,
-    },
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  const controller = options.timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null;
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options.headers,
+      },
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
   // A 401 on a token-bearing request means the access token expired mid-session.
   // Refresh once and replay; if the refresh itself fails, the session is over.
@@ -81,4 +92,12 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   return (await response.json()) as T;
+}
+
+/** The machine-readable `code` an error body carries (e.g. the auth
+ * endpoints' "wrong_password" / "no_account"), or null. */
+export function apiErrorCode(error: unknown): string | null {
+  if (!(error instanceof ApiError)) return null;
+  const body = error.body as { code?: unknown } | null;
+  return typeof body?.code === "string" ? body.code : null;
 }

@@ -14,6 +14,9 @@ const VIEW_MODE_KEY = "tempo.viewmode.v1";
 // the sign-in screen — from then on the app opens on Explore without a session
 // (account-only actions open a modal). Cleared by any sign-in or sign-out.
 const GUEST_KEY = "tempo.guest.v1";
+// Sign-in redesign handoff (E3): an auth call that hangs this long shows
+// "Algo salió mal de nuestro lado" instead of a spinner forever.
+const AUTH_TIMEOUT_MS = 15_000;
 
 export type AccountRole = "guest" | "host";
 export type ViewMode = "guest" | "host";
@@ -129,10 +132,15 @@ interface AuthState {
    * (body `code: "google_account"`; adding a password goes through
    * forgot-password, which proves the email). */
   registerWithPassword: (email: string, password: string, name: string) => Promise<void>;
-  /** Throws ApiError(401) on a wrong password or an unknown email. */
+  /** Throws ApiError(401) whose body `code` says why: "wrong_password",
+   * "no_account" (offer to create it) or "google_account" (no password —
+   * sign in with Google). */
   loginWithPassword: (email: string, password: string) => Promise<void>;
   /** Always resolves — the server never reveals whether the email exists. */
   forgotPassword: (email: string) => Promise<ForgotPasswordResult>;
+  /** Whether a reset link still works, without using it up. Resolves with the
+   * account's email; throws ApiError(400) when it's expired, used or forged. */
+  checkResetToken: (token: string) => Promise<{ email: string }>;
   /** Signs in immediately on success. Throws ApiError(400) for an invalid/expired token. */
   resetPassword: (token: string, newPassword: string) => Promise<void>;
   /** Rotate the refresh token for a fresh access token. Throws on failure. */
@@ -195,6 +203,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async (idToken) => {
     const res = await apiFetch<SessionResponse>("/auth/google", {
       method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
       body: { idToken },
     });
     await persist(set, toSession(res));
@@ -219,6 +228,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   registerWithPassword: async (email, password, name) => {
     const res = await apiFetch<SessionResponse>("/auth/register", {
       method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
       body: { email: email.trim(), password, name: name.trim() },
     });
     await persist(set, toSession(res));
@@ -228,6 +238,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithPassword: async (email, password) => {
     const res = await apiFetch<SessionResponse>("/auth/login", {
       method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
       body: { email: email.trim(), password },
     });
     await persist(set, toSession(res));
@@ -237,12 +248,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   forgotPassword: (email) =>
     apiFetch<ForgotPasswordResult>("/auth/forgot-password", {
       method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
       body: { email: email.trim() },
+    }),
+
+  checkResetToken: (token) =>
+    apiFetch<{ email: string }>("/auth/reset-password/check", {
+      method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
+      body: { token },
     }),
 
   resetPassword: async (token, newPassword) => {
     const res = await apiFetch<SessionResponse>("/auth/reset-password", {
       method: "POST",
+      timeoutMs: AUTH_TIMEOUT_MS,
       body: { token, newPassword },
     });
     await persist(set, toSession(res));

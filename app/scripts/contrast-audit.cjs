@@ -23,6 +23,9 @@ const OUT = (process.env.AUDIT_OUT || path.join(__dirname, "..", "contrast-audit
 const API = process.env.AUDIT_API || "http://localhost:5190";
 const WEB = process.env.AUDIT_WEB || "http://localhost:8081";
 const VIEWPORT = JSON.parse(process.env.VP || '{"width":390,"height":1600}');
+// Optional comma list of route names (e.g. AUDIT_ONLY=sign-in,forgot-password)
+// to audit just the screens a change touched — the full run takes a while.
+const ONLY = process.env.AUDIT_ONLY ? new Set(process.env.AUDIT_ONLY.split(",")) : null;
 
 async function post(path, body, token, extra = {}) {
   const r = await fetch(API + path, {
@@ -173,10 +176,13 @@ function analyze() {
     { name: "welcome", path: "/welcome" },
     { name: "welcome-permissions", path: "/welcome", act: async (p) => { for (let i = 0; i < 3; i++) { await p.getByText("Siguiente", { exact: true }).click(); await p.waitForTimeout(500); } } },
     { name: "sign-in", path: "/sign-in" },
-    { name: "sign-in-register", path: "/sign-in", act: async (p) => { await p.getByText("Crear una").click(); } },
+    // Sign-in redesign (2026-10-06): the email form with every field in its
+    // error state (B + C), and the reset screens.
+    { name: "sign-in-email-errors", path: "/sign-in", act: async (p) => { await p.getByRole("button", { name: "Continuar con correo" }).click(); await p.waitForTimeout(400); await p.getByRole("button", { name: "Entrar", exact: true }).click(); } },
     { name: "forgot-password", path: "/forgot-password" },
+    { name: "reset-password-dead-link", path: "/reset-password?token=not-a-real-token" },
   ];
-  // Guest mode (2026-10-06): no session, "Continuar como invitado" chosen.
+  // Guest mode (2026-10-06): no session, "Explorar sin cuenta" chosen.
   const guestModeRoutes = [
     { name: "guest-explore", path: "/" },
     { name: "guest-signin-modal", path: "/", act: async (p) => { await p.getByRole("button", { name: /^Apartar/ }).first().click(); } },
@@ -211,6 +217,7 @@ function analyze() {
       await ctx.addInitScript((v) => { try { localStorage.setItem("tempo.session.v1", v); } catch {} }, sessionValue);
     }
     for (const r of routes) {
+      if (ONLY && !ONLY.has(r.name)) continue;
       const page = await ctx.newPage();
       try {
         await page.goto(WEB + r.path);

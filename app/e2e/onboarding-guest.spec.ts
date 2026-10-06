@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 
-// First launch (2026-10-06): tutorial → sign-in → "Continuar como invitado".
+// First launch (2026-10-06): tutorial → sign-in → "Explorar sin cuenta".
 // Inside guest mode, anything that needs an account opens a modal instead of
 // redirecting to sign-in. These start with no `tempo.onboarding.v1`, unlike
 // every other spec.
@@ -21,7 +21,7 @@ test.describe("first launch + guest mode", () => {
     await page.getByRole("button", { name: "Omitir el tutorial" }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
-    await page.getByRole("button", { name: "Continuar como invitado" }).click();
+    await page.getByRole("button", { name: "Explorar sin cuenta" }).click();
     await expect(page.getByPlaceholder(SEARCH)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Explorando sin cuenta")).toBeVisible();
 
@@ -41,6 +41,10 @@ test.describe("first launch + guest mode", () => {
     // Signing in is the user's choice from the modal.
     await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
     await expect(page).toHaveURL(/\/sign-in/);
+    // The guest variant (H): already browsing, so an X back instead of
+    // "Explorar sin cuenta".
+    await expect(page.getByRole("button", { name: "Cerrar y volver" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Explorar sin cuenta" })).toHaveCount(0);
 
     // Guest mode survives a reload (no sign-in wall).
     await page.goto("/");

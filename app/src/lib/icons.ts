@@ -4,6 +4,7 @@ import {
   ArrowLeft as LArrowLeft,
   ArrowUp as LArrowUp,
   ArrowUpDown as LArrowUpDown,
+  AtSign as LAtSign,
   Ban as LBan,
   Bell as LBell,
   ImagePlus as LImagePlus,
@@ -16,6 +17,8 @@ import {
   Check as LCheck,
   ChevronLeft as LChevronLeft,
   ChevronRight as LChevronRight,
+  Circle as LCircle,
+  CircleAlert as LCircleAlert,
   CircleUser as LCircleUser,
   Clock as LClock,
   Compass as LCompass,
@@ -25,9 +28,11 @@ import {
   Home as LHome,
   Info as LInfo,
   List as LList,
+  LoaderCircle as LLoaderCircle,
   LocateFixed as LLocateFixed,
   LogIn as LLogIn,
   LogOut as LLogOut,
+  MailCheck as LMailCheck,
   Map as LMap,
   MapPin as LMapPin,
   Minus as LMinus,
@@ -72,6 +77,7 @@ export const ArrowDown = typed(LArrowDown);
 export const ArrowLeft = typed(LArrowLeft);
 export const ArrowUp = typed(LArrowUp);
 export const ArrowUpDown = typed(LArrowUpDown);
+export const AtSign = typed(LAtSign);
 export const Ban = typed(LBan);
 export const Bell = typed(LBell);
 export const ImagePlus = typed(LImagePlus);
@@ -84,6 +90,8 @@ export const Camera = typed(LCamera);
 export const Check = typed(LCheck);
 export const ChevronLeft = typed(LChevronLeft);
 export const ChevronRight = typed(LChevronRight);
+export const Circle = typed(LCircle);
+export const CircleAlert = typed(LCircleAlert);
 export const CircleUser = typed(LCircleUser);
 export const Clock = typed(LClock);
 export const Compass = typed(LCompass);
@@ -93,9 +101,11 @@ export const Heart = typed(LHeart);
 export const Home = typed(LHome);
 export const Info = typed(LInfo);
 export const List = typed(LList);
+export const LoaderCircle = typed(LLoaderCircle);
 export const LocateFixed = typed(LLocateFixed);
 export const LogIn = typed(LLogIn);
 export const LogOut = typed(LLogOut);
+export const MailCheck = typed(LMailCheck);
 export const Map = typed(LMap);
 export const MapPin = typed(LMapPin);
 export const Minus = typed(LMinus);
