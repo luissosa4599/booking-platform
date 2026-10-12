@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 
+import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 
 /**
@@ -22,19 +23,25 @@ import { Screen } from "@/components/Screen";
  */
 export default function CalendarBridgeScreen() {
   const params = useLocalSearchParams<Record<string, string>>();
+  const target = useMemo(() => {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return `app://${query ? `?${query}` : ""}`;
+  }, [params]);
 
   useEffect(() => {
     // Same tab/context the OS auth session is watching — a new tab/window
     // (what expo-linking's openURL can do) wouldn't be, so this navigates
     // directly rather than going through Linking.
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    window.location.replace(`app://${query ? `?${query}` : ""}`);
-  }, [params]);
+    window.location.replace(target);
+  }, [target]);
 
+  // Chrome can refuse a script-started jump to a custom scheme when no tap
+  // led to it; a real tap on this button always counts as one.
   return (
     <Screen bg="card">
-      <View className="flex-1 items-center justify-center px-6">
+      <View className="flex-1 items-center justify-center gap-4 px-6">
         <Text className="text-body text-label-3">Regresando a Tempo…</Text>
+        <Button onPress={() => window.location.assign(target)}>Regresar a Tempo</Button>
       </View>
     </Screen>
   );
