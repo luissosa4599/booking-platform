@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Animated, Platform, Pressable, Text, View, type TextStyle } from "react-native";
 import { useRouter } from "expo-router";
 
+import { BrandMark } from "@/components/BrandMark";
 import { ArrowLeft, AtSign, CircleAlert, Clock, MailCheck, WifiOff, X } from "@/lib/icons";
 import { useColor } from "@/lib/theme/useColor";
 import { useEnterAnimation } from "@/lib/useEnterAnimation";
@@ -52,25 +53,19 @@ export function AuthTopBar({
   );
 }
 
-/** The 60/16 mark (handoff §5, confirmed). `inverted` = the web panel's
- * on-tint square with a tint centre. Decorative — the title says it. */
-export function BrandLogo({ inverted = false }: { inverted?: boolean }) {
-  const tint = useColor("tint");
-  const onTint = useColor("on-tint");
+/** Tempo's app icon at the handoff's 60/16 size (§5). The handoff drew a
+ * placeholder mark for its working name; the real "T" replaces it
+ * (2026-10-12), same as welcome/about. On the web panel (tint ground) in
+ * light mode the icon's own ground matches the panel, so only the T reads —
+ * on purpose. Decorative — the title says it. */
+export function BrandLogo() {
   return (
     <View
       aria-hidden
       importantForAccessibility="no-hide-descendants"
-      style={{
-        width: 60,
-        height: 60,
-        borderRadius: 16,
-        backgroundColor: inverted ? onTint : tint,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      style={{ width: 60, height: 60, borderRadius: 16, overflow: "hidden" }}
     >
-      <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: inverted ? tint : onTint }} />
+      <BrandMark size={60} />
     </View>
   );
 }

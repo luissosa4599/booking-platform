@@ -125,7 +125,7 @@ function BrandPanel() {
         justifyContent: "space-between",
       }}
     >
-      <BrandLogo inverted />
+      <BrandLogo />
       <View>
         <Text style={[authType.displayWeb, { color: onTint }]}>Aparta tu lugar.</Text>
         <Text style={[authType.bodyWeb, { color: onTintSub, marginTop: 16, maxWidth: 420 }]}>
