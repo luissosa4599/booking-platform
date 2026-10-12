@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BookingEngine.Api.Application.Auth;
+using BookingEngine.Api.Infrastructure.Email;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -211,6 +212,50 @@ public class AuthEndpointsTests(ApiTestFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ForgotPasswordResponse>();
         Assert.Null(body!.DebugToken);
+    }
+
+    [Fact]
+    public async Task PostAuthForgotPassword_SendsTheResetEmail_OncePerInterval()
+    {
+        var outbox = new CapturingEmailSender();
+        var factory = fixture.Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s =>
+        {
+            s.AddSingleton<IEmailSender>(outbox);
+            s.AddSingleton(new ResetEmailThrottle());
+        }));
+        var client = factory.CreateClient();
+        var email = UniqueEmail();
+        await client.PostAsJsonAsync("/auth/register", new RegisterRequest(email, "correct-horse"));
+
+        var first = await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(email));
+        var link = (await first.Content.ReadFromJsonAsync<ForgotPasswordResponse>())!.DebugResetLink!;
+        // Asked again right away (double tap): same generic answer, no second email.
+        var second = await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(email));
+        // No account: nothing sent either.
+        await client.PostAsJsonAsync("/auth/forgot-password", new ForgotPasswordRequest(UniqueEmail()));
+
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        var sent = Assert.Single(outbox.Sent);
+        Assert.Equal(email, sent.To);
+        Assert.Equal(PasswordResetEmail.Subject, sent.Subject);
+        Assert.Contains(System.Net.WebUtility.HtmlEncode(link), sent.Html);
+        Assert.Contains(link, sent.Text);
+    }
+
+    private sealed class CapturingEmailSender : IEmailSender
+    {
+        public List<(string To, string Subject, string Html, string Text)> Sent { get; } = [];
+
+        public bool Enabled => true;
+
+        public Task<bool> SendAsync(string to, string subject, string html, string text, CancellationToken ct)
+        {
+            lock (Sent)
+            {
+                Sent.Add((to, subject, html, text));
+            }
+            return Task.FromResult(true);
+        }
     }
 
     [Fact]

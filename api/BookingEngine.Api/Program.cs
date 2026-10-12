@@ -64,20 +64,23 @@ try
     builder.Services.AddSingleton<CalendarTokenCipher>();
     builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
-    // Password-reset emails via Resend (see ResendEmailClient). Disabled
-    // (logs + falls back to a Development-only debug token) until
-    // RESEND_API_KEY is set.
+    // Password-reset emails over SMTP (see SmtpEmailSender / EmailOptions).
+    // Disabled (logs + falls back to a Development-only debug token) until
+    // SMTP_HOST, SMTP_USERNAME and SMTP_PASSWORD are set.
     var emailOptions = new EmailOptions
     {
-        ApiKey = builder.Configuration["RESEND_API_KEY"] ?? string.Empty,
+        SmtpHost = builder.Configuration["SMTP_HOST"] ?? string.Empty,
+        SmtpUsername = builder.Configuration["SMTP_USERNAME"] ?? string.Empty,
+        SmtpPassword = builder.Configuration["SMTP_PASSWORD"] ?? string.Empty,
+        FromAddress = builder.Configuration["EMAIL_FROM"] ?? string.Empty,
     };
-    var configuredFromAddress = builder.Configuration["RESEND_FROM_ADDRESS"];
-    if (!string.IsNullOrWhiteSpace(configuredFromAddress))
+    if (int.TryParse(builder.Configuration["SMTP_PORT"], out var smtpPort))
     {
-        emailOptions.FromAddress = configuredFromAddress;
+        emailOptions.SmtpPort = smtpPort;
     }
     builder.Services.AddSingleton(emailOptions);
-    builder.Services.AddHttpClient<IEmailSender, ResendEmailClient>();
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+    builder.Services.AddSingleton<ResetEmailThrottle>();
 
     // Google Calendar (the calendar.events OAuth2 flow — separate from sign-in).
     builder.Services.AddHttpClient<GoogleCalendarClient>();

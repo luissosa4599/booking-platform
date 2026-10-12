@@ -112,6 +112,7 @@ public static class AuthEndpoints
             ForgotPasswordRequest request,
             AuthOptions authOptions,
             IEmailSender emailSender,
+            ResetEmailThrottle throttle,
             IConfiguration config,
             IWebHostEnvironment env,
             BookingEngineDbContext db,
@@ -147,21 +148,21 @@ public static class AuthEndpoints
                     : configuredFrontend;
                 var link = $"{frontend}/reset-password?token={Uri.EscapeDataString(token)}";
 
-                // Spanish prose a real person reads via email — \u escapes for
-                // accents keep the .cs source ASCII-only (CP1252/no-BOM gotcha,
-                // see CLAUDE.md) without dropping them from the actual copy.
-                var sent = await emailSender.SendAsync(
-                    email,
-                    "Restablece tu contraseña de Tempo",
-                    $"<p>Recibimos una solicitud para restablecer tu contraseña de Tempo.</p>" +
-                        $"<p><a href=\"{link}\">Haz clic aquí para continuar</a></p>" +
-                        "<p>Este enlace vence en 30 minutos. Si no lo solicitaste, ignora este mensaje.</p>",
-                    ct);
-
-                if (!sent)
+                if (!emailSender.Enabled)
                 {
-                    logger.LogWarning(
-                        "Password reset email not sent for {Email} (sender disabled or the send failed)", email);
+                    logger.LogWarning("Password reset email not sent for {Email}: no SMTP sender configured", email);
+                }
+                else if (!throttle.TryAcquire(email, now))
+                {
+                    logger.LogWarning("Password reset email for {Email} throttled", email);
+                }
+                else
+                {
+                    var (html, text) = PasswordResetEmail.Render(link, frontend);
+                    if (!await emailSender.SendAsync(email, PasswordResetEmail.Subject, html, text, ct))
+                    {
+                        logger.LogWarning("Password reset email for {Email} failed to send", email);
+                    }
                 }
 
                 if (env.IsDevelopment())

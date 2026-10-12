@@ -17,7 +17,7 @@ namespace BookingEngine.Api.Application.Auth;
 /// </summary>
 public static class PasswordResetTokens
 {
-    private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
     private const string Prefix = "reset:";
 
     public static string Issue(string email, string? passwordHash, string secret, DateTimeOffset now)
