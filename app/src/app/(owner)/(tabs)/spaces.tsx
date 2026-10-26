@@ -10,13 +10,14 @@ import { SpacePane } from "@/components/SpacePane";
 import { useOwnerSpaces } from "@/lib/api/owner";
 import { haptics } from "@/lib/haptics";
 import { Store } from "@/lib/icons";
-import { useUserId } from "@/lib/session";
+import { useAuthStore, useUserId } from "@/lib/session";
 import { useHasDetailPane } from "@/lib/useBreakpoint";
 import { useDetailSelection } from "@/lib/useDetailSelection";
 
 export default function MySpacesScreen() {
   const router = useRouter();
   const userId = useUserId();
+  const setViewMode = useAuthStore((s) => s.setViewMode);
   const { data: spaces, isLoading } = useOwnerSpaces(userId);
 
   const isEmpty = !isLoading && (spaces?.length ?? 0) === 0;
@@ -60,9 +61,12 @@ export default function MySpacesScreen() {
                   label: "Publicar un espacio",
                   onPress: () => router.push("/(owner)/space/new"),
                 }}
+                // A host with nothing published yet may have switched to host
+                // mode just to look — give them the way back right here, not
+                // only via Tú > Modo anfitrión. AuthGate then moves them to "/".
                 secondaryAction={{
-                  label: "Cómo funciona",
-                  onPress: () => router.push("/become-host"),
+                  label: "Salir del modo anfitrión",
+                  onPress: () => setViewMode("guest"),
                 }}
               />
             </View>
