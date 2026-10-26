@@ -5,8 +5,6 @@ import * as WebBrowser from "expo-web-browser";
 
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 
-WebBrowser.maybeCompleteAuthSession();
-
 // Google's "Web" OAuth client type rejects a bare custom-scheme redirect_uri
 // (confirmed in Console: "Debe contener el nombre de un dominio") — on
 // native, `AuthSession.makeRedirectUri()`'s default `app://` never validates.

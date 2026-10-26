@@ -15,6 +15,7 @@ import {
   useSegments,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -50,6 +51,14 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // reach Metro (common when testing on a phone over LAN/VPN — the app itself
 // still works, Fast Refresh just doesn't).
 LogBox.ignoreLogs(["Cannot connect to Expo CLI", /Cannot connect to Metro/]);
+
+// Web: Google's OAuth popup (sign-in and Calendar) comes back to "/" and has
+// to hand the result to the window that opened it. This call used to live only
+// in lib/auth/google.ts + googleCalendar.ts, which load with sign-in / Tú — a
+// guest's popup lands on Explore, so it never ran and the whole app loaded
+// inside the popup (2026-10-26). Here it runs on every page load; a no-op
+// unless an auth session is in progress, and on native.
+WebBrowser.maybeCompleteAuthSession();
 
 // First launch lands on sign-in (after the tutorial). Without a session the
 // only routes reachable are these — until the user taps "Continuar como

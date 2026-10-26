@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
 
 import type { GoogleAuth } from "./google.types";
 
@@ -11,8 +10,8 @@ import type { GoogleAuth } from "./google.types";
 // into the app, which Google has deprecated/blocked for "Android"/"iOS"
 // OAuth client types (real "Error 400: invalid_request" hit 2026-09-14 on
 // the first Android build) — it only ever worked, and still works, for the
-// Web client type used here.
-WebBrowser.maybeCompleteAuthSession();
+// Web client type used here. The popup's `maybeCompleteAuthSession()` is in
+// app/_layout.tsx, so it runs whichever route the popup lands on.
 
 const clientIds = {
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
