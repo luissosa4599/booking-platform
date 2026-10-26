@@ -163,7 +163,8 @@ export default function ConfirmedScreen() {
   };
 
   // Google Calendar (PR #9) — the real API path. Falls back to the device
-  // calendar / clipboard below when it isn't configured or errors.
+  // calendar / clipboard below when it isn't configured or errors, and on
+  // native while the scope is unverified (GOOGLE_CALENDAR_ON_NATIVE).
   const calendarStatus = useCalendarStatus();
   const googleCalAuth = useGoogleCalendarAuth();
   const connectCalendar = useConnectCalendar();

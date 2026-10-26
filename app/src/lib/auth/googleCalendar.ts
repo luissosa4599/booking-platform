@@ -32,6 +32,16 @@ const LATE_CALLBACK_GRACE_MS = 750;
 
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
+// Google Calendar is web-only until Google verifies the app for the
+// `calendar.events` scope (a sensitive one): until then every account gets
+// Google's "Google no verificó esta app" screen, which reads as "don't use
+// this" to testers and Play reviewers (2026-10-26). On native `ready` is false,
+// so the confirmed screen adds the booking to the phone's calendar instead
+// (lib/calendar.ts — it lands in Google Calendar when that's the phone's
+// account) and Tú hides the row. Nothing is removed: set this to true once
+// verified and the native flow (bridge + app:// return, ab4554b) is back.
+const GOOGLE_CALENDAR_ON_NATIVE = false;
+
 const discovery: AuthSession.DiscoveryDocument = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
   tokenEndpoint: "https://oauth2.googleapis.com/token",
@@ -86,7 +96,13 @@ export function useGoogleCalendarAuth(): GoogleCalendarAuth {
     };
   }, [promptAsync, request, redirectUri]);
 
-  return { ready: request !== null && isGoogleAuthConfigured(), authorize };
+  return {
+    ready:
+      request !== null &&
+      isGoogleAuthConfigured() &&
+      (Platform.OS === "web" || GOOGLE_CALENDAR_ON_NATIVE),
+    authorize,
+  };
 }
 
 async function promptNative(
