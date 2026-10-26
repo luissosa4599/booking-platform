@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 
 import { useColor } from "@/lib/theme/useColor";
@@ -51,39 +51,46 @@ export function AuthButton({
   // at scale 0.8 → 1, 200 ms.
   const contentStyle = useEnterAnimation(loading, { duration: 200, scale: 0.8, onMount: false });
 
+  // Pressed state is tracked by hand: NativeWind's native runtime drops a
+  // Pressable `style` given as a function (`({ pressed }) => ...`), so on
+  // Android the whole style object never reached the view — no fill, border
+  // or centring (vc15). Web was fine, which is why it got through.
+  const [pressed, setPressed] = useState(false);
+
   // A loading button keeps its look (D1/D2) — only an actually-disabled one
   // greys out.
   const inactive = disabled && !loading;
   const fg = inactive ? disabledLabel : variant === "primary" ? onTint : label1;
   const text = loading && loadingLabel ? loadingLabel : label;
+  const pressedLook = pressed && !loading;
+  const bg = inactive
+    ? fill
+    : variant === "primary"
+      ? pressedLook
+        ? tintPress
+        : tint
+      : pressedLook
+        ? fill
+        : card;
 
   return (
     <Pressable
       onPress={loading || disabled ? undefined : onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={loading ? (loadingLabel ?? label).replace("…", "") : (accessibilityLabel ?? label)}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      style={({ pressed }) => {
-        const bg = inactive
-          ? fill
-          : variant === "primary"
-            ? pressed && !loading
-              ? tintPress
-              : tint
-            : pressed && !loading
-              ? fill
-              : card;
-        return {
-          height: CONTROL_HEIGHT,
-          borderRadius: CONTROL_RADIUS,
-          backgroundColor: bg,
-          borderWidth: variant === "secondary" ? 1 : 0,
-          borderColor: hairline,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: 16,
-        };
+      style={{
+        height: CONTROL_HEIGHT,
+        borderRadius: CONTROL_RADIUS,
+        backgroundColor: bg,
+        borderWidth: variant === "secondary" ? 1 : 0,
+        borderColor: hairline,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 16,
       }}
     >
       <Animated.View
