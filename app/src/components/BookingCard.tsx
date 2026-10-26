@@ -82,7 +82,10 @@ function NextCard({
   const tintPress = useColor("tint-press");
   const stateFree = useColor("state-free");
 
-  const startColor = inProgress ? stateFree : undefined;
+  // Both states inline: a `text-tint` className next to an inline
+  // `color: undefined` comes out black on native (NativeWind assigns the
+  // inline style over the className, undefined included — see Pill.tsx).
+  const startColor = inProgress ? stateFree : tint;
   const endColor = inProgress ? stateFree : isDark ? withAlpha(tint, 0.8) : tintPress;
 
   return (
@@ -95,7 +98,6 @@ function NextCard({
       <View className="flex-row gap-[14px]">
         <View style={{ minWidth: 92 }}>
           <Text
-            className={inProgress ? undefined : "text-tint"}
             style={{
               fontSize: 17,
               fontWeight: "700",

@@ -35,12 +35,14 @@ export function Avatar({ name, photoUrl, size = 44, tone = "wash" }: AvatarProps
   // getComputedStyle (backgroundColor: rgba(0,0,0,0), color: rgb(0,0,0)) —
   // the same silent-no-op NativeWind gotcha documented all over this
   // codebase, this time hitting the two newest tokens. `useColor()` + inline
-  // style sidesteps it entirely, same fix already used elsewhere. Only
-  // needed for `tone="solid"` — `tint-wash`/`tint` (the "wash" tone) are
-  // long-established tokens that render fine as classNames.
+  // style sidesteps it entirely, same fix already used elsewhere. The "wash"
+  // tone is inline too: its `bg-tint-wash`/`text-tint` classNames sat next
+  // to an inline `undefined`, which on native NativeWind assigns over the
+  // className (see Pill.tsx) — no wash circle, black initials.
   const solidBg = useColor("tint-avatar-bg");
   const solidFg = useColor("tint-avatar-fg");
   const tintColor = useColor("tint");
+  const tintWash = useColor("tint-wash");
 
   // 2026-09-15 report: "se perdió el avatar" — a stale/expired Google photo
   // URL (signed-URL params do expire) failed to load and there was no
@@ -68,19 +70,19 @@ export function Avatar({ name, photoUrl, size = 44, tone = "wash" }: AvatarProps
 
   return (
     <View
-      className={tone === "solid" ? "items-center justify-center rounded-full" : "items-center justify-center rounded-full bg-tint-wash"}
+      className="items-center justify-center rounded-full"
       style={{
         width: size,
         height: size,
-        backgroundColor: tone === "solid" ? solidBg : undefined,
+        backgroundColor: tone === "solid" ? solidBg : tintWash,
       }}
     >
       {initials ? (
         <Text
-          className={tone === "solid" ? "font-bold" : "font-semibold text-tint"}
+          className={tone === "solid" ? "font-bold" : "font-semibold"}
           style={{
             fontSize: INITIALS_FONT_SIZE[size],
-            color: tone === "solid" ? solidFg : undefined,
+            color: tone === "solid" ? solidFg : tintColor,
           }}
         >
           {initials}

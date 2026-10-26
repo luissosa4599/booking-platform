@@ -31,7 +31,6 @@ import { useResource } from "@/lib/api/resources";
 import { useResourceTypes } from "@/lib/api/resourceTypes";
 import { useJoinWaitlist } from "@/lib/api/waitlist";
 import type { AvailabilitySlot } from "@/lib/api/types";
-import { cn } from "@/lib/cn";
 import { haptics } from "@/lib/haptics";
 import { ArrowLeft, MapPin } from "@/lib/icons";
 import { distanceToMeters, useLocationStore } from "@/lib/locationStore";
@@ -237,6 +236,12 @@ export default function ResourceScreen() {
   // §4 point 3 — solid tint/on-tint for the active day pill.
   const dayActiveBg = useColor("tint");
   const dayActiveOnTint = useColor("on-tint");
+  // The inactive day colours are inline too, never a className next to an
+  // inline `undefined`: on native NativeWind assigns the inline style over
+  // the className, undefined keys included (see Pill.tsx).
+  const dayFill = useColor("fill");
+  const dayLabel1 = useColor("label-1");
+  const dayLabel3 = useColor("label-3");
 
   const hasCoords =
     resource?.locationLatitude != null && resource?.locationLongitude != null;
@@ -476,21 +481,16 @@ export default function ResourceScreen() {
                       // §4 point 3 — the active day is a solid tint/on-tint
                       // pill, same treatment as the Reservas pills and
                       // Explorar's category chips (not tint-wash/tint-press).
-                      className={cn(
-                        "h-[52px] flex-1 items-center justify-center gap-px rounded-button",
-                        isSelected ? undefined : "bg-fill",
-                      )}
-                      style={{ backgroundColor: isSelected ? dayActiveBg : undefined }}
+                      className="h-[52px] flex-1 items-center justify-center gap-px rounded-button"
+                      style={{ backgroundColor: isSelected ? dayActiveBg : dayFill }}
                     >
-                      <Text
-                        className={isSelected ? undefined : "text-label-3"}
-                        style={{ fontSize: 13, color: isSelected ? dayActiveOnTint : undefined }}
-                      >
+                      <Text style={{ fontSize: 13, color: isSelected ? dayActiveOnTint : dayLabel3 }}>
                         {day.label}
                       </Text>
                       <Text
-                        className={cn(
-                          "text-body-emph",
+                        className="text-body-emph"
+                        style={{
+                          fontVariant: ["tabular-nums"],
                           // A "sin horarios" day used to dim via opacity-40 on
                           // top of the normal label-1 number — on dark canvas
                           // that opacity crush landed at ~1.9:1 contrast
@@ -498,11 +498,7 @@ export default function ResourceScreen() {
                           // (2026-09-19 report, screenshot). label-3 alone
                           // (no opacity) reads clearly muted vs. label-1 while
                           // staying ~5:1 — legible in both themes.
-                          isSelected ? undefined : !hasSlots ? "text-label-3" : "text-label-1",
-                        )}
-                        style={{
-                          fontVariant: ["tabular-nums"],
-                          color: isSelected ? dayActiveOnTint : undefined,
+                          color: isSelected ? dayActiveOnTint : !hasSlots ? dayLabel3 : dayLabel1,
                         }}
                       >
                         {day.dayNumber}
